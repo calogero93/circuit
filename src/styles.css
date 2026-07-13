@@ -1,0 +1,759 @@
+/* Circuit Studio — tema scuro da banco di laboratorio */
+
+:root {
+  --bg: #0e1118;
+  --panel: #161a24;
+  --panel-2: #1c2130;
+  --border: #2a3040;
+  --ink: #dbe2f0;
+  --ink-muted: #94a0b8;
+  --accent: #2f93d0;
+  --accent-warm: #d55e00;
+  --danger: #e05656;
+  --ok: #009e73;
+  font-size: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+#root,
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+h3,
+h4 {
+  margin: 0.4em 0;
+}
+
+.muted {
+  color: var(--ink-muted);
+  font-size: 0.92em;
+}
+
+/* ------------------------------------------------------------- toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin-right: 8px;
+}
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-left: 1px solid var(--border);
+}
+
+.tool-group.right {
+  margin-left: auto;
+  border-left: none;
+}
+
+.btn {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn.small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.btn.toggle.on {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+
+select {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.sim-status {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--ink-muted);
+  min-width: 90px;
+}
+
+.sim-status.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------- layout */
+.main {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.left {
+  width: 190px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.right {
+  width: 360px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  padding: 9px 4px;
+  cursor: pointer;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+}
+
+.tab.on {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.tab-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* -------------------------------------------------------------- palette */
+.palette {
+  padding: 8px;
+}
+
+.palette-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--ink-muted);
+  margin: 10px 4px 4px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 4px 8px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.palette-item:hover {
+  background: var(--panel-2);
+}
+
+.palette-item.active {
+  border-color: var(--accent);
+  background: var(--panel-2);
+}
+
+.palette-icon {
+  width: 56px;
+  height: 40px;
+  flex: none;
+}
+
+.palette-icon .symbol {
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 2;
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------- canvas */
+.canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.canvas-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: var(--bg);
+  touch-action: none;
+}
+
+.canvas-svg.tool-wire,
+.canvas-svg.tool-probe {
+  cursor: crosshair;
+}
+
+.grid-dot {
+  fill: #2c3345;
+}
+
+.wire {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+.wire.selected {
+  filter: drop-shadow(0 0 4px var(--accent));
+  stroke-width: 4;
+}
+
+.wire.highlighted {
+  filter: drop-shadow(0 0 6px #fff);
+  stroke-width: 5;
+}
+
+.wire.preview {
+  stroke: var(--ink-muted);
+  stroke-dasharray: 6 5;
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.junction {
+  fill: var(--ink-muted);
+}
+
+.current-dot {
+  fill: #ffd166;
+  pointer-events: none;
+}
+
+.symbol {
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 2;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.symbol text {
+  stroke: none;
+  fill: var(--ink);
+}
+
+.symbol.selected {
+  stroke: #7cc4f4;
+  color: #7cc4f4;
+  filter: drop-shadow(0 0 5px rgba(47, 147, 208, 0.8));
+}
+
+.symbol.highlighted {
+  stroke: #fff;
+  color: #fff;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.7));
+}
+
+.symbol.ghost {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.pin {
+  fill: var(--bg);
+  stroke: var(--ink-muted);
+  stroke-width: 1.5;
+}
+
+.tool-wire .pin,
+.tool-probe .pin {
+  fill: var(--accent);
+  r: 4;
+}
+
+.comp-label {
+  fill: var(--ink-muted);
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  pointer-events: none;
+}
+
+.led-glow {
+  fill: #ff5c5c;
+  stroke: none;
+  pointer-events: none;
+}
+
+.burned line {
+  stroke: var(--danger);
+  stroke-width: 3;
+}
+
+.ab-badge {
+  fill: none;
+  stroke: var(--accent-warm);
+  stroke-dasharray: 6 5;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.probe line {
+  stroke-width: 2;
+}
+
+.probe-label {
+  fill: #0e1118;
+  font-size: 10px;
+  font-weight: 700;
+  stroke: none;
+}
+
+.canvas-tooltip {
+  position: absolute;
+  background: rgba(10, 12, 18, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- scope */
+.scope {
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.scope-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  flex-wrap: wrap;
+}
+
+.scope-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--ink-muted);
+}
+
+.scope-legend {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.legend-item b {
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+}
+
+.legend-chip {
+  width: 14px;
+  height: 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.ghost-chip {
+  background: repeating-linear-gradient(90deg, var(--ink-muted) 0 4px, transparent 4px 7px);
+}
+
+.scope-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.scope-canvas-wrap {
+  height: 210px;
+}
+
+/* ---------------------------------------------------------------- pannelli */
+.props-empty {
+  color: var(--ink-muted);
+  padding: 12px 4px;
+  line-height: 1.5;
+}
+
+.props .description {
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+
+.param {
+  display: block;
+  margin: 12px 0;
+}
+
+.param-label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.param-label b {
+  font-family: ui-monospace, monospace;
+  color: var(--accent);
+}
+
+.param input[type='range'] {
+  width: 100%;
+}
+
+.param-input {
+  width: 110px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-family: ui-monospace, monospace;
+}
+
+.props-actions {
+  display: flex;
+  gap: 6px;
+  margin: 12px 0;
+  flex-wrap: wrap;
+}
+
+.ab-box {
+  margin-top: 16px;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------ matematica */
+.math-panel section {
+  margin-bottom: 18px;
+}
+
+.formula {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+
+.formula-latex {
+  overflow-x: auto;
+  padding: 2px 0;
+}
+
+.formula-latex .katex-display {
+  margin: 0.4em 0;
+}
+
+.formula-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+[class*='fx-'] {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0 1px;
+  transition: background 0.12s;
+}
+
+[class*='fx-']:hover,
+.term-active {
+  background: rgba(47, 147, 208, 0.35);
+  box-shadow: 0 0 0 2px rgba(47, 147, 208, 0.35);
+}
+
+.term-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.term-chip {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: default;
+}
+
+.term-chip b {
+  font-family: ui-monospace, monospace;
+  color: var(--accent);
+}
+
+.diode-curve {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+/* ---------------------------------------------------------------- lezioni */
+.lesson-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 10px 0;
+}
+
+.lesson-card p {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.lesson-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lesson-objective {
+  font-weight: 600;
+}
+
+.lesson-why {
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.lesson-step {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin: 12px 0;
+  line-height: 1.5;
+}
+
+.lesson-step-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.step-count {
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.lesson-nav {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.lesson-tools {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* --------------------------------------------------------------- tutor AI */
+.tutor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.tutor-log {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.msg {
+  border-radius: 10px;
+  padding: 8px 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  font-size: 13px;
+}
+
+.msg.user {
+  background: rgba(47, 147, 208, 0.18);
+  align-self: flex-end;
+  max-width: 90%;
+}
+
+.msg.assistant {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+
+.msg.tool {
+  font-family: ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  background: none;
+  border-left: 2px solid var(--accent);
+  border-radius: 0;
+  padding: 2px 8px;
+}
+
+.msg.error {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.tutor-input {
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.tutor-input textarea {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 8px;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* ---------------------------------------------------------- presentazione */
+.app.presentation {
+  font-size: 17px;
+}
+
+.app.presentation .left,
+.app.presentation .right,
+.app.presentation .tool-group:not(.right) {
+  display: none;
+}
+
+.app.presentation .scope-canvas-wrap {
+  height: 260px;
+}
+
+.presentation-lesson {
+  position: absolute;
+  left: 18px;
+  bottom: 250px;
+  width: 480px;
+  max-height: 55vh;
+  overflow-y: auto;
+  background: rgba(14, 17, 24, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  z-index: 20;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+.lesson-active.big {
+  font-size: 1.18em;
+}
+
+.lesson-active.big .lesson-step {
+  font-size: 1.1em;
+  line-height: 1.6;
+}
+
+.symbol-text {
+  font-size: 11px;
+}

@@ -1,0 +1,12 @@
+* Diodo con resistore — riferimento per Circuit Studio
+* Parametri identici a src/library/semiconductors.ts (1N4148-like)
+V1 in 0 DC 5
+R1 in a 1k
+D1 a 0 DMOD
+.model DMOD D(IS=2.52n N=1.752)
+.op
+.control
+run
+print v(a) i(v1)
+.endc
+.end

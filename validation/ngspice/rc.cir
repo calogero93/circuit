@@ -1,0 +1,11 @@
+* Carica RC — riferimento per Circuit Studio (lezione 2)
+* tau = R*C = 1 s; v(out) a t=tau deve valere 0.632*5 = 3.1606 V
+V1 in 0 DC 5
+R1 in out 1k
+C1 out 0 1m IC=0
+.tran 1m 1 UIC
+.control
+run
+print v(out)[1000]
+.endc
+.end

@@ -1,0 +1,10 @@
+* Partitore di tensione — riferimento per Circuit Studio (lezione 1)
+V1 in 0 DC 9
+R1 in out 10k
+R2 out 0 20k
+.op
+.control
+run
+print v(out) v(in)
+.endc
+.end

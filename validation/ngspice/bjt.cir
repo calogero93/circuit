@@ -1,0 +1,14 @@
+* BJT NPN in zona attiva — riferimento per Circuit Studio
+* IB = (5-VBE)/430k ~ 10uA, IC ~ 1mA (BF=100)
+VCC vcc 0 DC 5
+VBB vbb 0 DC 5
+RB vbb b 430k
+RC vcc c 1k
+Q1 c b 0 QMOD
+.model QMOD NPN(IS=1e-14 BF=100 BR=1)
+.op
+.control
+run
+print v(c) v(b) i(vcc)
+.endc
+.end

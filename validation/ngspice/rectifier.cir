@@ -1,0 +1,14 @@
+* Raddrizzatore a semionda con condensatore di livellamento — lezione 3
+V1 in 0 SIN(0 5 50)
+D1 in out DMOD
+C1 out 0 100u
+RL out 0 1k
+.model DMOD D(IS=2.52n N=1.752)
+.tran 0.1m 200m
+.control
+run
+* ripple a regime: ultimi 2 periodi
+meas tran vmax MAX v(out) from=160m to=200m
+meas tran vmin MIN v(out) from=160m to=200m
+.endc
+.end
