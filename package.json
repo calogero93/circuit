@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/engine/*.test.ts\"",
     "test:e2e": "playwright test",
-    "proxy": "node server/proxy.mjs"
+    "proxy": "node --env-file-if-exists=.env server/proxy.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
