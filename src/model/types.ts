@@ -29,6 +29,14 @@ export interface Wire {
   id: string;
   from: PinRef;
   to: PinRef;
+  /**
+   * Verso del gomito ortogonale (false = orizzontale-prima). Quando `route` è
+   * assente il percorso è ricalcolato dal vivo dalle posizioni dei pin, così il
+   * filo segue i componenti spostati.
+   */
+  elbow?: boolean;
+  /** Percorso esplicito opzionale (usato per i tronconi di una giunzione). */
+  route?: { x: number; y: number }[];
 }
 
 /** Sotto-circuito / gruppo (strutturale in M1; predispone la partizione mixed-signal di M3). */

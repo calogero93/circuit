@@ -24,7 +24,7 @@ function solveDiodeCircuit(V: number) {
   const compiled = compile(circuit);
   const result = sim.dcOperatingPoint(compiled);
   assert.ok(result.converged, `deve convergere con V=${V}`);
-  return result.outputs.get('D1')!.data;
+  return result.outputs.get('D1')!.data as any;
 }
 
 test('diodo: I-V monotona e coerente con Shockley', () => {
@@ -62,6 +62,6 @@ test('diodo in inversa: corrente ≈ −Is', () => {
   const compiled = compile(circuit);
   const result = sim.dcOperatingPoint(compiled);
   assert.ok(result.converged);
-  const { id } = result.outputs.get('D1')!.data;
+  const { id } = result.outputs.get('D1')!.data as any;
   assert.ok(id < 0 && id > -1e-6, `corrente inversa trascurabile: ${id}`);
 });

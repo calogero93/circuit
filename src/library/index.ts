@@ -5,7 +5,29 @@ import { registerComponent, listDefs } from '../model/registry.ts';
 import { resistorDef, capacitorDef, inductorDef } from './passives.ts';
 import { vdcDef, vsinDef, idcDef } from './sources.ts';
 import { diodeDef, ledDef, bjtDef } from './semiconductors.ts';
-import { groundDef, switchDef } from './misc.ts';
+import { groundDef, switchDef, nodeDef } from './misc.ts';
+import { digitalDefs } from './digital.ts';
+import {
+  opampDef,
+  zenerDef,
+  potentiometerDef,
+  ldrDef,
+  ntcDef,
+  ptcDef,
+  barometerDef,
+  hallDef,
+  humiditySensDef,
+  nmosDef,
+  pmosDef,
+  pnpDef,
+  schottkyDef,
+  relayDef,
+  fuseDef,
+  bridgeDef,
+  transformerDef,
+  pulseDef,
+  vsinPhaseDef,
+} from './extra.ts';
 
 let registered = false;
 
@@ -14,6 +36,7 @@ export function registerLibrary(): void {
   registered = true;
   for (const def of [
     groundDef,
+    nodeDef,
     vdcDef,
     vsinDef,
     idcDef,
@@ -24,6 +47,26 @@ export function registerLibrary(): void {
     ledDef,
     switchDef,
     bjtDef,
+    opampDef,
+    zenerDef,
+    potentiometerDef,
+    ldrDef,
+    ntcDef,
+    ptcDef,
+    barometerDef,
+    hallDef,
+    humiditySensDef,
+    nmosDef,
+    pmosDef,
+    pnpDef,
+    schottkyDef,
+    relayDef,
+    fuseDef,
+    bridgeDef,
+    transformerDef,
+    pulseDef,
+    vsinPhaseDef,
+    ...digitalDefs,
   ]) {
     registerComponent(def);
   }

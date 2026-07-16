@@ -7,9 +7,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDef } from '../model/registry.ts';
 import { compile } from '../model/netlist.ts';
-import { pinKey, type ComponentInstance, type PinRef, freshId } from '../model/types.ts';
+import { pinKey, type ComponentInstance, type PinRef, type Wire, freshId } from '../model/types.ts';
 import { formatSI } from '../model/units.ts';
-import { addComponent, addWire, moveComponent, setParam } from '../store/commands.ts';
+import {
+  addComponent,
+  addWire,
+  branchWire,
+  flipWireElbow,
+  moveComponents,
+  setParam,
+} from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
 import { simController, useSimTick } from '../viz/controller.ts';
 import { voltageColor } from '../viz/colors.ts';
@@ -20,8 +27,10 @@ import {
   pathOfRoute,
   pinPosition,
   pointAlongRoute,
+  projectOnRoute,
   routeLength,
   snap,
+  splitRoute,
   type Pt,
 } from './geometry.ts';
 import { SymbolView } from './SymbolView.tsx';
@@ -38,6 +47,37 @@ const ID_PREFIX: Record<string, string> = {
   switch: 'SW',
   npn: 'Q',
   ground: 'GND',
+  node: 'J',
+  logic_in: 'IN',
+  clock: 'CLK',
+  logic_out: 'OUT',
+  not_gate: 'INV',
+  buffer_gate: 'BUF',
+  and_gate: 'AND',
+  or_gate: 'OR',
+  nand_gate: 'NAND',
+  nor_gate: 'NOR',
+  xor_gate: 'XOR',
+  dff: 'FF',
+  opamp: 'OA',
+  zener: 'Z',
+  potentiometer: 'POT',
+  ldr: 'LDR',
+  ntc: 'NTC',
+  ptc: 'PTC',
+  barometer: 'BAR',
+  hall_sensor: 'HALL',
+  humidity_sensor: 'HUM',
+  nmos: 'M',
+  pmos: 'M',
+  pnp: 'Q',
+  schottky: 'D',
+  relay: 'K',
+  fuse: 'F',
+  bridge_rectifier: 'BR',
+  transformer: 'T',
+  pulse: 'V',
+  vsin_phase: 'V',
 };
 
 interface HoverInfo {
@@ -80,13 +120,13 @@ function CurrentDots() {
       }
       if (imax < 1e-12) return;
 
-      for (const w of circuit.wires) {
+        for (const w of circuit.wires) {
         const i = currents.get(w.id) ?? 0;
         if (Math.abs(i) < imax * 1e-4 || Math.abs(i) < 1e-12) continue;
         const a = pinPositionOfInst(circuit.components, w.from);
         const b = pinPositionOfInst(circuit.components, w.to);
-        if (!a || !b) continue;
-        const route = orthogonalRoute(a, b);
+          if (!a || !b) continue;
+          const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
         const len = routeLength(route);
         if (len < 4) continue;
         const speed = 90 * (i / imax); // px/s con segno
@@ -136,11 +176,46 @@ export function CanvasEditor() {
   const [view, setView] = useState({ tx: 40, ty: 20, scale: 1 });
   const [mouse, setMouse] = useState<Pt>({ x: 0, y: 0 });
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
+  const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const panMode = useRef(false); // Spazio premuto → pan invece di selezione a rettangolo
   const drag = useRef<
-    | { kind: 'component'; id: string; dx: number; dy: number; moved: boolean }
+    | {
+        kind: 'component';
+        ids: string[];
+        grabId: string;
+        dx: number;
+        dy: number;
+        from: Record<string, Pt>;
+        lastdx: number;
+        lastdy: number;
+        moved: boolean;
+      }
     | { kind: 'pan'; startX: number; startY: number; tx: number; ty: number; moved: boolean }
+    | { kind: 'marquee'; x0: number; y0: number; x1: number; y1: number; moved: boolean }
     | null
   >(null);
+
+  useEffect(() => {
+    const inField = () =>
+      document.activeElement instanceof HTMLInputElement ||
+      document.activeElement instanceof HTMLTextAreaElement ||
+      document.activeElement instanceof HTMLSelectElement;
+    const down = (e: KeyboardEvent) => {
+      if (e.key === ' ' && !inField()) {
+        panMode.current = true;
+        e.preventDefault();
+      }
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === ' ') panMode.current = false;
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, []);
 
   const frame = simController.frame;
   const netOf = (ref: PinRef): number | undefined => frame?.compiled.netOfPin.get(pinKey(ref));
@@ -159,6 +234,40 @@ export function CanvasEditor() {
     };
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).__circuitStudio) {
+      (window as any).__circuitStudio.exportSVG = () => {
+        const svg = svgRef.current;
+        if (!svg) return;
+
+        // Clona l'elemento SVG
+        const cloned = svg.cloneNode(true) as SVGSVGElement;
+
+        // Applica sfondo scuro SURFACE del tema
+        cloned.style.background = '#14171f';
+
+        // Rimuove i pallini di corrente animati
+        const dots = cloned.querySelector('.dots-layer');
+        if (dots) dots.parentNode?.removeChild(dots);
+
+        // Rimuove evidenziazioni di selezione e matematiche
+        cloned.querySelectorAll('.selected').forEach((el) => el.classList.remove('selected'));
+        cloned.querySelectorAll('.highlighted').forEach((el) => el.classList.remove('highlighted'));
+
+        const serializer = new XMLSerializer();
+        const source = '<?xml version="1.0" standalone="no"?>\r\n' + serializer.serializeToString(cloned);
+
+        const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'schema-circuito.svg';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+    }
+  }, [circuit, probes, tool, selection, view]);
+
   const findPinNear = (p: Pt, radius = 14): PinRef | null => {
     for (const inst of circuit.components) {
       const def = getDef(inst.type);
@@ -173,7 +282,8 @@ export function CanvasEditor() {
   const findComponentNear = (p: Pt): ComponentInstance | null => {
     for (let k = circuit.components.length - 1; k >= 0; k--) {
       const inst = circuit.components[k];
-      if (Math.abs(p.x - inst.x) <= 46 && Math.abs(p.y - inst.y) <= 46) return inst;
+      const r = inst.type === 'node' ? 10 : 46; // il nodo di giunzione è piccolo
+      if (Math.abs(p.x - inst.x) <= r && Math.abs(p.y - inst.y) <= r) return inst;
     }
     return null;
   };
@@ -182,7 +292,9 @@ export function CanvasEditor() {
     for (const w of circuit.wires) {
       const a = pinPositionOfInst(circuit.components, w.from);
       const b = pinPositionOfInst(circuit.components, w.to);
-      if (a && b && distToRoute(p, orthogonalRoute(a, b)) < 8) return w.id;
+      if (!a || !b) continue;
+      const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+      if (distToRoute(p, route) < 8) return w.id;
     }
     return null;
   };
@@ -211,21 +323,69 @@ export function CanvasEditor() {
 
     if (tool.kind === 'wire') {
       const pin = findPinNear(p);
-      if (!pin) return;
+      const elbow = tool.elbow ?? false;
       if (!tool.from) {
-        setTool({ kind: 'wire', from: pin });
-      } else if (pinKey(tool.from) !== pinKey(pin)) {
+        // primo click: aggancia il pin di partenza
+        if (pin) setTool({ kind: 'wire', from: pin, elbow });
+        return;
+      }
+      if (!pin) {
+        // click su un filo esistente → giunzione a T; altrimenti inverte il gomito
+        const targetId = findWireNear(p);
+        const target = targetId ? circuit.wires.find((w) => w.id === targetId) : null;
+        const start = pinPositionOfInst(circuit.components, tool.from);
+        const ta = target && pinPositionOfInst(circuit.components, target.from);
+        const tb = target && pinPositionOfInst(circuit.components, target.to);
+        if (target && ta && tb && start) {
+          const targetRoute = target.route ?? orthogonalRoute(ta, tb, target.elbow ?? false);
+          const P = projectOnRoute(targetRoute, p).point;
+          const takenC = (id: string) => circuit.components.some((c) => c.id === id);
+          const node: ComponentInstance = { id: freshId('J', takenC), type: 'node', x: P.x, y: P.y, rot: 0, params: {} };
+          const nodePin: PinRef = { component: node.id, pin: 0 };
+          const [rA, rB] = splitRoute(targetRoute, P);
+          const takenW = (id: string) => circuit.wires.some((w) => w.id === id);
+          const w1: Wire = { id: freshId('w', takenW), from: target.from, to: nodePin, route: rA };
+          const w2: Wire = { id: freshId('w', takenW), from: nodePin, to: target.to, route: rB };
+          const w3: Wire = { id: freshId('w', takenW), from: tool.from, to: nodePin, elbow };
+          execute(branchWire(node, target, [w1, w2, w3]));
+          setTool({ kind: 'wire', from: null, elbow });
+          return;
+        }
+        // vuoto: inverte il verso del gomito
+        setTool({ kind: 'wire', from: tool.from, elbow: !elbow });
+        return;
+      }
+      // secondo click su un pin diverso: chiude il filo (auto-instradato, segue i pin)
+      if (pinKey(tool.from) !== pinKey(pin)) {
         const taken = (id: string) => circuit.wires.some((w) => w.id === id);
-        execute(addWire({ id: freshId('w', taken), from: tool.from, to: pin }));
-        setTool({ kind: 'wire', from: null });
+        const id = freshId('w', taken);
+        execute(addWire({ id, from: tool.from, to: pin, elbow }));
+        setTool({ kind: 'wire', from: null, elbow });
       }
       return;
     }
 
     if (tool.kind === 'probe') {
-      const pin = findPinNear(p, 18);
-      if (!pin) return;
+      // allow placing probe on a pin or on a wire (mid-air)
+      let pin = findPinNear(p, 18);
       const compiled = compile(circuit);
+      if (!pin) {
+        const wireId = findWireNear(p);
+        if (!wireId) return;
+        const wire = circuit.wires.find((w) => w.id === wireId);
+        if (!wire) return;
+        const net = compiled.netOfPin.get(pinKey(wire.from));
+        if (net === undefined) return;
+        // find a representative pin on this net
+        for (const [k, v] of compiled.netOfPin.entries()) {
+          if (v === net) {
+            const [component, pinIdx] = k.split(':');
+            pin = { component, pin: Number(pinIdx) };
+            break;
+          }
+        }
+        if (!pin) return;
+      }
       const net = compiled.netOfPin.get(pinKey(pin));
       const existing = probes.find((pr) => compiled.netOfPin.get(pinKey(pr.pin)) === net);
       if (existing) removeProbe(existing.id);
@@ -236,8 +396,29 @@ export function CanvasEditor() {
     // select
     const comp = findComponentNear(p);
     if (comp) {
-      setSelection([comp.id]);
-      drag.current = { kind: 'component', id: comp.id, dx: comp.x - p.x, dy: comp.y - p.y, moved: false };
+      // se il componente è già in una selezione multipla, trascina l'intero gruppo
+      const already = selection.includes(comp.id);
+      const groupIds =
+        already && selection.length > 1
+          ? selection.filter((id) => circuit.components.some((c) => c.id === id))
+          : [comp.id];
+      if (!already) setSelection([comp.id]);
+      const from: Record<string, Pt> = {};
+      for (const id of groupIds) {
+        const inst = circuit.components.find((c) => c.id === id);
+        if (inst) from[id] = { x: inst.x, y: inst.y };
+      }
+      drag.current = {
+        kind: 'component',
+        ids: Object.keys(from),
+        grabId: comp.id,
+        dx: comp.x - p.x,
+        dy: comp.y - p.y,
+        from,
+        lastdx: 0,
+        lastdy: 0,
+        moved: false,
+      };
       return;
     }
     const wireId = findWireNear(p);
@@ -245,7 +426,13 @@ export function CanvasEditor() {
       setSelection([wireId]);
       return;
     }
-    drag.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, tx: view.tx, ty: view.ty, moved: false };
+    // area vuota: Spazio o tasto centrale → pan; altrimenti rettangolo di selezione
+    if (panMode.current || e.button === 1) {
+      drag.current = { kind: 'pan', startX: e.clientX, startY: e.clientY, tx: view.tx, ty: view.ty, moved: false };
+    } else {
+      drag.current = { kind: 'marquee', x0: p.x, y0: p.y, x1: p.x, y1: p.y, moved: false };
+      setMarquee({ x0: p.x, y0: p.y, x1: p.x, y1: p.y });
+    }
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -253,15 +440,24 @@ export function CanvasEditor() {
     setMouse(p);
     const d = drag.current;
     if (d?.kind === 'component') {
-      const inst = circuit.components.find((c) => c.id === d.id);
-      if (inst) {
-        const nx = snap(p.x + d.dx);
-        const ny = snap(p.y + d.dy);
-        if (nx !== inst.x || ny !== inst.y) {
-          d.moved = true;
-          execute(moveComponent(d.id, { x: inst.x, y: inst.y }, { x: nx, y: ny }));
-        }
+      const grab = d.from[d.grabId];
+      const ddx = snap(p.x + d.dx) - grab.x;
+      const ddy = snap(p.y + d.dy) - grab.y;
+      if (ddx !== d.lastdx || ddy !== d.lastdy) {
+        d.lastdx = ddx;
+        d.lastdy = ddy;
+        d.moved = true;
+        const to: Record<string, Pt> = {};
+        for (const id of d.ids) to[id] = { x: d.from[id].x + ddx, y: d.from[id].y + ddy };
+        execute(moveComponents(d.ids, d.from, to));
       }
+      return;
+    }
+    if (d?.kind === 'marquee') {
+      d.x1 = p.x;
+      d.y1 = p.y;
+      if (Math.abs(d.x1 - d.x0) + Math.abs(d.y1 - d.y0) > 3) d.moved = true;
+      setMarquee({ x0: d.x0, y0: d.y0, x1: d.x1, y1: d.y1 });
       return;
     }
     if (d?.kind === 'pan') {
@@ -289,10 +485,17 @@ export function CanvasEditor() {
         const out = frame.result.outputs.get(comp.id);
         const lines = [`${getDef(comp.type).name} ${comp.id}`];
         if (out) {
-          if (out.data.v !== undefined) lines.push(`V = ${formatSI(out.data.v, 'V')}`);
-          if (out.data.i !== undefined) lines.push(`I = ${formatSI(out.data.i, 'A')}`);
-          if (out.data.ic !== undefined) lines.push(`IC = ${formatSI(out.data.ic, 'A')}  IB = ${formatSI(out.data.ib, 'A')}`);
-          if (out.data.vce !== undefined) lines.push(`VCE = ${formatSI(out.data.vce, 'V')}`);
+          if (out.data.v !== undefined) lines.push(`V = ${formatSI(Number(out.data.v), 'V')}`);
+          if (out.data.i !== undefined) lines.push(`I = ${formatSI(Number(out.data.i), 'A')}`);
+          if (out.data.ic !== undefined) lines.push(`IC = ${formatSI(Number(out.data.ic), 'A')}  IB = ${formatSI(Number(out.data.ib), 'A')}`);
+          if (out.data.vce !== undefined) lines.push(`VCE = ${formatSI(Number(out.data.vce), 'V')}`);
+          if (out.data.logic !== undefined) {
+            const parts: string[] = [];
+            if (out.data.a !== undefined) parts.push(`A=${out.data.a}`);
+            if (out.data.b !== undefined) parts.push(`B=${out.data.b}`);
+            parts.push(`→ ${out.data.logic}`);
+            lines.push(`logica: ${parts.join('  ')}`);
+          }
         }
         setHoverInfo({ ...at, lines });
         return;
@@ -305,6 +508,28 @@ export function CanvasEditor() {
   const onPointerUp = () => {
     const d = drag.current;
     if (d?.kind === 'pan' && !d.moved) setSelection([]);
+    if (d?.kind === 'marquee') {
+      if (!d.moved) {
+        setSelection([]);
+      } else {
+        const xmin = Math.min(d.x0, d.x1);
+        const xmax = Math.max(d.x0, d.x1);
+        const ymin = Math.min(d.y0, d.y1);
+        const ymax = Math.max(d.y0, d.y1);
+        const inBox = (x: number, y: number) => x >= xmin && x <= xmax && y >= ymin && y <= ymax;
+        const ids: string[] = [];
+        for (const c of circuit.components) if (inBox(c.x, c.y)) ids.push(c.id);
+        for (const w of circuit.wires) {
+          const a = pinPositionOfInst(circuit.components, w.from);
+          const b = pinPositionOfInst(circuit.components, w.to);
+          if (!a || !b) continue;
+          const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+          if (route.some((pt) => inBox(pt.x, pt.y))) ids.push(w.id);
+        }
+        setSelection(ids);
+      }
+      setMarquee(null);
+    }
     drag.current = null;
   };
 
@@ -314,7 +539,16 @@ export function CanvasEditor() {
     if (comp && comp.type === 'switch') {
       execute(setParam(comp.id, 'closed', comp.params.closed, !comp.params.closed));
       markEvent(comp.id, simController.time);
+      return;
     }
+    if (comp && comp.type === 'logic_in') {
+      execute(setParam(comp.id, 'high', comp.params.high, !comp.params.high));
+      markEvent(comp.id, simController.time);
+      return;
+    }
+    // doppio-click su un filo: inverte il verso del gomito (re-instrada)
+    const wireId = findWireNear(p);
+    if (wireId) execute(flipWireElbow(wireId));
   };
 
   const onWheel = (e: React.WheelEvent) => {
@@ -376,10 +610,11 @@ export function CanvasEditor() {
             const v = net === undefined || !frame ? NaN : frame.result.voltageOfNet(net);
             const selected = selection.includes(w.id);
             const highlighted = net !== undefined && highlightNets.has(net);
+            const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
             return (
               <path
                 key={w.id}
-                d={pathOfRoute(orthogonalRoute(a, b))}
+                d={pathOfRoute(route)}
                 className={`wire${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}`}
                 stroke={Number.isFinite(v) ? voltageColor(v, vmax) : undefined}
               />
@@ -403,7 +638,8 @@ export function CanvasEditor() {
             const selected = selection.includes(inst.id);
             const highlighted = highlightComps.has(inst.id);
             const out = frame?.result.outputs.get(inst.id);
-            const ledI = inst.type === 'led' ? Math.abs(out?.data.id ?? 0) : 0;
+            const ledI = inst.type === 'led' ? Math.abs(Number(out?.data.id ?? 0)) : 0;
+            const logicLit = inst.type === 'logic_out' ? Number(out?.data.level ?? 0) : 0;
             const burned = def.maxCurrent !== undefined && ledI > 5 * def.maxCurrent;
             const mainParam = def.params[0];
             const isAB = ab?.componentId === inst.id;
@@ -417,6 +653,9 @@ export function CanvasEditor() {
                     <circle cx={0} cy={0} r={18 + 8 * Math.min(1, ledI / 0.02)} className="led-glow"
                       style={{ opacity: Math.min(0.85, 0.15 + ledI / 0.02) }} />
                   )}
+                  {inst.type === 'logic_out' && logicLit > 0.5 && (
+                    <circle cx={0} cy={0} r={16} className="led-glow" style={{ opacity: 0.2 + 0.6 * logicLit }} />
+                  )}
                   <SymbolView prims={def.symbol(inst.params)} />
                   {def.pins.map((pin, i) => (
                     <circle key={i} cx={pin.x} cy={pin.y} r={3.2} className="pin" />
@@ -429,17 +668,19 @@ export function CanvasEditor() {
                   )}
                   {isAB && <rect x={-46} y={-46} width={92} height={92} className="ab-badge" rx={8} />}
                 </g>
-                <text
-                  x={inst.rot % 2 === 0 ? inst.x : inst.x + 34}
-                  y={inst.rot % 2 === 0 ? inst.y + 36 : inst.y + 4}
-                  className="comp-label"
-                  textAnchor={inst.rot % 2 === 0 ? 'middle' : 'start'}
-                >
-                  {inst.id}
-                  {mainParam && mainParam.kind === 'number'
-                    ? ` · ${formatSI(inst.params[mainParam.key] as number, mainParam.unit)}`
-                    : ''}
-                </text>
+                {inst.type !== 'node' && (
+                  <text
+                    x={inst.rot % 2 === 0 ? inst.x : inst.x + 34}
+                    y={inst.rot % 2 === 0 ? inst.y + 36 : inst.y + 4}
+                    className="comp-label"
+                    textAnchor={inst.rot % 2 === 0 ? 'middle' : 'start'}
+                  >
+                    {inst.id}
+                    {mainParam && mainParam.kind === 'number'
+                      ? ` · ${formatSI(inst.params[mainParam.key] as number, mainParam.unit)}`
+                      : ''}
+                  </text>
+                )}
               </g>
             );
           })}
@@ -470,11 +711,23 @@ export function CanvasEditor() {
             </g>
           )}
           {tool.kind === 'wire' && tool.from && (() => {
-            const a = pinPositionOfInst(circuit.components, tool.from);
-            return a ? (
-              <path d={pathOfRoute(orthogonalRoute(a, mouse))} className="wire preview" />
-            ) : null;
+            const start = pinPositionOfInst(circuit.components, tool.from);
+            if (!start) return null;
+            const route = orthogonalRoute(start, mouse, tool.elbow ?? false);
+            return <path d={pathOfRoute(route)} className="wire preview" />;
           })()}
+
+          {/* rettangolo di selezione */}
+          {marquee && (
+            <rect
+              x={Math.min(marquee.x0, marquee.x1)}
+              y={Math.min(marquee.y0, marquee.y1)}
+              width={Math.abs(marquee.x1 - marquee.x0)}
+              height={Math.abs(marquee.y1 - marquee.y0)}
+              className="marquee"
+              pointerEvents="none"
+            />
+          )}
         </g>
       </svg>
 

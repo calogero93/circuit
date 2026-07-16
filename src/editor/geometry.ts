@@ -40,10 +40,13 @@ export function pinPositionOf(circuit: Circuit, ref: PinRef): Pt | null {
   return pinPosition(inst, ref.pin);
 }
 
-/** Percorso ortogonale a L tra due punti (orizzontale prima). */
-export function orthogonalRoute(a: Pt, b: Pt): Pt[] {
+/**
+ * Percorso ortogonale a L tra due punti. Il gomito va orizzontale-prima di
+ * default; con `verticalFirst` va verticale-prima (l'altro verso della L).
+ */
+export function orthogonalRoute(a: Pt, b: Pt, verticalFirst = false): Pt[] {
   if (a.x === b.x || a.y === b.y) return [a, b];
-  return [a, { x: b.x, y: a.y }, b];
+  return verticalFirst ? [a, { x: a.x, y: b.y }, b] : [a, { x: b.x, y: a.y }, b];
 }
 
 export function routeLength(pts: Pt[]): number {
@@ -88,4 +91,30 @@ export function distToRoute(p: Pt, pts: Pt[]): number {
   let min = Infinity;
   for (let i = 1; i < pts.length; i++) min = Math.min(min, distToSegment(p, pts[i - 1], pts[i]));
   return min;
+}
+
+/** Proiezione di p sul percorso: punto più vicino e indice del segmento. */
+export function projectOnRoute(pts: Pt[], p: Pt): { point: Pt; seg: number } {
+  let best = { point: pts[0], seg: 1, dist: Infinity };
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const l2 = dx * dx + dy * dy;
+    const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2));
+    const point = { x: a.x + t * dx, y: a.y + t * dy };
+    const dist = Math.hypot(p.x - point.x, p.y - point.y);
+    if (dist < best.dist) best = { point, seg: i, dist };
+  }
+  return { point: best.point, seg: best.seg };
+}
+
+/** Spezza un percorso nel punto proiezione di p, restituendo i due tronconi. */
+export function splitRoute(pts: Pt[], p: Pt): [Pt[], Pt[]] {
+  const { point, seg } = projectOnRoute(pts, p);
+  return [
+    [...pts.slice(0, seg), point],
+    [point, ...pts.slice(seg)],
+  ];
 }

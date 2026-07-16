@@ -4,9 +4,10 @@
 import { useEffect, useState } from 'react';
 import { getDef, type ParamDef } from '../model/registry.ts';
 import { formatSI } from '../model/units.ts';
+import { pinKey } from '../model/types.ts';
 import { removeItems, rotateComponent, setParam } from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
-import { simController } from '../viz/controller.ts';
+import { simController, useSimTick } from '../viz/controller.ts';
 import type { ComponentInstance } from '../model/types.ts';
 
 function LogSlider({
@@ -70,6 +71,296 @@ function NumberParam({ inst, p }: { inst: ComponentInstance; p: ParamDef }) {
   );
 }
 
+function EnvironmentalPanel() {
+  const env = useStudio((s) => s.environment);
+  const setEnv = useStudio((s) => s.setEnvironment);
+
+  return (
+    <div className="env-panel" style={{ marginTop: '16px', padding: '12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--panel-2)' }}>
+      <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', color: 'var(--accent)' }}>🌎 Variabili Ambientali Fisiche</h4>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <label style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span>☀️ Luce Ambiente: <b>{env.light.toFixed(0)}%</b></span>
+          <input type="range" min="0" max="100" value={env.light} onChange={(e) => setEnv({ light: Number(e.target.value) })} />
+        </label>
+        <label style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span>🌡️ Temperatura: <b>{env.temperature.toFixed(1)}°C</b></span>
+          <input type="range" min="-40" max="150" value={env.temperature} onChange={(e) => setEnv({ temperature: Number(e.target.value) })} />
+        </label>
+        <label style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span>🌪️ Pressione: <b>{env.pressure.toFixed(1)} kPa</b></span>
+          <input type="range" min="50" max="150" value={env.pressure} onChange={(e) => setEnv({ pressure: Number(e.target.value) })} />
+        </label>
+        <label style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span>🧲 Campo Magnetico: <b>{env.magneticField.toFixed(1)} mT</b></span>
+          <input type="range" min="-100" max="100" value={env.magneticField} onChange={(e) => setEnv({ magneticField: Number(e.target.value) })} />
+        </label>
+        <label style={{ fontSize: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span>💧 Umidità Relativa: <b>{env.humidity.toFixed(0)}%</b></span>
+          <input type="range" min="0" max="100" value={env.humidity} onChange={(e) => setEnv({ humidity: Number(e.target.value) })} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function DigitalMultimeter({ inst, wire }: { inst?: ComponentInstance; wire?: any }) {
+  const circuit = useStudio((s) => s.circuit);
+  const env = useStudio((s) => s.environment);
+  const frame = simController.frame;
+  const [dmmMode, setDmmMode] = useState<'V' | 'R' | 'C' | 'L' | 'diode' | 'A'>('V');
+
+  // Verifica la presenza di un terminale di terra (GND)
+  const hasGround = circuit.components.some((c) => getDef(c.type).isGround);
+
+  // Determina la modalità consigliata in base alla selezione
+  useEffect(() => {
+    if (inst) {
+      if (inst.type === 'resistor' || inst.type === 'ldr' || inst.type === 'ntc' || inst.type === 'ptc' || inst.type === 'barometer') setDmmMode('R');
+      else if (inst.type === 'capacitor' || inst.type === 'humidity_sensor') setDmmMode('C');
+      else if (inst.type === 'inductor') setDmmMode('L');
+      else if (inst.type === 'diode' || inst.type === 'led' || inst.type === 'schottky' || inst.type === 'zener') setDmmMode('diode');
+      else if (inst.type === 'idc') setDmmMode('A');
+      else setDmmMode('V');
+    } else if (wire) {
+      setDmmMode('V');
+    }
+  }, [inst, wire]);
+
+  let valueDisplay = 'O.L';
+  let unitDisplay = '';
+  let subText = '';
+  let detailTitle = '';
+  let details: string[] = [];
+
+  const out = inst ? frame?.result.outputs.get(inst.id) : null;
+
+  // Calcoli e letture del DMM
+  if (dmmMode === 'V') {
+    detailTitle = 'Misurazione di Tensione';
+    if (inst) {
+      const v = Number(out?.data.v ?? 0);
+      valueDisplay = formatSI(v, 'V', 3).replace(' V', '');
+      unitDisplay = formatSI(v, 'V', 3).split(' ').pop() || 'V';
+      details.push(`Tensione ai capi di ${inst.id}: ${formatSI(v, 'V', 5)}`);
+      if (out?.data.i !== undefined) {
+        const outI = Number(out.data.i);
+        details.push(`Corrente passante: ${formatSI(outI, 'A', 5)}`);
+        details.push(`Potenza istantanea: ${formatSI(Math.abs(v * outI), 'W', 5)}`);
+      }
+      if (inst.type === 'opamp') {
+        details.push(`Saturazione impostata: ±${inst.params.Vsat} V`);
+        details.push(`Differenziale d'ingresso (V+ - V-): ${formatSI(Number(out?.data.diff ?? 0), 'V', 4)}`);
+      }
+    } else if (wire) {
+      const net = frame?.compiled.netOfPin.get(pinKey(wire.from));
+      const v = net === undefined || !frame ? NaN : frame.result.voltageOfNet(net);
+      if (Number.isFinite(v)) {
+        valueDisplay = formatSI(v, 'V', 3).replace(' V', '');
+        unitDisplay = formatSI(v, 'V', 3).split(' ').pop() || 'V';
+        details.push(`Tensione assoluta sul nodo (rispetto a massa GND): ${formatSI(v, 'V', 5)}`);
+      } else {
+        valueDisplay = '0.000';
+        unitDisplay = 'V';
+      }
+    }
+    if (!hasGround) {
+      subText = '⚠️ Circuito flottante (No GND)';
+    } else {
+      subText = 'Lettura DC stabile';
+    }
+  } else if (dmmMode === 'R') {
+    detailTitle = 'Misuratore di Resistenza (Ohmetro)';
+    if (inst && (inst.type === 'resistor' || inst.type === 'ldr' || inst.type === 'ntc' || inst.type === 'ptc' || inst.type === 'barometer')) {
+      const r = Number(out?.data.r ?? inst.params.R ?? inst.params.R25 ?? inst.params.R0 ?? 1000);
+      valueDisplay = formatSI(r, 'Ω', 3).replace(' Ω', '');
+      unitDisplay = formatSI(r, 'Ω', 3).split(' ').pop() || 'Ω';
+      subText = 'Autorange Ω attivo';
+      details.push(`Resistenza calcolata di ${inst.id}: ${formatSI(r, 'Ω', 5)}`);
+      
+      if (inst.type === 'ldr') {
+        details.push(`Sensore LDR — Luce: ${env.light.toFixed(0)}%`);
+        details.push(`Resistenza al buio nominale: ${formatSI(inst.params.R_dark as number, 'Ω')}`);
+      } else if (inst.type === 'ntc' || inst.type === 'ptc') {
+        details.push(`Sensore Termistore — Temperatura: ${env.temperature.toFixed(1)}°C`);
+        details.push(`Valore nominale a 25°C: ${formatSI(inst.params.R25 as number, 'Ω')}`);
+      } else if (inst.type === 'barometer') {
+        details.push(`Sensore Barometro — Pressione: ${env.pressure.toFixed(1)} kPa`);
+      }
+      
+      if (out?.data.v !== undefined && out?.data.i !== undefined) {
+        details.push(`Caduta di tensione misurata: ${formatSI(Number(out.data.v), 'V', 5)}`);
+        details.push(`Corrente calcolata: ${formatSI(Number(out.data.i), 'A', 5)}`);
+      }
+    } else {
+      valueDisplay = 'O.L';
+      unitDisplay = 'MΩ';
+      subText = 'Resistenza infinita (aperto)';
+      details.push('Il multimetro rileva un circuito aperto o una resistenza superiore a 40 MΩ.');
+    }
+  } else if (dmmMode === 'C') {
+    detailTitle = 'Misuratore di Capacità (Capacimetro)';
+    if (inst && (inst.type === 'capacitor' || inst.type === 'humidity_sensor')) {
+      const c = Number(out?.data.capacitance ?? inst.params.C ?? inst.params.C0 ?? 100e-6);
+      valueDisplay = formatSI(c, 'F', 3).replace(' F', '');
+      unitDisplay = formatSI(c, 'F', 3).split(' ').pop() || 'F';
+      subText = 'Misura elettrostatica';
+      details.push(`Capacità calcolata di ${inst.id}: ${formatSI(c, 'F', 5)}`);
+      if (inst.type === 'humidity_sensor') {
+        details.push(`Umidità ambiente misurata: ${env.humidity.toFixed(0)}% RH`);
+      }
+      if (out?.data.v !== undefined) {
+        const outV = Number(out.data.v);
+        const energy = 0.5 * c * outV * outV;
+        details.push(`Tensione attuale ai capi: ${formatSI(outV, 'V', 5)}`);
+        details.push(`Energia accumulata (E = ½ C V²): ${formatSI(energy, 'J', 5)}`);
+      }
+    } else {
+      valueDisplay = '0.00';
+      unitDisplay = 'nF';
+      subText = 'Nessun condensatore';
+      details.push('La capacità rilevata è trascurabile o inferiore alla sensibilità dello strumento (pf).');
+    }
+  } else if (dmmMode === 'L') {
+    detailTitle = 'Misuratore di Induttanza (Induttimetro)';
+    if (inst && inst.type === 'inductor') {
+      const l = inst.params.L as number;
+      valueDisplay = formatSI(l, 'H', 3).replace(' H', '');
+      unitDisplay = formatSI(l, 'H', 3).split(' ').pop() || 'H';
+      subText = 'Misura elettromagnetica';
+      details.push(`Induttanza nominale di ${inst.id}: ${formatSI(l, 'H', 5)}`);
+      if (out?.data.i !== undefined) {
+        const outI = Number(out.data.i);
+        const energy = 0.5 * l * outI * outI;
+        details.push(`Corrente attuale che lo attraversa: ${formatSI(outI, 'A', 5)}`);
+        details.push(`Energia nel campo magnetico (E = ½ L I²): ${formatSI(energy, 'J', 5)}`);
+      }
+    } else {
+      valueDisplay = '0.00';
+      unitDisplay = 'µH';
+      subText = 'Nessun induttore';
+      details.push('L\'induttanza rilevata è trascurabile (inferiore a 1 µH).');
+    }
+  } else if (dmmMode === 'diode') {
+    detailTitle = 'Prova Diodi';
+    if (inst && (inst.type === 'diode' || inst.type === 'led' || inst.type === 'schottky' || inst.type === 'zener')) {
+      const v = Number(out?.data.v ?? 0);
+      const i = Number(out?.data.i ?? out?.data.id ?? 0);
+      const th = inst.type === 'schottky' ? 0.15 : 0.45;
+      
+      if (v > th && Math.abs(i) > 1e-6) {
+        valueDisplay = v.toFixed(3);
+        unitDisplay = 'V';
+        subText = 'Conduzione diretta (ON)';
+        details.push(`Caduta di tensione diretta VF: ${formatSI(v, 'V', 4)}`);
+        details.push(`Corrente di giunzione IF: ${formatSI(Math.abs(i), 'A', 4)}`);
+      } else if (inst.type === 'zener' && v < -(inst.params.Vz as number) + 0.1) {
+        valueDisplay = Math.abs(v).toFixed(3);
+        unitDisplay = 'V';
+        subText = `Regolazione Zener attva (${inst.params.Vz}V)`;
+        details.push(`Tensione di Zener misurata: ${formatSI(Math.abs(v), 'V', 4)}`);
+        details.push(`Corrente di regolazione Iz: ${formatSI(Math.abs(i), 'A', 4)}`);
+      } else {
+        valueDisplay = 'O.L';
+        unitDisplay = 'V';
+        subText = 'Inversione / Blocco (OFF)';
+        details.push(`Tensione inversa ai capi: ${formatSI(v, 'V', 4)}`);
+        details.push('Giunzione polarizzata inversamente o spenta.');
+      }
+    } else {
+      valueDisplay = 'O.L';
+      unitDisplay = 'V';
+      subText = 'Circuito aperto';
+      details.push('Nessuna giunzione a semiconduttore rilevata tra i puntali.');
+    }
+  } else if (dmmMode === 'A') {
+    detailTitle = 'Amperometro (Misura di Corrente)';
+    if (inst) {
+      const i = Number(out?.data.i ?? out?.data.id ?? out?.data.ids ?? 0);
+      valueDisplay = formatSI(i, 'A', 3).replace(' A', '');
+      unitDisplay = formatSI(i, 'A', 3).split(' ').pop() || 'A';
+      subText = 'Amperometro in serie';
+      details.push(`Corrente che fluisce in ${inst.id}: ${formatSI(i, 'A', 5)}`);
+      
+      if (inst.type === 'nmos' || inst.type === 'pmos') {
+        details.push(`Transistor MOSFET — Stato canale: ${out?.data.mode}`);
+        details.push(`Vgs (Gate-Source): ${formatSI(Number(out?.data.vgs ?? 0), 'V', 3)}`);
+        details.push(`Vds (Drain-Source): ${formatSI(Number(out?.data.vds ?? 0), 'V', 3)}`);
+      } else if (inst.type === 'npn' || inst.type === 'pnp') {
+        details.push(`Transistor BJT — Guadagno β reale: ${(out?.data.beta as number || 0).toFixed(1)}`);
+      } else if (inst.type === 'fuse') {
+        details.push(`Fusibile — Stato: ${out?.data.blown ? '💥 BRUCIATO' : '✅ INTEGRO'}`);
+        details.push(`Corrente massima di soglia Imax: ${inst.params.Imax} A`);
+      } else if (inst.type === 'relay') {
+        details.push(`Relè SPDT — Stato: ${out?.data.active ? '💥 ATTIVO (NO)' : '💤 RIPOSO (NC)'}`);
+      }
+    } else if (wire) {
+      valueDisplay = 'O.L';
+      unitDisplay = 'A';
+      subText = '⚠️ Richiede taglio filo';
+      details.push('Per misurare la corrente nel filo con un vero multimetro, devi interrompere il circuito e inserire l\'amperometro in serie!');
+      details.push('Suggerimento: Clicca su un componente connesso al filo per misurarne direttamente la corrente passante.');
+    }
+  }
+
+  return (
+    <div className="dmm-wrapper">
+      <div className="dmm-chassis">
+        {/* Schermo LCD */}
+        <div className="dmm-lcd">
+          <div className="dmm-lcd-header">
+            <span className="dmm-auto">AUTO</span>
+            <span className="dmm-hold">DMM v1.0</span>
+          </div>
+          <div className="dmm-lcd-value">
+            <span className="dmm-digits">{valueDisplay}</span>
+            <span className="dmm-unit">{unitDisplay}</span>
+          </div>
+          <div className="dmm-lcd-footer">
+            <span>{subText}</span>
+          </div>
+        </div>
+
+        {/* Manopola / Bottoni di Selezione Funzione */}
+        <div className="dmm-selector">
+          {(['V', 'R', 'C', 'L', 'diode', 'A'] as const).map((mode) => (
+            <button
+              key={mode}
+              className={`dmm-btn${dmmMode === mode ? ' active' : ''}`}
+              onClick={() => setDmmMode(mode)}
+              title={`Modalità ${mode}`}
+            >
+              {mode === 'diode' ? '▶|' : mode}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Info dettagliate sulla misurazione */}
+      <div className="dmm-details">
+        <h4>{detailTitle}</h4>
+        <ul className="dmm-details-list">
+          {details.map((detail, idx) => (
+            <li key={idx}>{detail}</li>
+          ))}
+        </ul>
+
+        {!hasGround && (
+          <div className="dmm-alert">
+            <h5>⚠️ Perché leggo valori strani (es. 3V)?</h5>
+            <p>
+              Nel circuito <strong>manca un riferimento di massa (GND)</strong>. Senza il simbolo di terra, le tensioni non hanno un punto di riferimento "0 Volt" stabile. Il simulatore deve indovinare i potenziali basandosi su correnti microscopiche di dispersione (gmin), producendo valori inattesi.
+            </p>
+            <p>
+              <strong>Soluzione:</strong> Trascina un componente <strong>Terra (GND)</strong> dalla palette a sinistra e collegalo al polo negativo del generatore (terminale "−").
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PropertiesPanel() {
   const circuit = useStudio((s) => s.circuit);
   const selection = useStudio((s) => s.selection);
@@ -79,6 +370,7 @@ export function PropertiesPanel() {
   const abGhost = useStudio((s) => s.abGhost);
   const setAB = useStudio((s) => s.setAB);
   const setABGhost = useStudio((s) => s.setABGhost);
+  useSimTick((s) => s.tick); // re-render automatico per i valori vivi del DMM
 
   const inst = circuit.components.find((c) => selection.includes(c.id));
   const wire = circuit.wires.find((w) => selection.includes(w.id));
@@ -86,8 +378,14 @@ export function PropertiesPanel() {
   if (!inst && !wire) {
     return (
       <div className="props-empty">
-        Seleziona un componente per vederne proprietà, descrizione e formule. Doppio click su un
-        interruttore per aprirlo/chiuderlo.
+        <p>Seleziona un componente o un filo per vederne proprietà, descrizione e formule.</p>
+        <p>Doppio click su un interruttore per aprirlo/chiuderlo.</p>
+        
+        <EnvironmentalPanel />
+
+        <div style={{ marginTop: '20px' }}>
+          <DigitalMultimeter />
+        </div>
       </div>
     );
   }
@@ -99,7 +397,12 @@ export function PropertiesPanel() {
         <p className="muted">
           Connette {wire.from.component}:{wire.from.pin} → {wire.to.component}:{wire.to.pin}
         </p>
-        <button className="btn danger" onClick={() => execute(removeItems(circuit, [wire.id]))}>
+        
+        <DigitalMultimeter wire={wire} />
+
+        <EnvironmentalPanel />
+
+        <button className="btn danger" style={{ marginTop: '16px' }} onClick={() => execute(removeItems(circuit, [wire.id]))}>
           Cancella filo
         </button>
       </div>
@@ -116,6 +419,11 @@ export function PropertiesPanel() {
       </h3>
       <p className="description">{def.description}</p>
 
+      <DigitalMultimeter inst={inst!} />
+
+      <EnvironmentalPanel />
+
+      <h4 style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>Parametri</h4>
       {def.params.map((p) =>
         p.kind === 'number' ? (
           <NumberParam key={p.key} inst={inst!} p={p} />
@@ -156,22 +464,33 @@ export function PropertiesPanel() {
           </p>
           <div className="props-actions">
             <button
-              className={`btn${isSelfAB && ab?.mode === 'remove' ? ' on' : ''}`}
-              onClick={() => setAB(isSelfAB && ab?.mode === 'remove' ? null : { componentId: inst!.id, mode: 'remove' })}
+              className={`btn${isSelfAB && abGhost && ab?.mode === 'remove' ? ' on' : ''}`}
+              onClick={() => {
+                if (isSelfAB && abGhost && ab?.mode === 'remove') {
+                  setAB(null);
+                  setABGhost(false);
+                } else {
+                  setAB({ componentId: inst!.id, mode: 'remove' });
+                  setABGhost(true);
+                }
+              }}
             >
               Togli
             </button>
             <button
-              className={`btn${isSelfAB && ab?.mode === 'bypass' ? ' on' : ''}`}
-              onClick={() => setAB(isSelfAB && ab?.mode === 'bypass' ? null : { componentId: inst!.id, mode: 'bypass' })}
+              className={`btn${isSelfAB && abGhost && ab?.mode === 'bypass' ? ' on' : ''}`}
+              onClick={() => {
+                if (isSelfAB && abGhost && ab?.mode === 'bypass') {
+                  setAB(null);
+                  setABGhost(false);
+                } else {
+                  setAB({ componentId: inst!.id, mode: 'bypass' });
+                  setABGhost(true);
+                }
+              }}
             >
               Bypassa
             </button>
-            {isSelfAB && (
-              <button className={`btn${abGhost ? ' on' : ''}`} onClick={() => setABGhost(!abGhost)}>
-                {abGhost ? 'Confronto attivo' : 'Attiva confronto'}
-              </button>
-            )}
           </div>
         </div>
       )}

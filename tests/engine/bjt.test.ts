@@ -28,7 +28,7 @@ test('BJT in zona attiva: IC/IB ≈ βF e VCE coerente', () => {
   const compiled = compile(circuit);
   const result = sim.dcOperatingPoint(compiled);
   assert.ok(result.converged, 'deve convergere');
-  const q = result.outputs.get('Q1')!.data;
+  const q = result.outputs.get('Q1')!.data as any;
   assert.ok(q.vbe > 0.5 && q.vbe < 0.8, `VBE di giunzione: ${q.vbe.toFixed(3)}`);
   assert.ok(q.vce > 1, `zona attiva, non saturazione: VCE=${q.vce.toFixed(3)}`);
   const ratio = q.ic / q.ib;

@@ -9,7 +9,7 @@ import type { CircuitCommand } from './commands.ts';
 export type Tool =
   | { kind: 'select' }
   | { kind: 'place'; type: string; rot: Rotation }
-  | { kind: 'wire'; from: PinRef | null }
+  | { kind: 'wire'; from: PinRef | null; elbow?: boolean }
   | { kind: 'probe' };
 
 export interface Probe {
@@ -28,7 +28,7 @@ export interface ABConfig {
   mode: 'remove' | 'bypass';
 }
 
-export type RightTab = 'props' | 'math' | 'lesson' | 'ai';
+export type RightTab = 'props' | 'math' | 'lesson' | 'ai' | 'scenari' | 'logica';
 
 export interface HoverHighlight {
   components: string[];
@@ -50,6 +50,7 @@ export interface StudioState {
   tool: Tool;
   probes: Probe[];
   scopeTimespan: number; // secondi visualizzati
+  scopeMode: 'time' | 'bode';
   running: boolean;
   timestep: number; // dt della transitoria
   ab: ABConfig | null;
@@ -64,6 +65,14 @@ export interface StudioState {
   hover: HoverHighlight | null;
   /** Componente sotto il mouse nell'editor (evidenzia i termini in matematica). */
   hoveredComponent: string | null;
+  /** Variabili ambientali fisiche per i sensori */
+  environment: {
+    light: number;        // 0-100% (LDR, Fotodiodi)
+    temperature: number;  // -40 a 150 °C (NTC, PTC)
+    pressure: number;     // 50 a 150 kPa (Sensore Pressione)
+    magneticField: number;// -100 a 100 mT (Sensore Hall)
+    humidity: number;     // 0-100% (Sensore Umidità)
+  };
 
   execute(cmd: CircuitCommand): void;
   undo(): void;
@@ -74,10 +83,12 @@ export interface StudioState {
   removeProbe(id: string): void;
   setProbes(probes: Probe[]): void;
   setScopeTimespan(s: number): void;
+  setScopeMode(mode: 'time' | 'bode'): void;
   setRunning(running: boolean): void;
   setTimestep(dt: number): void;
   setAB(ab: ABConfig | null): void;
   setABGhost(on: boolean): void;
+  setEnvironment(env: Partial<StudioState['environment']>): void;
   setLesson(id: string | null, step?: number): void;
   setLessonStep(step: number): void;
   setPresentation(on: boolean): void;
@@ -99,6 +110,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   tool: { kind: 'select' },
   probes: [],
   scopeTimespan: 0.1,
+  scopeMode: 'time',
   running: true,
   timestep: 1e-4,
   ab: null,
@@ -110,6 +122,13 @@ export const useStudio = create<StudioState>((set, get) => ({
   eventTimes: {},
   hover: null,
   hoveredComponent: null,
+  environment: {
+    light: 10,
+    temperature: 25,
+    pressure: 101.3,
+    magneticField: 0,
+    humidity: 40,
+  },
 
   execute(cmd) {
     const { circuit, undoStack } = get();
@@ -178,6 +197,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   setProbes: (probes) => set({ probes }),
 
   setScopeTimespan: (s) => set({ scopeTimespan: s }),
+  setScopeMode: (scopeMode) => set({ scopeMode }),
   setRunning: (running) => set({ running }),
   setTimestep: (dt) => set({ timestep: dt }),
   setAB: (ab) => set({ ab, abGhost: ab ? get().abGhost : false }),
@@ -186,6 +206,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   setLessonStep: (step) => set({ lessonStep: step }),
   setPresentation: (on) => set({ presentation: on }),
   setRightTab: (tab) => set({ rightTab: tab }),
+  setEnvironment: (env) => set({ environment: { ...get().environment, ...env } }),
   markEvent: (componentId, simTime) =>
     set({ eventTimes: { ...get().eventTimes, [componentId]: simTime } }),
   setHover: (h) => set({ hover: h }),

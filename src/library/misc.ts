@@ -3,6 +3,26 @@
 import type { ComponentDef } from '../model/registry.ts';
 import type { DeviceModel } from '../model/device.ts';
 
+const nodeModel: DeviceModel = {
+  stamp() {
+    // nessun contributo: è solo un punto di connessione fra fili
+  },
+  outputs: () => ({ pinCurrents: [0], data: {} }),
+};
+
+/** Nodo di giunzione: connette più fili nello stesso net (nessuna fisica). */
+export const nodeDef: ComponentDef = {
+  type: 'node',
+  name: 'Nodo',
+  category: 'altro',
+  description: 'Punto di giunzione: connette più fili nello stesso nodo elettrico.',
+  pins: [{ x: 0, y: 0, name: 'n' }],
+  params: [],
+  defaults: {},
+  model: nodeModel,
+  symbol: () => [{ kind: 'circle', cx: 0, cy: 0, r: 3, fill: 'currentColor' }],
+};
+
 const groundModel: DeviceModel = {
   stamp() {
     // nessun contributo: la massa definisce il riferimento via netlist

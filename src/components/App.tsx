@@ -10,15 +10,24 @@ import { MathPanel } from '../math/MathPanel.tsx';
 import { LessonPanel } from '../lessons/LessonPanel.tsx';
 import { getLesson } from '../lessons/data.ts';
 import { TutorPanel } from '../ai/TutorPanel.tsx';
+import { ScenarioPanel } from '../scenarios/ScenarioPanel.tsx';
+import { LogicPanel } from '../editor/LogicPanel.tsx';
 import { Scope } from '../viz/Scope.tsx';
-import { removeItems, rotateComponent } from '../store/commands.ts';
+import { addItems, removeItems, rotateComponent } from '../store/commands.ts';
+import { GRID } from '../editor/geometry.ts';
+import { freshId, type ComponentInstance, type Wire } from '../model/types.ts';
+import { getDef } from '../model/registry.ts';
 import { useStudio, type RightTab } from '../store/studio.ts';
 import { Toolbar } from './Toolbar.tsx';
+
+let clipboard: { comps: ComponentInstance[]; wires: Wire[] } | null = null;
 
 const TABS: { key: RightTab; label: string }[] = [
   { key: 'props', label: 'Proprietà' },
   { key: 'math', label: 'Matematica' },
   { key: 'lesson', label: 'Lezioni' },
+  { key: 'logica', label: 'Logica' },
+  { key: 'scenari', label: 'Scenari' },
   { key: 'ai', label: 'Tutor AI' },
 ];
 
@@ -43,6 +52,46 @@ function useKeyboard() {
         s.redo();
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        const ids = new Set(s.selection);
+        const comps = s.circuit.components.filter((c) => ids.has(c.id));
+        if (comps.length) {
+          const compIds = new Set(comps.map((c) => c.id));
+          const wires = s.circuit.wires.filter(
+            (w) => compIds.has(w.from.component) && compIds.has(w.to.component),
+          );
+          clipboard = {
+            comps: comps.map((c) => ({ ...c, params: { ...c.params } })),
+            wires: wires.map((w) => ({ ...w, route: w.route?.map((p) => ({ ...p })) })),
+          };
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if (!clipboard) return;
+        e.preventDefault();
+        const off = GRID * 2;
+        const idMap: Record<string, string> = {};
+        const takenC = (id: string) =>
+          s.circuit.components.some((c) => c.id === id) || Object.values(idMap).includes(id);
+        const newComps = clipboard.comps.map((c) => {
+          const prefix = c.id.match(/^[A-Za-z]+/)?.[0] ?? 'U';
+          const nid = freshId(prefix, takenC);
+          idMap[c.id] = nid;
+          return { ...c, id: nid, x: c.x + off, y: c.y + off, params: { ...c.params } };
+        });
+        const takenW = (id: string) => s.circuit.wires.some((w) => w.id === id);
+        const newWires: Wire[] = clipboard.wires.map((w) => ({
+          ...w,
+          id: freshId('w', takenW),
+          from: { component: idMap[w.from.component], pin: w.from.pin },
+          to: { component: idMap[w.to.component], pin: w.to.pin },
+          route: w.route?.map((p) => ({ x: p.x + off, y: p.y + off })),
+        }));
+        s.execute(addItems(newComps, newWires));
+        s.setSelection(newComps.map((c) => c.id));
+        return;
+      }
       switch (e.key) {
         case 'Escape':
           s.setTool({ kind: 'select' });
@@ -60,6 +109,23 @@ function useKeyboard() {
           }
           const inst = s.circuit.components.find((c) => s.selection.includes(c.id));
           if (inst) s.execute(rotateComponent(inst.id, inst.rot, ((inst.rot + 1) % 4) as 0 | 1 | 2 | 3));
+          break;
+        }
+        case 'a': {
+          // confronto A/B in un gesto sul componente selezionato
+          if (e.ctrlKey || e.metaKey) break;
+          const inst = s.circuit.components.find((c) => s.selection.includes(c.id));
+          if (!inst) break;
+          const def = getDef(inst.type);
+          if (def.isGround || def.pins.length < 2) break;
+          const active = s.ab?.componentId === inst.id && s.abGhost;
+          if (active) {
+            s.setAB(null);
+            s.setABGhost(false);
+          } else {
+            s.setAB({ componentId: inst.id, mode: 'remove' });
+            s.setABGhost(true);
+          }
           break;
         }
         case 'Delete':
@@ -116,6 +182,8 @@ export function App() {
             {rightTab === 'props' && <PropertiesPanel />}
             {rightTab === 'math' && <MathPanel />}
             {rightTab === 'lesson' && <LessonPanel />}
+            {rightTab === 'logica' && <LogicPanel />}
+            {rightTab === 'scenari' && <ScenarioPanel />}
             {rightTab === 'ai' && <TutorPanel />}
           </div>
         </aside>

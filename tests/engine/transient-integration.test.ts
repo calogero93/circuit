@@ -24,7 +24,7 @@ test('induttore in DC: cortocircuito, I = V/R', () => {
   const compiled = compile(circuit);
   const result = sim.dcOperatingPoint(compiled);
   assert.ok(result.converged);
-  assert.ok(Math.abs(result.outputs.get('L1')!.data.i - 0.05) < 1e-6, 'I = 50 mA');
+  assert.ok(Math.abs(Number(result.outputs.get('L1')!.data.i) - 0.05) < 1e-6, 'I = 50 mA');
 });
 
 function rectifier(withCap: boolean): Circuit {
@@ -92,6 +92,6 @@ test('interruttore SPST: aperto blocca, chiuso conduce', () => {
     );
   const open = sim.dcOperatingPoint(compile(make(false)));
   const closed = sim.dcOperatingPoint(compile(make(true)));
-  assert.ok(Math.abs(open.outputs.get('R1')!.data.i) < 1e-6, 'aperto: niente corrente');
-  assert.ok(Math.abs(closed.outputs.get('R1')!.data.i - 5e-3) < 1e-4, 'chiuso: ~5 mA');
+  assert.ok(Math.abs(Number(open.outputs.get('R1')!.data.i)) < 1e-6, 'aperto: niente corrente');
+  assert.ok(Math.abs(Number(closed.outputs.get('R1')!.data.i) - 5e-3) < 1e-4, 'chiuso: ~5 mA');
 });

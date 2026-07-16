@@ -571,7 +571,167 @@ const led: Lesson = {
   ],
 };
 
-export const LESSONS: Lesson[] = [partitore, rc, raddrizzatore, clipping, led];
+// ------------------------------------------------------------- ZENER REGULATOR
+const zenerReg: Lesson = {
+  id: 'zener-reg',
+  title: 'Regolatore con Diodo Zener',
+  focus: 'D1',
+  objective: 'Stabilizzare una tensione d\'uscita a 5,1 V usando un diodo Zener in inversa.',
+  why: 'Il diodo Zener conduce quando la tensione inversa supera Vz (5,1 V), mantenendola fissa e stabile anche se la tensione di alimentazione o il carico cambiano.',
+  circuit: circuit(
+    [
+      comp('V1', 'vdc', 140, 240, 1, { V: 9 }),
+      comp('R1', 'resistor', 300, 160, 0, { R: 220 }),
+      comp('D1', 'zener', 440, 240, 1, { Vz: 5.1 }),
+      comp('RL', 'resistor', 580, 240, 1, { R: 1000 }),
+      comp('GND1', 'ground', 140, 320),
+      comp('GND2', 'ground', 440, 320),
+      comp('GND3', 'ground', 580, 320),
+    ],
+    [
+      wire('w1', ['V1', 0], ['R1', 0]),
+      wire('w2', ['R1', 1], ['D1', 1]),
+      wire('w3', ['R1', 1], ['RL', 0]),
+      wire('w4', ['D1', 0], ['GND2', 0]),
+      wire('w5', ['RL', 1], ['GND3', 0]),
+      wire('w6', ['V1', 1], ['GND1', 0]),
+    ]
+  ),
+  probes: [
+    { pin: pin('V1', 0), label: 'Vin' },
+    { pin: pin('RL', 0), label: 'Vout' },
+  ],
+  scopeTimespan: 0.5,
+  timestep: 1e-4,
+  ab: { componentId: 'D1', mode: 'remove', label: 'Togli Zener: perdi la regolazione, la tensione sale a Vin' },
+  steps: [
+    {
+      title: 'Regolazione',
+      text: 'La tensione di ingresso è 9 V, ma sull\'uscita (Vout) misuri circa 5,1 V grazie allo Zener. La tensione in eccesso cade sulla resistenza R1.',
+    },
+    {
+      title: 'Causa → effetto',
+      text: 'Seleziona la sorgente V1 e varia la tensione da 7 V a 12 V: l\'uscita Vout rimane fissa e stabilizzata a ~5,1 V! Cambia ora RL: l\'uscita non si sposta.',
+    },
+    {
+      title: 'Senza lo Zener',
+      text: 'Attiva il confronto A/B (Zener rimosso): l\'uscita sale istantaneamente, perdendo ogni regolazione. Nella traccia fantasma vedi che l\'uscita segue l\'ingresso.',
+    },
+  ],
+  formulas: [],
+};
+
+// ------------------------------------------------------------- BJT AMPLIFIER
+const bjtAmp: Lesson = {
+  id: 'bjt-amp',
+  title: 'Amplificatore a BJT Emettitore Comune',
+  focus: 'Q1',
+  objective: 'Amplificare un piccolo segnale alternato usando un transistor NPN polarizzato.',
+  why: 'Il transistor BJT, se opportunamente polarizzato in zona attiva, controlla la corrente di collettore tramite la corrente di base, fornendo un elevato guadagno di tensione.',
+  circuit: circuit(
+    [
+      comp('V1', 'vdc', 100, 200, 1, { V: 12 }),
+      comp('V2', 'vsin', 100, 340, 1, { amp: 0.1, freq: 1000, offset: 0 }),
+      comp('C1', 'capacitor', 220, 340, 0, { C: 10e-6 }),
+      comp('R1', 'resistor', 320, 140, 1, { R: 47000 }),
+      comp('R2', 'resistor', 320, 280, 1, { R: 10000 }),
+      comp('Q1', 'npn', 440, 240, 0, { beta: 100 }),
+      comp('Rc', 'resistor', 440, 120, 1, { R: 3300 }),
+      comp('Re', 'resistor', 440, 320, 1, { R: 1000 }),
+      comp('GND1', 'ground', 100, 260),
+      comp('GND2', 'ground', 100, 400),
+      comp('GND3', 'ground', 320, 360),
+      comp('GND4', 'ground', 440, 380),
+    ],
+    [
+      wire('w1', ['V1', 0], ['Rc', 0]),
+      wire('w2', ['V1', 0], ['R1', 0]),
+      wire('w3', ['R1', 1], ['R2', 0]),
+      wire('w4', ['R1', 1], ['C1', 1]),
+      wire('w5', ['R1', 1], ['Q1', 0]),
+      wire('w6', ['C1', 0], ['V2', 0]),
+      wire('w7', ['Q1', 1], ['Rc', 1]),
+      wire('w8', ['Q1', 2], ['Re', 0]),
+      wire('w9', ['Re', 1], ['GND4', 0]),
+      wire('w10', ['R2', 1], ['GND3', 0]),
+      wire('w11', ['V1', 1], ['GND1', 0]),
+      wire('w12', ['V2', 1], ['GND2', 0]),
+    ]
+  ),
+  probes: [
+    { pin: pin('V2', 0), label: 'Vin (AC)' },
+    { pin: pin('Q1', 1), label: 'Vout (amplificata)' },
+  ],
+  scopeTimespan: 0.005,
+  timestep: 1e-5,
+  ab: null,
+  steps: [
+    {
+      title: 'Osserva l\'amplificazione',
+      text: 'La traccia Vin oscilla a ±100 mV, mentre la traccia Vout sul collettore oscilla a circa ±1 V con fase opposta (sfasamento di 180°). Il segnale è stato amplificato di ~10 volte!',
+    },
+    {
+      title: 'Polarizzazione DC',
+      text: 'Fai passare il mouse sui pin del transistor Q1: vedrai una tensione VBE stabile di circa 0,65 V e una VCE di circa 6 V. Questo posiziona il BJT esattamente al centro della zona attiva.',
+    },
+    {
+      title: 'Accoppiamento AC',
+      text: 'Il condensatore C1 fa passare il segnale AC ma blocca la componente DC della base. Prova a ridurne il valore per vedere come risponde alle basse frequenze!',
+    },
+  ],
+  formulas: [],
+};
+
+// ------------------------------------------------------------- BRIDGE RECTIFIER
+const bridgeRectifier: Lesson = {
+  id: 'bridge-graetz',
+  title: 'Raddrizzatore a Ponte di Graetz',
+  focus: 'C1',
+  objective: 'Esplorare il raddrizzamento a doppia semionda e il filtraggio capacitivo.',
+  why: 'Il ponte di Graetz reindirizza la semionda negativa in modo che scorra nello stesso verso nel carico, dimezzando l\'ondulazione (ripple) residua rispetto al raddrizzatore a singola semionda.',
+  circuit: circuit(
+    [
+      comp('V1', 'vsin', 140, 240, 1, { amp: 10, freq: 50, offset: 0 }),
+      comp('BR1', 'bridge_rectifier', 300, 240),
+      comp('C1', 'capacitor', 460, 240, 1, { C: 100e-6 }),
+      comp('RL', 'resistor', 600, 240, 1, { R: 1000 }),
+      comp('GND1', 'ground', 460, 320),
+    ],
+    [
+      wire('w1', ['V1', 0], ['BR1', 0]),
+      wire('w2', ['V1', 1], ['BR1', 1]),
+      wire('w3', ['BR1', 2], ['C1', 0]),
+      wire('w4', ['BR1', 2], ['RL', 0]),
+      wire('w5', ['BR1', 3], ['C1', 1]),
+      wire('w6', ['BR1', 3], ['RL', 1]),
+      wire('w7', ['BR1', 3], ['GND1', 0]),
+    ]
+  ),
+  probes: [
+    { pin: pin('V1', 0), label: 'Vac (Vin)' },
+    { pin: pin('RL', 0), label: 'Vdc (Vout)' },
+  ],
+  scopeTimespan: 0.1,
+  timestep: 1e-4,
+  ab: { componentId: 'C1', mode: 'remove', label: 'Togli condensatore: ottieni doppia semionda pura, senza livellamento' },
+  steps: [
+    {
+      title: 'Doppia semionda',
+      text: 'Il ponte raddrizza entrambe le semionde dell\'alternata. Attiva il confronto A/B per togliere il condensatore C1 e guarda la traccia fantasma: è una doppia semionda pulsante!',
+    },
+    {
+      title: 'Confronto con semionda singola',
+      text: 'Rispetto alla lezione sul raddrizzatore a singola semionda, qui l\'uscita non scende mai a zero per lunghi tratti: il ripple è dimezzato e l\'efficienza raddoppiata.',
+    },
+    {
+      title: 'Causa → effetto',
+      text: 'Riduci la capacità di C1 o riduci la resistenza di RL (aumentando il carico): vedrai aumentare l\'ondulazione residua (ripple).',
+    },
+  ],
+  formulas: [],
+};
+
+export const LESSONS: Lesson[] = [partitore, rc, raddrizzatore, clipping, led, zenerReg, bjtAmp, bridgeRectifier];
 
 export function getLesson(id: string): Lesson | null {
   return LESSONS.find((l) => l.id === id) ?? null;

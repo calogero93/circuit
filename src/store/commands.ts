@@ -29,6 +29,51 @@ export function addWire(wire: Wire): CircuitCommand {
   };
 }
 
+/**
+ * Giunzione filo→filo: inserisce un nodo su `targetWire`, lo spezza nei due
+ * tronconi e collega il nuovo ramo (tutto in `newWires`).
+ */
+export function branchWire(node: ComponentInstance, targetWire: Wire, newWires: Wire[]): CircuitCommand {
+  const newIds = new Set(newWires.map((w) => w.id));
+  return {
+    label: 'giunzione',
+    apply: (c) => ({
+      ...c,
+      components: [...c.components, node],
+      wires: [...c.wires.filter((w) => w.id !== targetWire.id), ...newWires],
+    }),
+    revert: (c) => ({
+      ...c,
+      components: c.components.filter((x) => x.id !== node.id),
+      wires: [...c.wires.filter((w) => !newIds.has(w.id)), targetWire],
+    }),
+  };
+}
+
+/** Inverte il verso del gomito di un filo (torna auto-instradato dai pin). */
+export function flipWireElbow(id: string): CircuitCommand {
+  const toggle = (c: Circuit): Circuit => ({
+    ...c,
+    wires: c.wires.map((w) => (w.id === id ? { ...w, elbow: !(w.elbow ?? false), route: undefined } : w)),
+  });
+  return { label: 'inverti gomito', apply: toggle, revert: toggle };
+}
+
+/** Aggiunge componenti e fili in blocco (usato da incolla). */
+export function addItems(comps: ComponentInstance[], wires: Wire[]): CircuitCommand {
+  const cids = new Set(comps.map((c) => c.id));
+  const wids = new Set(wires.map((w) => w.id));
+  return {
+    label: 'incolla',
+    apply: (c) => ({ ...c, components: [...c.components, ...comps], wires: [...c.wires, ...wires] }),
+    revert: (c) => ({
+      ...c,
+      components: c.components.filter((x) => !cids.has(x.id)),
+      wires: c.wires.filter((w) => !wids.has(w.id)),
+    }),
+  };
+}
+
 /** Cancella componenti e fili (inclusi i fili attaccati ai componenti rimossi). */
 export function removeItems(circuit: Circuit, ids: string[]): CircuitCommand {
   const idSet = new Set(ids);
@@ -69,6 +114,24 @@ export function moveComponent(id: string, from: { x: number; y: number }, to: { 
     apply: (c) => updateComponent(c, id, to),
     revert: (c) => updateComponent(c, id, from),
     mergeWith: (next) => (next.coalesceKey === `move:${id}` ? { ...next, revert: (c) => updateComponent(c, id, from) } : null),
+  };
+}
+
+type XY = { x: number; y: number };
+
+/** Sposta più componenti insieme (posizioni assolute per id). Coalescabile. */
+export function moveComponents(ids: string[], from: Record<string, XY>, to: Record<string, XY>): CircuitCommand {
+  const key = `move-multi:${ids.slice().sort().join(',')}`;
+  const setPos = (c: Circuit, pos: Record<string, XY>): Circuit => ({
+    ...c,
+    components: c.components.map((x) => (pos[x.id] ? { ...x, x: pos[x.id].x, y: pos[x.id].y } : x)),
+  });
+  return {
+    label: 'sposta',
+    coalesceKey: key,
+    apply: (c) => setPos(c, to),
+    revert: (c) => setPos(c, from),
+    mergeWith: (next) => (next.coalesceKey === key ? { ...next, revert: (c: Circuit) => setPos(c, from) } : null),
   };
 }
 

@@ -37,7 +37,7 @@ export interface ParamDef {
 export interface ComponentDef {
   type: string;
   name: string;
-  category: 'sorgenti' | 'passivi' | 'semiconduttori' | 'altro';
+  category: 'sorgenti' | 'passivi' | 'semiconduttori' | 'digitale' | 'altro';
   /** Metadato didattico: a cosa serve, quando si usa. */
   description: string;
   pins: PinDef[];

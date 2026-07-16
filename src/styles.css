@@ -299,6 +299,13 @@ select {
   fill: var(--ink-muted);
 }
 
+.marquee {
+  fill: color-mix(in srgb, var(--accent) 15%, transparent);
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
 .current-dot {
   fill: #ffd166;
   pointer-events: none;
@@ -446,6 +453,112 @@ select {
 
 .ghost-chip {
   background: repeating-linear-gradient(90deg, var(--ink-muted) 0 4px, transparent 4px 7px);
+}
+
+.ab-status {
+  color: var(--ink);
+  font-family: ui-monospace, monospace;
+}
+
+.ab-clear {
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.ab-clear:hover {
+  color: var(--accent);
+}
+
+.scenario-panel {
+  padding: 4px 2px;
+}
+
+.scenario-save {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 14px;
+}
+
+.scenario-save input {
+  flex: 1;
+  min-width: 0;
+}
+
+.scenario-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scenario-card {
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.scenario-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.scenario-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.truth-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.truth-table th,
+.truth-table td {
+  padding: 4px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border, #2a2f3a);
+}
+
+.truth-table th {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.truth-table td.sep,
+.truth-table th.sep {
+  width: 10px;
+  border-bottom: none;
+  border-left: 1px solid var(--border, #2a2f3a);
+  padding: 0;
+}
+
+.truth-table tbody tr {
+  cursor: pointer;
+}
+
+.truth-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.truth-table tr.current {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.truth-table td.on {
+  color: #34d399;
+  font-weight: 700;
 }
 
 .scope-controls {
@@ -757,3 +870,153 @@ select {
 .symbol-text {
   font-size: 11px;
 }
+
+/* -------------------------------------------------------- multimetro DMM */
+.dmm-wrapper {
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dmm-chassis {
+  background: #1e1e1e;
+  border: 4px solid #f2a900; /* Giallo tipico Fluke */
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dmm-lcd {
+  background: #1e2820; /* Sfondo LCD retroilluminato verde scuro */
+  border: 2px solid #333;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: 'Courier New', Courier, monospace;
+  color: #79f8a3; /* Cifre fosforo verde brillante */
+  text-shadow: 0 0 5px rgba(121, 248, 163, 0.6);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+}
+
+.dmm-lcd-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: bold;
+  opacity: 0.8;
+  letter-spacing: 1px;
+}
+
+.dmm-lcd-value {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 6px 0;
+}
+
+.dmm-digits {
+  font-size: 32px;
+  font-weight: bold;
+  letter-spacing: -1px;
+}
+
+.dmm-unit {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.dmm-lcd-footer {
+  font-size: 11px;
+  border-top: 1px solid rgba(121, 248, 163, 0.25);
+  padding-top: 4px;
+  margin-top: 4px;
+  opacity: 0.9;
+}
+
+.dmm-selector {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+}
+
+.dmm-btn {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #ccc;
+  border-radius: 6px;
+  padding: 6px 2px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.12s;
+  text-align: center;
+}
+
+.dmm-btn:hover {
+  background: #333;
+  color: #fff;
+  border-color: #f2a900;
+}
+
+.dmm-btn.active {
+  background: #f2a900;
+  color: #000;
+  border-color: #f2a900;
+  box-shadow: 0 0 6px rgba(242, 169, 0, 0.4);
+}
+
+.dmm-details {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.dmm-details h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.dmm-details-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.dmm-details-list li {
+  margin-bottom: 4px;
+}
+
+.dmm-alert {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(242, 169, 0, 0.1);
+  border-left: 3px solid #f2a900;
+  border-radius: 4px;
+}
+
+.dmm-alert h5 {
+  margin: 0 0 4px 0;
+  color: #ffcc00;
+  font-size: 12.5px;
+}
+
+.dmm-alert p {
+  margin: 0 0 6px 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+.dmm-alert p:last-child {
+  margin-bottom: 0;
+}
+

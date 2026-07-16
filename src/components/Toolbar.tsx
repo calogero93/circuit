@@ -6,7 +6,7 @@ import { circuitFromJSON, circuitToJSON } from '../model/serialize.ts';
 import { formatSI } from '../model/units.ts';
 import { replaceCircuit } from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
-import { useSimTick } from '../viz/controller.ts';
+import { simController, useSimTick } from '../viz/controller.ts';
 import {
   applyScenario,
   captureScenario,
@@ -45,6 +45,82 @@ export function Toolbar() {
     input.value = '';
   };
 
+  const exportSVG = () => {
+    if (typeof window !== 'undefined' && (window as any).__circuitStudio?.exportSVG) {
+      (window as any).__circuitStudio.exportSVG();
+    } else {
+      alert('Editor non pronto per l\'esportazione.');
+    }
+  };
+
+  const exportCSV = () => {
+    const s = useStudio.getState();
+    const probes = s.probes;
+    if (probes.length === 0) {
+      alert('Nessuna sonda attiva sul circuito per l\'esportazione dei dati.');
+      return;
+    }
+
+    if (s.scopeMode === 'bode') {
+      const points = simController.bodePoints;
+      if (points.length === 0) {
+        alert('Nessun dato di risposta in frequenza AC disponibile.');
+        return;
+      }
+
+      let header = 'Frequenza (Hz)';
+      probes.forEach((p) => {
+        header += `,${p.label} Guadagno (dB),${p.label} Fase (deg)`;
+      });
+
+      let rows = '';
+      for (const pt of points) {
+        let row = `${pt.f.toFixed(2)}`;
+        pt.gainDb.forEach((g, idx) => {
+          const ph = pt.phaseDeg[idx] ?? 0;
+          row += `,${g.toFixed(2)},${ph.toFixed(1)}`;
+        });
+        rows += '\n' + row;
+      }
+
+      const content = header + rows;
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'risposta_frequenza_bode.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } else {
+      const samples = simController.samples;
+      if (samples.length === 0) {
+        alert('Nessun dato dell\'oscilloscopio registrato per l\'esportazione.');
+        return;
+      }
+
+      let header = 'Tempo (s)';
+      probes.forEach((p) => {
+        header += `,${p.label} (V)`;
+      });
+
+      let rows = '';
+      for (const smp of samples) {
+        let row = `${smp.t.toFixed(6)}`;
+        smp.v.forEach((val) => {
+          row += `,${val.toFixed(4)}`;
+        });
+        rows += '\n' + row;
+      }
+
+      const content = header + rows;
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'tracce_oscilloscopio.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  };
+
   return (
     <div className="toolbar">
       <span className="brand">⚡ Circuit Studio</span>
@@ -53,7 +129,11 @@ export function Toolbar() {
         <button className={`btn${tool.kind === 'select' ? ' on' : ''}`} title="Seleziona/sposta (Esc)" onClick={() => setTool({ kind: 'select' })}>
           ⬚ Seleziona
         </button>
-        <button className={`btn${tool.kind === 'wire' ? ' on' : ''}`} title="Filo: pin → pin (w)" onClick={() => setTool({ kind: 'wire', from: null })}>
+        <button
+          className={`btn${tool.kind === 'wire' ? ' on' : ''}`}
+          title="Filo: click sul pin di partenza, poi sul pin di arrivo. Click nel vuoto per invertire il gomito (w)"
+          onClick={() => setTool({ kind: 'wire', from: null })}
+        >
           ─ Filo
         </button>
         <button className={`btn${tool.kind === 'probe' ? ' on' : ''}`} title="Sonda oscilloscopio su un nodo (p)" onClick={() => setTool({ kind: 'probe' })}>
@@ -141,6 +221,15 @@ export function Toolbar() {
           hidden
           onChange={() => openFile(scenarioFile.current, (json) => applyScenario(json))}
         />
+      </div>
+
+      <div className="tool-group">
+        <button className="btn" title="Esporta lo schema corrente in formato SVG vettoriale" onClick={exportSVG}>
+          🖼 Esporta SVG
+        </button>
+        <button className="btn" title="Esporta i dati delle tracce (oscilloscopio o Bode) in formato CSV" onClick={exportCSV}>
+          📊 Esporta CSV
+        </button>
       </div>
 
       <div className="tool-group right">

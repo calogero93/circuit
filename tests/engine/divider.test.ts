@@ -25,7 +25,7 @@ test('partitore di tensione: valore esatto', () => {
   assert.ok(Math.abs(voltsAt(compiled, result, ['R1', 1]) - 4.5) < 1e-6, 'Vout = 4.5 V');
   assert.ok(Math.abs(voltsAt(compiled, result, ['V1', 0]) - 9) < 1e-6, 'Vin = 9 V');
   // corrente nel ramo: 9 / 20k = 0.45 mA
-  const iR1 = result.outputs.get('R1')!.data.i;
+  const iR1 = (result.outputs.get('R1')!.data as any).i;
   assert.ok(Math.abs(iR1 - 0.45e-3) < 1e-9, 'I = 0.45 mA');
 });
 

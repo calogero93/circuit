@@ -14,6 +14,7 @@ export interface Scenario {
   circuit: CircuitJSON;
   probes: { pin: PinRef; label: string }[];
   scopeTimespan: number;
+  scopeMode: 'time' | 'bode';
   timestep: number;
   ab: ABConfig | null;
   abGhost: boolean;
@@ -32,6 +33,7 @@ export function captureScenario(name: string): Scenario {
     circuit: circuitToJSON(s.circuit),
     probes: s.probes.map((p) => ({ pin: p.pin, label: p.label })),
     scopeTimespan: s.scopeTimespan,
+    scopeMode: s.scopeMode,
     timestep: s.timestep,
     ab: s.ab,
     abGhost: s.abGhost,
@@ -48,7 +50,7 @@ export function applyScenario(raw: unknown): boolean {
   const sc = raw as Partial<Scenario>;
   const circuit = circuitFromJSON(sc.circuit);
   const s = useStudio.getState();
-  const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai'];
+  const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai', 'scenari', 'logica'];
   s.hydrate({
     circuit,
     undoStack: [],
@@ -65,6 +67,7 @@ export function applyScenario(raw: unknown): boolean {
           }))
       : [],
     scopeTimespan: typeof sc.scopeTimespan === 'number' && sc.scopeTimespan > 0 ? sc.scopeTimespan : 0.1,
+    scopeMode: sc.scopeMode === 'bode' ? 'bode' : 'time',
     timestep: typeof sc.timestep === 'number' && sc.timestep > 0 ? sc.timestep : 1e-4,
     ab:
       sc.ab && typeof sc.ab === 'object' && circuit.components.some((c) => c.id === sc.ab!.componentId)

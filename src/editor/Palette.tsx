@@ -9,6 +9,7 @@ const CATEGORIES: { key: string; title: string }[] = [
   { key: 'sorgenti', title: 'Sorgenti' },
   { key: 'passivi', title: 'Passivi' },
   { key: 'semiconduttori', title: 'Semiconduttori' },
+  { key: 'digitale', title: 'Digitale' },
   { key: 'altro', title: 'Altro' },
 ];
 
@@ -23,7 +24,7 @@ export function Palette() {
         <div key={cat.key} className="palette-group">
           <div className="palette-title">{cat.title}</div>
           {defs
-            .filter((d) => d.category === cat.key)
+            .filter((d) => d.category === cat.key && d.type !== 'node')
             .map((def) => {
               const active = tool.kind === 'place' && tool.type === def.type;
               return (

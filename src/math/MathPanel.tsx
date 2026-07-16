@@ -147,10 +147,10 @@ function DiodeCurve({ instId }: { instId: string }) {
 
     const data = frame?.result.outputs.get(instId)?.data;
     if (!data || data.is === undefined) return;
-    const Is = data.is;
-    const nVt = data.n * VT;
-    const vd = data.vd ?? 0;
-    const id = data.id ?? 0;
+    const Is = Number(data.is);
+    const nVt = Number(data.n) * VT;
+    const vd = Number(data.vd ?? 0);
+    const id = Number(data.id ?? 0);
 
     const vMax = Math.max(1.0, vd + 0.3);
     const vMin = -0.5;

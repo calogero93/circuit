@@ -192,8 +192,8 @@ function round(x: number): number {
   return Number.isFinite(x) ? Number(x.toPrecision(6)) : x;
 }
 
-function roundAll(o: Record<string, number>): Record<string, number> {
-  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, round(v)]));
+function roundAll(o: Record<string, number | string | boolean>): Record<string, number | string | boolean> {
+  return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === 'number' ? round(v) : v]));
 }
 
 /** Esegue un tool per nome; non lancia mai (gli errori tornano al modello). */

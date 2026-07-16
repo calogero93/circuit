@@ -62,7 +62,7 @@ export interface SolutionReader {
  */
 export interface DeviceOutputs {
   pinCurrents: number[];
-  data: Record<string, number>;
+  data: Record<string, number | string | boolean>;
 }
 
 /**

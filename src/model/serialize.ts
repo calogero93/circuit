@@ -92,8 +92,32 @@ export function circuitFromJSON(raw: unknown): Circuit {
       const to = sanitizePinRef(ww.to, compMap);
       const id = typeof ww.id === 'string' ? ww.id : null;
       if (from && to && id && !seen.has(id)) {
+        // optional route: array of {x:number,y:number}
+        let route: { x: number; y: number }[] | undefined;
+        if (Array.isArray(ww.route)) {
+          const pts: { x: number; y: number }[] = [];
+          let ok = true;
+          for (const p of ww.route) {
+            if (typeof p !== 'object' || p === null) {
+              ok = false;
+              break;
+            }
+            const px = (p as Record<string, unknown>).x;
+            const py = (p as Record<string, unknown>).y;
+            if (!isFiniteNum(px) || !isFiniteNum(py)) {
+              ok = false;
+              break;
+            }
+            pts.push({ x: px, y: py });
+          }
+          if (ok) route = pts;
+        }
+        const elbow = typeof ww.elbow === 'boolean' ? ww.elbow : undefined;
         seen.add(id);
-        out.wires.push({ id, from, to });
+        const wire: Wire = { id, from, to };
+        if (elbow !== undefined) wire.elbow = elbow;
+        if (route) wire.route = route;
+        out.wires.push(wire);
       }
     }
   }
