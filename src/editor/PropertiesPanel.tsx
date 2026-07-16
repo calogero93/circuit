@@ -9,6 +9,7 @@ import { removeItems, rotateComponent, setParam } from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
 import { simController, useSimTick } from '../viz/controller.ts';
 import type { ComponentInstance } from '../model/types.ts';
+import { bridgedComponent } from './instruments.ts';
 
 function LogSlider({
   def,
@@ -104,18 +105,25 @@ function EnvironmentalPanel() {
   );
 }
 
-function DigitalMultimeter({ inst, wire }: { inst?: ComponentInstance; wire?: any }) {
+type DmmMode = 'V' | 'R' | 'C' | 'L' | 'diode' | 'A';
+
+function DigitalMultimeter({ inst, wire, mode }: { inst?: ComponentInstance; wire?: any; mode?: DmmMode }) {
   const circuit = useStudio((s) => s.circuit);
   const env = useStudio((s) => s.environment);
   const frame = simController.frame;
-  const [dmmMode, setDmmMode] = useState<'V' | 'R' | 'C' | 'L' | 'diode' | 'A'>('V');
+  const [dmmMode, setDmmMode] = useState<DmmMode>('V');
 
   // Verifica la presenza di un terminale di terra (GND)
   const hasGround = circuit.components.some((c) => getDef(c.type).isGround);
 
   // Determina la modalità consigliata in base alla selezione
   useEffect(() => {
+    if (mode) {
+      setDmmMode(mode);
+      return;
+    }
     if (inst) {
+      if (inst.type === 'ammeter') return setDmmMode('A');
       if (inst.type === 'resistor' || inst.type === 'ldr' || inst.type === 'ntc' || inst.type === 'ptc' || inst.type === 'barometer') setDmmMode('R');
       else if (inst.type === 'capacitor' || inst.type === 'humidity_sensor') setDmmMode('C');
       else if (inst.type === 'inductor') setDmmMode('L');
@@ -125,7 +133,7 @@ function DigitalMultimeter({ inst, wire }: { inst?: ComponentInstance; wire?: an
     } else if (wire) {
       setDmmMode('V');
     }
-  }, [inst, wire]);
+  }, [inst, wire, mode]);
 
   let valueDisplay = 'O.L';
   let unitDisplay = '';
@@ -412,6 +420,14 @@ export function PropertiesPanel() {
   const def = getDef(inst!.type);
   const isSelfAB = ab?.componentId === inst!.id;
 
+  // Multimetro piazzato: il DMM ricco misura il componente "a ponte" fra i puntali
+  const isMultimeter = inst!.type === 'multimeter';
+  const bridged = isMultimeter && simController.frame
+    ? bridgedComponent(circuit, simController.frame.compiled.netOfPin, inst!.id)
+    : null;
+  const dmmTarget = isMultimeter ? bridged ?? inst! : inst!;
+  const dmmMode = isMultimeter ? (String(inst!.params.mode ?? 'V') as DmmMode) : undefined;
+
   return (
     <div className="props">
       <h3>
@@ -419,7 +435,10 @@ export function PropertiesPanel() {
       </h3>
       <p className="description">{def.description}</p>
 
-      <DigitalMultimeter inst={inst!} />
+      {isMultimeter && !bridged && (
+        <p className="muted">Collega i due puntali ai capi di un componente per misurarne tutte le grandezze.</p>
+      )}
+      <DigitalMultimeter inst={dmmTarget} mode={dmmMode} />
 
       <EnvironmentalPanel />
 
@@ -427,6 +446,21 @@ export function PropertiesPanel() {
       {def.params.map((p) =>
         p.kind === 'number' ? (
           <NumberParam key={p.key} inst={inst!} p={p} />
+        ) : p.kind === 'select' ? (
+          <label key={p.key} className="param">
+            <span className="param-label">{p.label}</span>
+            <select
+              className="param-select"
+              value={String(inst!.params[p.key])}
+              onChange={(e) => execute(setParam(inst!.id, p.key, inst!.params[p.key], e.target.value))}
+            >
+              {p.options?.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
         ) : (
           <label key={p.key} className="param">
             <span className="param-label">{p.label}</span>

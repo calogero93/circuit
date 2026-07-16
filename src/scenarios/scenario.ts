@@ -50,7 +50,7 @@ export function applyScenario(raw: unknown): boolean {
   const sc = raw as Partial<Scenario>;
   const circuit = circuitFromJSON(sc.circuit);
   const s = useStudio.getState();
-  const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai', 'scenari', 'logica'];
+  const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai', 'scenari', 'logica', '3d'];
   s.hydrate({
     circuit,
     undoStack: [],

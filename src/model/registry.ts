@@ -23,11 +23,13 @@ export interface ParamDef {
   key: string;
   label: string;
   unit: string;
-  kind: 'number' | 'boolean';
+  kind: 'number' | 'boolean' | 'select';
   min?: number;
   max?: number;
   /** slider logaritmico (per R, C, L...) */
   log?: boolean;
+  /** opzioni per kind 'select' (valore = stringa memorizzata). */
+  options?: { value: string; label: string }[];
 }
 
 /**
@@ -37,7 +39,7 @@ export interface ParamDef {
 export interface ComponentDef {
   type: string;
   name: string;
-  category: 'sorgenti' | 'passivi' | 'semiconduttori' | 'digitale' | 'altro';
+  category: 'sorgenti' | 'passivi' | 'semiconduttori' | 'digitale' | 'strumenti' | 'altro';
   /** Metadato didattico: a cosa serve, quando si usa. */
   description: string;
   pins: PinDef[];

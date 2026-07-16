@@ -1,7 +1,7 @@
 // Modello di circuito (netlist) — unica fonte di verità, indipendente dal motore.
 // Seam §4.1 del Charter.
 
-export type ParamValue = number | boolean;
+export type ParamValue = number | boolean | string;
 
 /** Riferimento a un pin di un componente. */
 export interface PinRef {
@@ -35,6 +35,8 @@ export interface Wire {
    * filo segue i componenti spostati.
    */
   elbow?: boolean;
+  /** Punti di passaggio intermedi (instradamento manuale a più segmenti). */
+  waypoints?: { x: number; y: number }[];
   /** Percorso esplicito opzionale (usato per i tronconi di una giunzione). */
   route?: { x: number; y: number }[];
 }

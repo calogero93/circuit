@@ -9,7 +9,7 @@ import type { CircuitCommand } from './commands.ts';
 export type Tool =
   | { kind: 'select' }
   | { kind: 'place'; type: string; rot: Rotation }
-  | { kind: 'wire'; from: PinRef | null; elbow?: boolean }
+  | { kind: 'wire'; from: PinRef | null; elbow?: boolean; waypoints?: { x: number; y: number }[] }
   | { kind: 'probe' };
 
 export interface Probe {
@@ -28,7 +28,7 @@ export interface ABConfig {
   mode: 'remove' | 'bypass';
 }
 
-export type RightTab = 'props' | 'math' | 'lesson' | 'ai' | 'scenari' | 'logica';
+export type RightTab = 'props' | 'math' | 'lesson' | 'ai' | 'scenari' | 'logica' | '3d';
 
 export interface HoverHighlight {
   components: string[];

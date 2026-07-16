@@ -92,16 +92,37 @@ export const ledDef: ComponentDef = {
     { x: -40, y: 0, name: 'anodo' },
     { x: 40, y: 0, name: 'catodo' },
   ],
-  params: [],
-  defaults: {},
-  model: makeDiodeModel(1.5e-19, 2), // LED rosso: ~2 V a 10 mA
-  symbol: () => [
-    ...diodeSymbol,
-    { kind: 'line', x1: 2, y1: -12, x2: 10, y2: -20 },
-    { kind: 'polygon', points: '10,-20 4,-18 8,-14', fill: 'currentColor' },
-    { kind: 'line', x1: 9, y1: -8, x2: 17, y2: -16 },
-    { kind: 'polygon', points: '17,-16 11,-14 15,-10', fill: 'currentColor' },
+  params: [
+    {
+      key: 'color',
+      label: 'Colore',
+      unit: '',
+      kind: 'select',
+      options: [
+        { value: '#ff3b30', label: 'Rosso' },
+        { value: '#34c759', label: 'Verde' },
+        { value: '#0a84ff', label: 'Blu' },
+        { value: '#ffd60a', label: 'Giallo' },
+        { value: '#ff9f0a', label: 'Arancione' },
+        { value: '#ffffff', label: 'Bianco' },
+      ],
+    },
   ],
+  defaults: { color: '#ff3b30' },
+  model: makeDiodeModel(1.5e-19, 2), // LED rosso: ~2 V a 10 mA
+  symbol: (p) => {
+    const c = String(p.color ?? '#ff3b30');
+    return [
+      { kind: 'line', x1: -40, y1: 0, x2: -10, y2: 0 },
+      { kind: 'polygon', points: '-10,-10 -10,10 10,0', fill: c }, // corpo del LED nel suo colore
+      { kind: 'line', x1: 10, y1: -10, x2: 10, y2: 10 },
+      { kind: 'line', x1: 10, y1: 0, x2: 40, y2: 0 },
+      { kind: 'line', x1: 2, y1: -12, x2: 10, y2: -20 },
+      { kind: 'polygon', points: '10,-20 4,-18 8,-14', fill: 'currentColor' },
+      { kind: 'line', x1: 9, y1: -8, x2: 17, y2: -16 },
+      { kind: 'polygon', points: '17,-16 11,-14 15,-10', fill: 'currentColor' },
+    ];
+  },
   symbol3d: 'led-junction',
   formulas: [shockleyFormula()],
   maxCurrent: LED_MAX_CURRENT,

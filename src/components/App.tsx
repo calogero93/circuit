@@ -2,7 +2,7 @@
 // pannelli a destra (Proprietà / Matematica / Lezione / Tutor AI).
 // In modalità presentazione la UI si riduce e la tipografia cresce.
 
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { CanvasEditor } from '../editor/CanvasEditor.tsx';
 import { Palette } from '../editor/Palette.tsx';
 import { PropertiesPanel } from '../editor/PropertiesPanel.tsx';
@@ -12,6 +12,9 @@ import { getLesson } from '../lessons/data.ts';
 import { TutorPanel } from '../ai/TutorPanel.tsx';
 import { ScenarioPanel } from '../scenarios/ScenarioPanel.tsx';
 import { LogicPanel } from '../editor/LogicPanel.tsx';
+
+// three.js caricato solo all'apertura del pannello 3D (chunk separato)
+const Panel3D = lazy(() => import('../viz3d/Panel3D.tsx'));
 import { Scope } from '../viz/Scope.tsx';
 import { addItems, removeItems, rotateComponent } from '../store/commands.ts';
 import { GRID } from '../editor/geometry.ts';
@@ -22,11 +25,45 @@ import { Toolbar } from './Toolbar.tsx';
 
 let clipboard: { comps: ComponentInstance[]; wires: Wire[] } | null = null;
 
+/** Duplica componenti + fili interni con id nuovi e offset, e li seleziona. */
+function duplicateInto(s: ReturnType<typeof useStudio.getState>, comps: ComponentInstance[], wires: Wire[]): void {
+  if (!comps.length) return;
+  const off = GRID * 2;
+  const idMap: Record<string, string> = {};
+  const takenC = (id: string) => s.circuit.components.some((c) => c.id === id) || Object.values(idMap).includes(id);
+  const newComps = comps.map((c) => {
+    const prefix = c.id.match(/^[A-Za-z]+/)?.[0] ?? 'U';
+    const nid = freshId(prefix, takenC);
+    idMap[c.id] = nid;
+    return { ...c, id: nid, x: c.x + off, y: c.y + off, params: { ...c.params } };
+  });
+  const takenW = (id: string) => s.circuit.wires.some((w) => w.id === id);
+  const newWires: Wire[] = wires.map((w) => ({
+    ...w,
+    id: freshId('w', takenW),
+    from: { component: idMap[w.from.component], pin: w.from.pin },
+    to: { component: idMap[w.to.component], pin: w.to.pin },
+    route: w.route?.map((p) => ({ x: p.x + off, y: p.y + off })),
+  }));
+  s.execute(addItems(newComps, newWires));
+  s.setSelection(newComps.map((c) => c.id));
+}
+
+/** Componenti selezionati + fili con entrambi i capi nella selezione. */
+function selectedItems(s: ReturnType<typeof useStudio.getState>): { comps: ComponentInstance[]; wires: Wire[] } {
+  const ids = new Set(s.selection);
+  const comps = s.circuit.components.filter((c) => ids.has(c.id));
+  const compIds = new Set(comps.map((c) => c.id));
+  const wires = s.circuit.wires.filter((w) => compIds.has(w.from.component) && compIds.has(w.to.component));
+  return { comps, wires };
+}
+
 const TABS: { key: RightTab; label: string }[] = [
   { key: 'props', label: 'Proprietà' },
   { key: 'math', label: 'Matematica' },
   { key: 'lesson', label: 'Lezioni' },
   { key: 'logica', label: 'Logica' },
+  { key: '3d', label: '3D' },
   { key: 'scenari', label: 'Scenari' },
   { key: 'ai', label: 'Tutor AI' },
 ];
@@ -53,13 +90,8 @@ function useKeyboard() {
         return;
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        const ids = new Set(s.selection);
-        const comps = s.circuit.components.filter((c) => ids.has(c.id));
+        const { comps, wires } = selectedItems(s);
         if (comps.length) {
-          const compIds = new Set(comps.map((c) => c.id));
-          const wires = s.circuit.wires.filter(
-            (w) => compIds.has(w.from.component) && compIds.has(w.to.component),
-          );
           clipboard = {
             comps: comps.map((c) => ({ ...c, params: { ...c.params } })),
             wires: wires.map((w) => ({ ...w, route: w.route?.map((p) => ({ ...p })) })),
@@ -70,26 +102,13 @@ function useKeyboard() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
         if (!clipboard) return;
         e.preventDefault();
-        const off = GRID * 2;
-        const idMap: Record<string, string> = {};
-        const takenC = (id: string) =>
-          s.circuit.components.some((c) => c.id === id) || Object.values(idMap).includes(id);
-        const newComps = clipboard.comps.map((c) => {
-          const prefix = c.id.match(/^[A-Za-z]+/)?.[0] ?? 'U';
-          const nid = freshId(prefix, takenC);
-          idMap[c.id] = nid;
-          return { ...c, id: nid, x: c.x + off, y: c.y + off, params: { ...c.params } };
-        });
-        const takenW = (id: string) => s.circuit.wires.some((w) => w.id === id);
-        const newWires: Wire[] = clipboard.wires.map((w) => ({
-          ...w,
-          id: freshId('w', takenW),
-          from: { component: idMap[w.from.component], pin: w.from.pin },
-          to: { component: idMap[w.to.component], pin: w.to.pin },
-          route: w.route?.map((p) => ({ x: p.x + off, y: p.y + off })),
-        }));
-        s.execute(addItems(newComps, newWires));
-        s.setSelection(newComps.map((c) => c.id));
+        duplicateInto(s, clipboard.comps, clipboard.wires);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        const { comps, wires } = selectedItems(s);
+        duplicateInto(s, comps, wires);
         return;
       }
       switch (e.key) {
@@ -183,6 +202,11 @@ export function App() {
             {rightTab === 'math' && <MathPanel />}
             {rightTab === 'lesson' && <LessonPanel />}
             {rightTab === 'logica' && <LogicPanel />}
+            {rightTab === '3d' && (
+              <Suspense fallback={<p className="muted">Carico il visore 3D…</p>}>
+                <Panel3D />
+              </Suspense>
+            )}
             {rightTab === 'scenari' && <ScenarioPanel />}
             {rightTab === 'ai' && <TutorPanel />}
           </div>

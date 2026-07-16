@@ -49,6 +49,14 @@ export function orthogonalRoute(a: Pt, b: Pt, verticalFirst = false): Pt[] {
   return verticalFirst ? [a, { x: a.x, y: b.y }, b] : [a, { x: b.x, y: a.y }, b];
 }
 
+/** Instradamento ortogonale attraverso una sequenza di punti (start, waypoint…, end). */
+export function routeThroughPoints(pts: Pt[], elbow = false): Pt[] {
+  if (pts.length < 2) return pts.slice();
+  const out: Pt[] = [pts[0]];
+  for (let i = 1; i < pts.length; i++) out.push(...orthogonalRoute(pts[i - 1], pts[i], elbow).slice(1));
+  return out;
+}
+
 export function routeLength(pts: Pt[]): number {
   let len = 0;
   for (let i = 1; i < pts.length; i++) {

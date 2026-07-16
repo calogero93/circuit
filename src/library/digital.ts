@@ -43,6 +43,7 @@ const GATES: Record<string, GateSpec> = {
   nand: { inputs: 2, logic: ([a, b]) => ({ o: 1 - a * b, d: [-b, -a] }) },
   nor: { inputs: 2, logic: ([a, b]) => ({ o: (1 - a) * (1 - b), d: [b - 1, a - 1] }) },
   xor: { inputs: 2, logic: ([a, b]) => ({ o: a + b - 2 * a * b, d: [1 - 2 * b, 1 - 2 * a] }) },
+  xnor: { inputs: 2, logic: ([a, b]) => ({ o: 1 - a - b + 2 * a * b, d: [2 * b - 1, 2 * a - 1] }) },
 };
 
 function gateModel(kind: string): DeviceModel {
@@ -163,7 +164,7 @@ export const logicOutDef: ComponentDef = {
       ctx.addG(nodes[0], -1, 1 / 100000); // 100 kΩ di carico: non lasciar flottare
     },
     outputs(sol, params, nodes) {
-      const lvl = logicLevel(sol.v(nodes[0]), params.vdd as number).l;
+      const lvl = logicLevel(sol.v(nodes[0]), (params.vdd as number) ?? DEFAULT_VDD).l;
       return { pinCurrents: [0], data: { logic: lvl > 0.5 ? 1 : 0, level: lvl, v: sol.v(nodes[0]) } };
     },
   },
@@ -194,14 +195,14 @@ export const dffDef: ComponentDef = {
       driveNode(ctx, nodes[2], branches[0], state.q > 0.5 ? (params.vdd as number) : 0);
     },
     outputs(sol, params, nodes, branches, state) {
-      const vdd = params.vdd as number;
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
       return {
         pinCurrents: [0, 0, sol.branch(branches[0])],
         data: { q: state.q > 0.5 ? 1 : 0, logic: state.q > 0.5 ? 1 : 0, d: logicLevel(sol.v(nodes[0]), vdd).l > 0.5 ? 1 : 0 },
       };
     },
     nextState(sol, params, nodes, _branches, state): DeviceState {
-      const vdd = params.vdd as number;
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
       const clk = logicLevel(sol.v(nodes[1]), vdd).l;
       const d = logicLevel(sol.v(nodes[0]), vdd).l;
       const rising = state.clkPrev < 0.5 && clk >= 0.5;
@@ -216,6 +217,119 @@ export const dffDef: ComponentDef = {
     { kind: 'path', d: 'M -22 14 L -14 20 L -22 26', fill: 'none' },
     { kind: 'text', x: 8, y: -15, text: 'Q', size: 11 },
     { kind: 'line', x1: 22, y1: 0, x2: 40, y2: 0 },
+  ],
+};
+
+export const tffDef: ComponentDef = {
+  type: 'tff',
+  name: 'Flip-flop T',
+  category: 'digitale',
+  description: 'Al fronte di salita del clock: se T=1 commuta Q, se T=0 lo mantiene. In cascata divide la frequenza.',
+  pins: [
+    { x: -40, y: -20, name: 'T' },
+    { x: -40, y: 20, name: 'CLK' },
+    { x: 40, y: 0, name: 'Q' },
+  ],
+  params: [vddParam],
+  defaults: { vdd: DEFAULT_VDD },
+  model: {
+    branches: 1,
+    initState: (): DeviceState => ({ q: 0, clkPrev: 0 }),
+    stamp(ctx, params, nodes, branches, state) {
+      driveNode(ctx, nodes[2], branches[0], state.q > 0.5 ? (params.vdd as number) : 0);
+    },
+    outputs(sol, params, nodes, branches, state) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      return {
+        pinCurrents: [0, 0, sol.branch(branches[0])],
+        data: { q: state.q > 0.5 ? 1 : 0, logic: state.q > 0.5 ? 1 : 0, t: logicLevel(sol.v(nodes[0]), vdd).l > 0.5 ? 1 : 0 },
+      };
+    },
+    nextState(sol, params, nodes, _branches, state): DeviceState {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      const clk = logicLevel(sol.v(nodes[1]), vdd).l;
+      const t = logicLevel(sol.v(nodes[0]), vdd).l;
+      const rising = state.clkPrev < 0.5 && clk >= 0.5;
+      const q = rising && t > 0.5 ? (state.q > 0.5 ? 0 : 1) : state.q;
+      return { q, clkPrev: clk };
+    },
+  },
+  symbol: () => [
+    { kind: 'line', x1: -40, y1: -20, x2: -22, y2: -20 },
+    { kind: 'line', x1: -40, y1: 20, x2: -22, y2: 20 },
+    { kind: 'path', d: 'M -22 -26 L 22 -26 L 22 26 L -22 26 Z', fill: 'none' },
+    { kind: 'text', x: -16, y: -15, text: 'T', size: 11 },
+    { kind: 'path', d: 'M -22 14 L -14 20 L -22 26', fill: 'none' },
+    { kind: 'text', x: 8, y: -15, text: 'Q', size: 11 },
+    { kind: 'line', x1: 22, y1: 0, x2: 40, y2: 0 },
+  ],
+};
+
+// ─────────────── Display esadecimale a 7 segmenti (4 bit → cifra 0–F) ───────────────
+
+/** Geometria dei 7 segmenti (a..g) come linee, condivisa fra simbolo e canvas. */
+export const SEG_LINES: [number, number, number, number][] = [
+  [-10, -22, 10, -22], // a  alto
+  [12, -20, 12, -2], // b  alto-destra
+  [12, 2, 12, 20], // c  basso-destra
+  [-10, 22, 10, 22], // d  basso
+  [-12, 2, -12, 20], // e  basso-sinistra
+  [-12, -20, -12, -2], // f  alto-sinistra
+  [-10, 0, 10, 0], // g  centro
+];
+
+/** Segmenti accesi per ogni cifra esadecimale 0–F (ordine a,b,c,d,e,f,g). */
+export const SEGMENTS: number[][] = [
+  [1, 1, 1, 1, 1, 1, 0], // 0
+  [0, 1, 1, 0, 0, 0, 0], // 1
+  [1, 1, 0, 1, 1, 0, 1], // 2
+  [1, 1, 1, 1, 0, 0, 1], // 3
+  [0, 1, 1, 0, 0, 1, 1], // 4
+  [1, 0, 1, 1, 0, 1, 1], // 5
+  [1, 0, 1, 1, 1, 1, 1], // 6
+  [1, 1, 1, 0, 0, 0, 0], // 7
+  [1, 1, 1, 1, 1, 1, 1], // 8
+  [1, 1, 1, 1, 0, 1, 1], // 9
+  [1, 1, 1, 0, 1, 1, 1], // A
+  [0, 0, 1, 1, 1, 1, 1], // b
+  [1, 0, 0, 1, 1, 1, 0], // C
+  [0, 1, 1, 1, 1, 0, 1], // d
+  [1, 0, 0, 1, 1, 1, 1], // E
+  [1, 0, 0, 0, 1, 1, 1], // F
+];
+
+export const segDisplayDef: ComponentDef = {
+  type: 'seg_display',
+  name: 'Display 7 segmenti',
+  category: 'digitale',
+  description: 'Mostra la cifra esadecimale (0–F) dei 4 bit d’ingresso (b0 = meno significativo). Con contatori mostra il conteggio.',
+  pins: [
+    { x: -40, y: -30, name: 'b0' },
+    { x: -40, y: -10, name: 'b1' },
+    { x: -40, y: 10, name: 'b2' },
+    { x: -40, y: 30, name: 'b3' },
+  ],
+  params: [vddParam],
+  defaults: { vdd: DEFAULT_VDD },
+  model: {
+    stamp(ctx, _params, nodes) {
+      for (const n of nodes) ctx.addG(n, -1, 1 / 100000); // ingressi ad alta impedenza, non flottanti
+    },
+    outputs(sol, params, nodes) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      let value = 0;
+      nodes.forEach((n, i) => {
+        if (logicLevel(sol.v(n), vdd).l > 0.5) value |= 1 << i;
+      });
+      const segs = SEGMENTS[value];
+      const data: Record<string, number> = { value };
+      segs.forEach((on, i) => (data[`s${i}`] = on));
+      return { pinCurrents: [0, 0, 0, 0], data };
+    },
+  },
+  symbol: () => [
+    { kind: 'path', d: 'M -26 -34 L 26 -34 L 26 34 L -26 34 Z', fill: 'none' },
+    ...SEG_LINES.map(([x1, y1, x2, y2]) => ({ kind: 'line' as const, x1, y1, x2, y2, width: 3 })),
   ],
 };
 
@@ -272,6 +386,12 @@ export const xorGateDef = makeGateDef('xor_gate', 'xor', 'Porta XOR', 'L’uscit
   { kind: 'line', x1: 24, y1: 0, x2: 40, y2: 0 },
 ]);
 
+export const xnorGateDef = makeGateDef('xnor_gate', 'xnor', 'Porta XNOR', 'XOR negato: l’uscita è 1 quando gli ingressi sono uguali.', () => [
+  ...xorGateDef.symbol({}).slice(0, 4),
+  { kind: 'circle', cx: 29, cy: 0, r: 5 },
+  { kind: 'line', x1: 34, y1: 0, x2: 40, y2: 0 },
+]);
+
 export const digitalDefs: ComponentDef[] = [
   logicInDef,
   clockDef,
@@ -283,7 +403,10 @@ export const digitalDefs: ComponentDef[] = [
   nandGateDef,
   norGateDef,
   xorGateDef,
+  xnorGateDef,
   dffDef,
+  tffDef,
+  segDisplayDef,
 ];
 
 // ─────────────────── Specifiche per il MOTORE DIGITALE nativo ───────────────────
@@ -321,6 +444,8 @@ export const DIGITAL: Record<string, DigitalSpec> = {
   nand_gate: gateSpec('nand', 2),
   nor_gate: gateSpec('nor', 2),
   xor_gate: gateSpec('xor', 2),
+  xnor_gate: gateSpec('xnor', 2),
+  seg_display: { inPins: [0, 1, 2, 3], outPin: null, drive: () => 0 },
   dff: {
     inPins: [0, 1],
     outPin: 2,
@@ -328,6 +453,18 @@ export const DIGITAL: Record<string, DigitalSpec> = {
     sequential: {
       init: () => ({ q: 0, clkPrev: 0 }),
       update: ([d, clk], _p, s) => ({ q: s.clkPrev < 0.5 && clk >= 0.5 ? (d > 0.5 ? 1 : 0) : s.q, clkPrev: clk }),
+    },
+  },
+  tff: {
+    inPins: [0, 1],
+    outPin: 2,
+    drive: (_l, _p, s) => (s.q > 0.5 ? 1 : 0),
+    sequential: {
+      init: () => ({ q: 0, clkPrev: 0 }),
+      update: ([t, clk], _p, s) => ({
+        q: s.clkPrev < 0.5 && clk >= 0.5 && t > 0.5 ? (s.q > 0.5 ? 0 : 1) : s.q,
+        clkPrev: clk,
+      }),
     },
   },
 };

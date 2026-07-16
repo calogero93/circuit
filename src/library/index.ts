@@ -7,6 +7,7 @@ import { vdcDef, vsinDef, idcDef } from './sources.ts';
 import { diodeDef, ledDef, bjtDef } from './semiconductors.ts';
 import { groundDef, switchDef, nodeDef } from './misc.ts';
 import { digitalDefs } from './digital.ts';
+import { instrumentDefs } from './instruments.ts';
 import {
   opampDef,
   zenerDef,
@@ -67,6 +68,7 @@ export function registerLibrary(): void {
     pulseDef,
     vsinPhaseDef,
     ...digitalDefs,
+    ...instrumentDefs,
   ]) {
     registerComponent(def);
   }

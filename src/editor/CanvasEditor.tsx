@@ -9,6 +9,8 @@ import { getDef } from '../model/registry.ts';
 import { compile } from '../model/netlist.ts';
 import { pinKey, type ComponentInstance, type PinRef, type Wire, freshId } from '../model/types.ts';
 import { formatSI } from '../model/units.ts';
+import { SEG_LINES } from '../library/digital.ts';
+import { bridgedComponent, multimeterReading } from './instruments.ts';
 import {
   addComponent,
   addWire,
@@ -23,12 +25,12 @@ import { voltageColor } from '../viz/colors.ts';
 import {
   GRID,
   distToRoute,
-  orthogonalRoute,
   pathOfRoute,
   pinPosition,
   pointAlongRoute,
   projectOnRoute,
   routeLength,
+  routeThroughPoints,
   snap,
   splitRoute,
   type Pt,
@@ -58,7 +60,12 @@ const ID_PREFIX: Record<string, string> = {
   nand_gate: 'NAND',
   nor_gate: 'NOR',
   xor_gate: 'XOR',
+  xnor_gate: 'XNOR',
   dff: 'FF',
+  tff: 'FF',
+  seg_display: 'DISP',
+  multimeter: 'MM',
+  ammeter: 'AM',
   opamp: 'OA',
   zener: 'Z',
   potentiometer: 'POT',
@@ -126,7 +133,7 @@ function CurrentDots() {
         const a = pinPositionOfInst(circuit.components, w.from);
         const b = pinPositionOfInst(circuit.components, w.to);
           if (!a || !b) continue;
-          const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+          const route = wireRoute(w, a, b);
         const len = routeLength(route);
         if (len < 4) continue;
         const speed = 90 * (i / imax); // px/s con segno
@@ -156,6 +163,11 @@ function pinPositionOfInst(components: ComponentInstance[], ref: PinRef): Pt | n
   return inst ? pinPosition(inst, ref.pin) : null;
 }
 
+/** Percorso di un filo: esplicito, oppure ortogonale attraverso i waypoint. */
+function wireRoute(w: Wire, a: Pt, b: Pt): Pt[] {
+  return w.route ?? routeThroughPoints([a, ...(w.waypoints ?? []), b], w.elbow ?? false);
+}
+
 export function CanvasEditor() {
   const circuit = useStudio((s) => s.circuit);
   const tool = useStudio((s) => s.tool);
@@ -177,6 +189,7 @@ export function CanvasEditor() {
   const [mouse, setMouse] = useState<Pt>({ x: 0, y: 0 });
   const [hoverInfo, setHoverInfo] = useState<HoverInfo | null>(null);
   const [marquee, setMarquee] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const [hoverNet, setHoverNet] = useState<number | null>(null); // net evidenziato all'hover
   const panMode = useRef(false); // Spazio premuto → pan invece di selezione a rettangolo
   const drag = useRef<
     | {
@@ -293,7 +306,7 @@ export function CanvasEditor() {
       const a = pinPositionOfInst(circuit.components, w.from);
       const b = pinPositionOfInst(circuit.components, w.to);
       if (!a || !b) continue;
-      const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+      const route = wireRoute(w, a, b);
       if (distToRoute(p, route) < 8) return w.id;
     }
     return null;
@@ -322,22 +335,24 @@ export function CanvasEditor() {
     }
 
     if (tool.kind === 'wire') {
-      const pin = findPinNear(p);
+      // raggio d'aggancio generoso: chiudere sul pin deve essere facile, un
+      // click nel vuoto (per il gomito) o su un filo (giunzione) resta possibile
+      const pin = findPinNear(p, 24);
       const elbow = tool.elbow ?? false;
       if (!tool.from) {
         // primo click: aggancia il pin di partenza
-        if (pin) setTool({ kind: 'wire', from: pin, elbow });
+        if (pin) setTool({ kind: 'wire', from: pin, elbow, waypoints: [] });
         return;
       }
       if (!pin) {
-        // click su un filo esistente → giunzione a T; altrimenti inverte il gomito
+        // click su un filo esistente → giunzione a T; nel vuoto → punto di passaggio
         const targetId = findWireNear(p);
         const target = targetId ? circuit.wires.find((w) => w.id === targetId) : null;
         const start = pinPositionOfInst(circuit.components, tool.from);
         const ta = target && pinPositionOfInst(circuit.components, target.from);
         const tb = target && pinPositionOfInst(circuit.components, target.to);
         if (target && ta && tb && start) {
-          const targetRoute = target.route ?? orthogonalRoute(ta, tb, target.elbow ?? false);
+          const targetRoute = wireRoute(target, ta, tb);
           const P = projectOnRoute(targetRoute, p).point;
           const takenC = (id: string) => circuit.components.some((c) => c.id === id);
           const node: ComponentInstance = { id: freshId('J', takenC), type: 'node', x: P.x, y: P.y, rot: 0, params: {} };
@@ -346,20 +361,20 @@ export function CanvasEditor() {
           const takenW = (id: string) => circuit.wires.some((w) => w.id === id);
           const w1: Wire = { id: freshId('w', takenW), from: target.from, to: nodePin, route: rA };
           const w2: Wire = { id: freshId('w', takenW), from: nodePin, to: target.to, route: rB };
-          const w3: Wire = { id: freshId('w', takenW), from: tool.from, to: nodePin, elbow };
+          const w3: Wire = { id: freshId('w', takenW), from: tool.from, to: nodePin, elbow, waypoints: tool.waypoints?.length ? tool.waypoints : undefined };
           execute(branchWire(node, target, [w1, w2, w3]));
           setTool({ kind: 'wire', from: null, elbow });
           return;
         }
-        // vuoto: inverte il verso del gomito
-        setTool({ kind: 'wire', from: tool.from, elbow: !elbow });
+        // vuoto: aggiungi un punto di passaggio (instradamento a più segmenti)
+        setTool({ kind: 'wire', from: tool.from, elbow, waypoints: [...(tool.waypoints ?? []), { x: snap(p.x), y: snap(p.y) }] });
         return;
       }
-      // secondo click su un pin diverso: chiude il filo (auto-instradato, segue i pin)
+      // click su un pin diverso: chiude il filo (auto-instradato attraverso i waypoint)
       if (pinKey(tool.from) !== pinKey(pin)) {
         const taken = (id: string) => circuit.wires.some((w) => w.id === id);
         const id = freshId('w', taken);
-        execute(addWire({ id, from: tool.from, to: pin, elbow }));
+        execute(addWire({ id, from: tool.from, to: pin, elbow, waypoints: tool.waypoints?.length ? tool.waypoints : undefined }));
         setTool({ kind: 'wire', from: null, elbow });
       }
       return;
@@ -475,12 +490,14 @@ export function CanvasEditor() {
       const at = { x: e.clientX - rect.left + 14, y: e.clientY - rect.top + 14 };
       if (pin) {
         const net = netOf(pin);
+        setHoverNet(net ?? null);
         const v = net === undefined ? NaN : frame.result.voltageOfNet(net);
         setHoverInfo({ ...at, lines: [`nodo ${net === undefined ? '?' : frame.compiled.netLabel(net)}`, `V = ${formatSI(v, 'V')}`] });
         return;
       }
       const comp = findComponentNear(p);
       if (comp) {
+        setHoverNet(null);
         setHoveredComponent(comp.id);
         const out = frame.result.outputs.get(comp.id);
         const lines = [`${getDef(comp.type).name} ${comp.id}`];
@@ -501,6 +518,11 @@ export function CanvasEditor() {
         return;
       }
       setHoveredComponent(null);
+      const wid = findWireNear(p);
+      const w = wid ? circuit.wires.find((x) => x.id === wid) : null;
+      setHoverNet(w ? netOf(w.from) ?? null : null);
+    } else {
+      setHoverNet(null);
     }
     setHoverInfo(null);
   };
@@ -523,7 +545,7 @@ export function CanvasEditor() {
           const a = pinPositionOfInst(circuit.components, w.from);
           const b = pinPositionOfInst(circuit.components, w.to);
           if (!a || !b) continue;
-          const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+          const route = wireRoute(w, a, b);
           if (route.some((pt) => inBox(pt.x, pt.y))) ids.push(w.id);
         }
         setSelection(ids);
@@ -609,8 +631,8 @@ export function CanvasEditor() {
             const net = netOf(w.from);
             const v = net === undefined || !frame ? NaN : frame.result.voltageOfNet(net);
             const selected = selection.includes(w.id);
-            const highlighted = net !== undefined && highlightNets.has(net);
-            const route = w.route ?? orthogonalRoute(a, b, w.elbow ?? false);
+            const highlighted = net !== undefined && (highlightNets.has(net) || net === hoverNet);
+            const route = wireRoute(w, a, b);
             return (
               <path
                 key={w.id}
@@ -639,7 +661,16 @@ export function CanvasEditor() {
             const highlighted = highlightComps.has(inst.id);
             const out = frame?.result.outputs.get(inst.id);
             const ledI = inst.type === 'led' ? Math.abs(Number(out?.data.id ?? 0)) : 0;
+            const ledColor = inst.type === 'led' ? String(inst.params.color ?? '#ff5c5c') : '#ff5c5c';
             const logicLit = inst.type === 'logic_out' ? Number(out?.data.level ?? 0) : 0;
+            let instrReading: string | null = null;
+            if (frame && inst.type === 'multimeter') {
+              const mode = String(inst.params.mode ?? 'V');
+              const bridged = mode === 'V' ? null : bridgedComponent(circuit, frame.compiled.netOfPin, inst.id);
+              instrReading = multimeterReading(inst, out, bridged, bridged ? frame.result.outputs.get(bridged.id) : undefined);
+            } else if (frame && inst.type === 'ammeter') {
+              instrReading = formatSI(Number(out?.data.i ?? 0), 'A', 3);
+            }
             const burned = def.maxCurrent !== undefined && ledI > 5 * def.maxCurrent;
             const mainParam = def.params[0];
             const isAB = ab?.componentId === inst.id;
@@ -649,14 +680,20 @@ export function CanvasEditor() {
                   transform={`translate(${inst.x},${inst.y}) rotate(${inst.rot * 90})`}
                   className={`symbol${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}`}
                 >
-                  {inst.type === 'led' && ledI > 1e-5 && (
-                    <circle cx={0} cy={0} r={18 + 8 * Math.min(1, ledI / 0.02)} className="led-glow"
-                      style={{ opacity: Math.min(0.85, 0.15 + ledI / 0.02) }} />
+                  {inst.type === 'led' && ledI > 1e-6 && (
+                    <circle cx={0} cy={0} r={16 + 10 * Math.min(1, ledI / 0.02)} className="led-glow"
+                      style={{ fill: ledColor, opacity: Math.min(0.9, 0.2 + ledI / 0.015) }} />
                   )}
                   {inst.type === 'logic_out' && logicLit > 0.5 && (
                     <circle cx={0} cy={0} r={16} className="led-glow" style={{ opacity: 0.2 + 0.6 * logicLit }} />
                   )}
                   <SymbolView prims={def.symbol(inst.params)} />
+                  {inst.type === 'seg_display' &&
+                    SEG_LINES.map(([x1, y1, x2, y2], i) =>
+                      Number(out?.data[`s${i}`] ?? 0) > 0.5 ? (
+                        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} className="seg-on" />
+                      ) : null,
+                    )}
                   {def.pins.map((pin, i) => (
                     <circle key={i} cx={pin.x} cy={pin.y} r={3.2} className="pin" />
                   ))}
@@ -679,6 +716,11 @@ export function CanvasEditor() {
                     {mainParam && mainParam.kind === 'number'
                       ? ` · ${formatSI(inst.params[mainParam.key] as number, mainParam.unit)}`
                       : ''}
+                  </text>
+                )}
+                {instrReading !== null && (
+                  <text x={inst.x} y={inst.y - 24} className="instrument-reading" textAnchor="middle">
+                    {instrReading}
                   </text>
                 )}
               </g>
@@ -713,7 +755,7 @@ export function CanvasEditor() {
           {tool.kind === 'wire' && tool.from && (() => {
             const start = pinPositionOfInst(circuit.components, tool.from);
             if (!start) return null;
-            const route = orthogonalRoute(start, mouse, tool.elbow ?? false);
+            const route = routeThroughPoints([start, ...(tool.waypoints ?? []), mouse], tool.elbow ?? false);
             return <path d={pathOfRoute(route)} className="wire preview" />;
           })()}
 

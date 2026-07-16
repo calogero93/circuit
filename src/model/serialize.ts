@@ -30,6 +30,20 @@ function isFiniteNum(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x);
 }
 
+/** Array di punti {x,y} finiti, o undefined se assente/malformato. */
+function parsePoints(raw: unknown): { x: number; y: number }[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const pts: { x: number; y: number }[] = [];
+  for (const p of raw) {
+    if (typeof p !== 'object' || p === null) return undefined;
+    const px = (p as Record<string, unknown>).x;
+    const py = (p as Record<string, unknown>).y;
+    if (!isFiniteNum(px) || !isFiniteNum(py)) return undefined;
+    pts.push({ x: px, y: py });
+  }
+  return pts;
+}
+
 function sanitizeComponent(raw: unknown): ComponentInstance | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const r = raw as Record<string, unknown>;
@@ -44,6 +58,7 @@ function sanitizeComponent(raw: unknown): ComponentInstance | null {
       const v = (r.params as Record<string, unknown>)[p.key];
       if (p.kind === 'number' && isFiniteNum(v)) params[p.key] = v;
       if (p.kind === 'boolean' && typeof v === 'boolean') params[p.key] = v;
+      if (p.kind === 'select' && typeof v === 'string') params[p.key] = v;
     }
   }
   return {
@@ -92,30 +107,13 @@ export function circuitFromJSON(raw: unknown): Circuit {
       const to = sanitizePinRef(ww.to, compMap);
       const id = typeof ww.id === 'string' ? ww.id : null;
       if (from && to && id && !seen.has(id)) {
-        // optional route: array of {x:number,y:number}
-        let route: { x: number; y: number }[] | undefined;
-        if (Array.isArray(ww.route)) {
-          const pts: { x: number; y: number }[] = [];
-          let ok = true;
-          for (const p of ww.route) {
-            if (typeof p !== 'object' || p === null) {
-              ok = false;
-              break;
-            }
-            const px = (p as Record<string, unknown>).x;
-            const py = (p as Record<string, unknown>).y;
-            if (!isFiniteNum(px) || !isFiniteNum(py)) {
-              ok = false;
-              break;
-            }
-            pts.push({ x: px, y: py });
-          }
-          if (ok) route = pts;
-        }
+        const route = parsePoints(ww.route);
+        const waypoints = parsePoints(ww.waypoints);
         const elbow = typeof ww.elbow === 'boolean' ? ww.elbow : undefined;
         seen.add(id);
         const wire: Wire = { id, from, to };
         if (elbow !== undefined) wire.elbow = elbow;
+        if (waypoints) wire.waypoints = waypoints;
         if (route) wire.route = route;
         out.wires.push(wire);
       }

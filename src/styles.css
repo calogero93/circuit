@@ -202,6 +202,12 @@ select {
   padding: 8px;
 }
 
+.palette-search {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
 .palette-title {
   font-size: 11px;
   text-transform: uppercase;
@@ -309,6 +315,23 @@ select {
 .current-dot {
   fill: #ffd166;
   pointer-events: none;
+}
+
+.seg-on {
+  stroke: #ff5b4a;
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 3px #ff5b4a);
+}
+
+.instrument-reading {
+  fill: #7ee787;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #0b0e14;
+  stroke-width: 3px;
 }
 
 .symbol {
@@ -559,6 +582,35 @@ select {
 .truth-table td.on {
   color: #34d399;
   font-weight: 700;
+}
+
+.panel3d-canvas {
+  height: 320px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border, #2a2f3a);
+  margin: 8px 0;
+}
+
+.panel3d .mono {
+  font-family: ui-monospace, monospace;
+}
+
+.panel3d-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .scope-controls {
