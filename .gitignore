@@ -4,3 +4,8 @@ dist/
 *.local
 playwright-report/
 test-results/
+
+# Python (progetto multiagente in ai/)
+.venv/
+__pycache__/
+*.pyc
