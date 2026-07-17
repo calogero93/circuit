@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/engine/*.test.ts\"",
     "test:e2e": "playwright test",
-    "proxy": "node --env-file-if-exists=.env server/proxy.mjs"
+    "proxy": "node --env-file-if-exists=.env server/proxy.mjs",
+    "tool-bridge": "node server/tool-bridge.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
@@ -22,6 +23,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "three": "^0.180.0",
+    "ws": "^8.21.1",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -31,6 +33,7 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.180.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.3",
     "typescript": "^7.0.2",
     "vite": "^8.1.4"
