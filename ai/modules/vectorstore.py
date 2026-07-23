@@ -39,5 +39,17 @@ class VectorStore:
 
             self.client.upsert(collection_name=collection_name, points=points)
 
+    def search_chunks(self, query:str, collection_name:str):
+
+        query_vector = self.embdedder.encode(query, show_progress_bar=True)
+
+        results = self.client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            limit=10
+        )
+
+        return results
+
 
 

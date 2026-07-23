@@ -55,18 +55,28 @@ export function evaluateDigital(
       }
     }
   }
-  const drivers = circuit.items.filter((it) => DIGITAL[it.inst.type]?.outPin != null);
+  const drivers = circuit.items.filter((it) => {
+    const s = DIGITAL[it.inst.type];
+    return s && (s.outPin != null || s.outPins);
+  });
+  const setNet = (net: number, v: number): boolean => {
+    if (net < 0 || fixed.has(net) || levels[net] === v) return false;
+    levels[net] = v;
+    return true;
+  };
   for (let iter = 0; iter < 64; iter++) {
     let changed = false;
     for (const it of drivers) {
       const spec = DIGITAL[it.inst.type];
-      const net = it.nodes[spec.outPin!];
-      if (net < 0 || fixed.has(net)) continue;
       const inLevels = spec.inPins.map((pin) => netLevel(levels, it.nodes[pin]));
-      const out = spec.drive(inLevels, it.inst.params, states.get(it.inst.id) ?? {}, time);
-      if (levels[net] !== out) {
-        levels[net] = out;
-        changed = true;
+      const state = states.get(it.inst.id) ?? {};
+      if (spec.outPins && spec.driveMany) {
+        const outs = spec.driveMany(inLevels, it.inst.params, state, time);
+        spec.outPins.forEach((pin, k) => {
+          if (setNet(it.nodes[pin], outs[k])) changed = true;
+        });
+      } else if (spec.outPin != null && spec.drive) {
+        if (setNet(it.nodes[spec.outPin], spec.drive(inLevels, it.inst.params, state, time))) changed = true;
       }
     }
     if (!changed) break;

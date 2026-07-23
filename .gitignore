@@ -9,3 +9,9 @@ test-results/
 .venv/
 __pycache__/
 *.pyc
+*.zip
+ai/collection/
+ai/dataset/
+ai/meta.json
+ai/.lock
+*.db

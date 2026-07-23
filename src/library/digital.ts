@@ -392,6 +392,127 @@ export const xnorGateDef = makeGateDef('xnor_gate', 'xnor', 'Porta XNOR', 'XOR n
   { kind: 'line', x1: 34, y1: 0, x2: 40, y2: 0 },
 ]);
 
+// ─────────────── IC digitali: contatore, registro, decoder (multi-uscita) ───────────────
+
+const bit = (n: number, k: number): number => (n >> k) & 1;
+
+function counterStep(state: DeviceState, clk: number, rst: number): DeviceState {
+  if (rst > 0.5) return { count: 0, clkPrev: clk };
+  const rising = state.clkPrev < 0.5 && clk >= 0.5;
+  return { count: rising ? ((state.count ?? 0) + 1) & 15 : state.count ?? 0, clkPrev: clk };
+}
+
+function shiftStep(state: DeviceState, clk: number, data: number): DeviceState {
+  const q = state.q ?? 0;
+  const rising = state.clkPrev < 0.5 && clk >= 0.5;
+  return { q: rising ? ((q << 1) | (data > 0.5 ? 1 : 0)) & 15 : q, clkPrev: clk };
+}
+
+const icBox = (label: string, x: number): ComponentDef['symbol'] => () => [
+  { kind: 'path', d: 'M -30 -38 L 30 -38 L 30 38 L -30 38 Z', fill: 'none' },
+  { kind: 'text', x, y: 5, text: label, size: 12 },
+];
+
+const fourOutputs = [
+  { x: 40, y: -30, name: 'Q0' },
+  { x: 40, y: -10, name: 'Q1' },
+  { x: 40, y: 10, name: 'Q2' },
+  { x: 40, y: 30, name: 'Q3' },
+];
+
+export const counterDef: ComponentDef = {
+  type: 'counter4',
+  name: 'Contatore 4 bit',
+  category: 'digitale',
+  description: 'Conta i fronti di salita del clock (0–15). RST azzera. Q0–Q3 = bit: pilota direttamente il display 7 segmenti.',
+  pins: [{ x: -40, y: -20, name: 'CLK' }, { x: -40, y: 20, name: 'RST' }, ...fourOutputs],
+  params: [vddParam],
+  defaults: { vdd: DEFAULT_VDD },
+  model: {
+    branches: 4,
+    initState: (): DeviceState => ({ count: 0, clkPrev: 0 }),
+    stamp(ctx, params, nodes, branches, state) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      for (let k = 0; k < 4; k++) driveNode(ctx, nodes[2 + k], branches[k], bit(state.count, k) ? vdd : 0);
+    },
+    outputs(sol, _p, _n, branches, state) {
+      return {
+        pinCurrents: [0, 0, ...branches.map((b) => sol.branch(b))],
+        data: { value: state.count, q0: bit(state.count, 0), q1: bit(state.count, 1), q2: bit(state.count, 2), q3: bit(state.count, 3) },
+      };
+    },
+    nextState(sol, params, nodes, _b, state): DeviceState {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      return counterStep(state, logicLevel(sol.v(nodes[0]), vdd).l, logicLevel(sol.v(nodes[1]), vdd).l);
+    },
+  },
+  symbol: icBox('CNT', -18),
+};
+
+export const shiftRegDef: ComponentDef = {
+  type: 'shiftreg4',
+  name: 'Registro a scorrimento',
+  category: 'digitale',
+  description: 'A ogni fronte di clock i dati entrano da DATA e scorrono: Q0→Q1→Q2→Q3 (serie-parallelo).',
+  pins: [{ x: -40, y: -20, name: 'DATA' }, { x: -40, y: 20, name: 'CLK' }, ...fourOutputs],
+  params: [vddParam],
+  defaults: { vdd: DEFAULT_VDD },
+  model: {
+    branches: 4,
+    initState: (): DeviceState => ({ q: 0, clkPrev: 0 }),
+    stamp(ctx, params, nodes, branches, state) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      for (let k = 0; k < 4; k++) driveNode(ctx, nodes[2 + k], branches[k], bit(state.q, k) ? vdd : 0);
+    },
+    outputs(sol, _p, _n, branches, state) {
+      return {
+        pinCurrents: [0, 0, ...branches.map((b) => sol.branch(b))],
+        data: { q0: bit(state.q, 0), q1: bit(state.q, 1), q2: bit(state.q, 2), q3: bit(state.q, 3) },
+      };
+    },
+    nextState(sol, params, nodes, _b, state): DeviceState {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      return shiftStep(state, logicLevel(sol.v(nodes[1]), vdd).l, logicLevel(sol.v(nodes[0]), vdd).l);
+    },
+  },
+  symbol: icBox('SR', -10),
+};
+
+export const decoderDef: ComponentDef = {
+  type: 'decoder24',
+  name: 'Decoder 2→4',
+  category: 'digitale',
+  description: 'Attiva una sola delle 4 uscite (Y0–Y3) secondo il numero binario A1A0 (one-hot).',
+  pins: [
+    { x: -40, y: -14, name: 'A0' },
+    { x: -40, y: 14, name: 'A1' },
+    { x: 40, y: -30, name: 'Y0' },
+    { x: 40, y: -10, name: 'Y1' },
+    { x: 40, y: 10, name: 'Y2' },
+    { x: 40, y: 30, name: 'Y3' },
+  ],
+  params: [vddParam],
+  defaults: { vdd: DEFAULT_VDD },
+  model: {
+    branches: 4,
+    nonlinear: true,
+    stamp(ctx, params, nodes, branches) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      const v = (logicLevel(ctx.vNow(nodes[0]), vdd).l > 0.5 ? 1 : 0) + (logicLevel(ctx.vNow(nodes[1]), vdd).l > 0.5 ? 2 : 0);
+      for (let k = 0; k < 4; k++) driveNode(ctx, nodes[2 + k], branches[k], v === k ? vdd : 0);
+    },
+    outputs(sol, params, nodes, branches) {
+      const vdd = (params.vdd as number) ?? DEFAULT_VDD;
+      const v = (logicLevel(sol.v(nodes[0]), vdd).l > 0.5 ? 1 : 0) + (logicLevel(sol.v(nodes[1]), vdd).l > 0.5 ? 2 : 0);
+      return {
+        pinCurrents: [0, 0, ...branches.map((b) => sol.branch(b))],
+        data: { value: v, y0: v === 0 ? 1 : 0, y1: v === 1 ? 1 : 0, y2: v === 2 ? 1 : 0, y3: v === 3 ? 1 : 0 },
+      };
+    },
+  },
+  symbol: icBox('2:4', -14),
+};
+
 export const digitalDefs: ComponentDef[] = [
   logicInDef,
   clockDef,
@@ -407,6 +528,9 @@ export const digitalDefs: ComponentDef[] = [
   dffDef,
   tffDef,
   segDisplayDef,
+  counterDef,
+  shiftRegDef,
+  decoderDef,
 ];
 
 // ─────────────────── Specifiche per il MOTORE DIGITALE nativo ───────────────────
@@ -416,11 +540,15 @@ export const digitalDefs: ComponentDef[] = [
 export interface DigitalSpec {
   /** Indici dei pin d'ingresso. */
   inPins: number[];
-  /** Indice del pin che il componente pilota (null = solo lettura, es. uscita). */
-  outPin: number | null;
+  /** Pin d'uscita singolo (null/assente = solo lettura, es. uscita logica). */
+  outPin?: number | null;
   /** Livello d'uscita 0/1 dato lo stato dei net d'ingresso. */
-  drive(inLevels: number[], params: Params, state: DeviceState, time: number): number;
-  /** Comportamento sequenziale (flip-flop): stato iniziale + aggiornamento a fine passo. */
+  drive?(inLevels: number[], params: Params, state: DeviceState, time: number): number;
+  /** Pin d'uscita multipli (contatori, registri, decoder…). */
+  outPins?: number[];
+  /** Livelli 0/1 dei pin d'uscita multipli. */
+  driveMany?(inLevels: number[], params: Params, state: DeviceState, time: number): number[];
+  /** Comportamento sequenziale (flip-flop, contatore…): stato iniziale + aggiornamento a fine passo. */
   sequential?: {
     init(): DeviceState;
     update(inLevels: number[], params: Params, state: DeviceState, time: number): DeviceState;
@@ -465,6 +593,26 @@ export const DIGITAL: Record<string, DigitalSpec> = {
         q: s.clkPrev < 0.5 && clk >= 0.5 && t > 0.5 ? (s.q > 0.5 ? 0 : 1) : s.q,
         clkPrev: clk,
       }),
+    },
+  },
+  counter4: {
+    inPins: [0, 1],
+    outPins: [2, 3, 4, 5],
+    driveMany: (_l, _p, s) => [0, 1, 2, 3].map((k) => bit(s.count ?? 0, k)),
+    sequential: { init: () => ({ count: 0, clkPrev: 0 }), update: ([clk, rst], _p, s) => counterStep(s, clk, rst) },
+  },
+  shiftreg4: {
+    inPins: [0, 1],
+    outPins: [2, 3, 4, 5],
+    driveMany: (_l, _p, s) => [0, 1, 2, 3].map((k) => bit(s.q ?? 0, k)),
+    sequential: { init: () => ({ q: 0, clkPrev: 0 }), update: ([data, clk], _p, s) => shiftStep(s, clk, data) },
+  },
+  decoder24: {
+    inPins: [0, 1],
+    outPins: [2, 3, 4, 5],
+    driveMany: ([a0, a1]) => {
+      const v = (a0 > 0.5 ? 1 : 0) + (a1 > 0.5 ? 2 : 0);
+      return [0, 1, 2, 3].map((k) => (v === k ? 1 : 0));
     },
   },
 };

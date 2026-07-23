@@ -66,9 +66,11 @@ function buildAnalog(compiled: CompiledCircuit): AnalogPartition {
   for (const it of compiled.items) {
     if (!isDigitalItem(it)) continue;
     const spec = DIGITAL[it.inst.type];
-    if (spec.outPin == null) continue;
-    const net = it.nodes[spec.outPin];
-    if (net >= 0) digitalOutNets.add(net);
+    const outPins = spec.outPins ?? (spec.outPin != null ? [spec.outPin] : []);
+    for (const pin of outPins) {
+      const net = it.nodes[pin];
+      if (net >= 0) digitalOutNets.add(net);
+    }
   }
   // confine digitale→analogico: uscita digitale che tocca l'analogico
   const boundaryNets = new Set<number>();

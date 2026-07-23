@@ -11,6 +11,7 @@ const CATEGORIES: { key: string; title: string }[] = [
   { key: 'passivi', title: 'Passivi' },
   { key: 'semiconduttori', title: 'Semiconduttori' },
   { key: 'digitale', title: 'Digitale' },
+  { key: 'circuiti integrati', title: 'Circuiti integrati' },
   { key: 'strumenti', title: 'Strumenti' },
   { key: 'altro', title: 'Altro' },
 ];

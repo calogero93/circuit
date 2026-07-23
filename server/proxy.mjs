@@ -6,7 +6,7 @@
 import http from 'node:http';
 import Anthropic from '@anthropic-ai/sdk';
 
-const PORT = Number(process.env.PORT ?? 8787);
+const PORT = Number(process.env.PORT ?? 8786);
 const MODEL = process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-8';
 const MAX_BODY = 1_000_000; // 1 MB: le conversazioni del tutor sono piccole
 
