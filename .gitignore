@@ -18,3 +18,6 @@ ai/.lock
 ai/.uv-cache/
 ai/data/
 .validation/
+
+# Appunti di analisi locali
+/.local-notes/

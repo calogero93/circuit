@@ -15,7 +15,7 @@ import type { ComponentInstance, Circuit } from '../model/types.ts';
 import { DIGITAL, logicLevel } from '../library/digital.ts';
 import { AnalogSimulator } from './analog.ts';
 import { evaluateDigital, initDigitalStates, netLevel, updateSequential, vddOf } from './digital.ts';
-import type { Simulator, SimResult, TransientOptions, TransientSession } from './simulator.ts';
+import type { Simulator, SimulationContext, SimResult, TransientOptions, TransientSession } from './simulator.ts';
 
 type States = Map<string, DeviceState>;
 
@@ -176,11 +176,11 @@ export class MixedSignalSimulator implements Simulator {
   readonly domain = 'mixed' as const;
   private analogSim = new AnalogSimulator();
 
-  dcOperatingPoint(compiled: CompiledCircuit): SimResult {
+  dcOperatingPoint(compiled: CompiledCircuit, context: SimulationContext = {}): SimResult {
     const vdd = vddOf(compiled);
     const { reduced, boundaries, analogNets, readNets } = buildAnalog(compiled);
     const states = initDigitalStates(compiled);
-    let aRes: SimResult = this.analogSim.dcOperatingPoint(reduced);
+    let aRes: SimResult = this.analogSim.dcOperatingPoint(reduced, context);
     let levels = evaluateDigital(compiled, states, 0);
     // iterazione al punto di lavoro (nessun avanzamento nel tempo)
     for (let iter = 0; iter < 8; iter++) {
@@ -188,7 +188,7 @@ export class MixedSignalSimulator implements Simulator {
         readNets.has(net) ? logicLevel(aRes.voltageOfNet(net), vdd).l : undefined;
       levels = evaluateDigital(compiled, states, 0, override);
       for (const bd of boundaries) bd.inst.params.v = netLevel(levels, bd.net) * vdd;
-      aRes = this.analogSim.dcOperatingPoint(reduced);
+      aRes = this.analogSim.dcOperatingPoint(reduced, context);
     }
     return combine(compiled, aRes, levels, analogNets, vdd, states, 0);
   }

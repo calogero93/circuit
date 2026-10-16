@@ -4,16 +4,26 @@
 import type { ComponentDef } from '../model/registry.ts';
 import type { DeviceModel } from '../model/device.ts';
 import { SELF, type FormulaDef } from '../math/formula.ts';
+import { RESISTOR_POWER_DEFAULTS, resistorPowerData } from './resistorPower.ts';
 
 const resistorModel: DeviceModel = {
+  initState: () => ({ temperature: 25, thermalInitialized: 0, energy: 0, powerDuration: 0 }),
   stamp(ctx, params, nodes) {
     const g = 1 / Math.max(params.R as number, 1e-9);
     ctx.addG(nodes[0], nodes[1], g);
   },
-  outputs(sol, params, nodes) {
+  outputs(sol, params, nodes, _branches, state) {
     const v = sol.v(nodes[0]) - sol.v(nodes[1]);
     const i = v / Math.max(params.R as number, 1e-9);
-    return { pinCurrents: [i, -i], data: { v, i, p: v * i } };
+    return { pinCurrents: [i, -i], data: { v, i, p: v * i,
+      ...resistorPowerData(params, v * i, sol.ambientTemperature ?? 25, state, sol.dt) } };
+  },
+  nextState(sol, params, nodes, _branches, state) {
+    const v = sol.v(nodes[0]) - sol.v(nodes[1]);
+    const p = v * v / Math.max(params.R as number, 1e-9);
+    const data = resistorPowerData(params, p, sol.ambientTemperature ?? 25, state, sol.dt);
+    return { temperature: Number(data.temperature), thermalInitialized: 1,
+      energy: Number(data.energy), powerDuration: Number(data.powerDuration) };
   },
 };
 
@@ -45,8 +55,15 @@ export const resistorDef: ComponentDef = {
     { x: -40, y: 0, name: 'a' },
     { x: 40, y: 0, name: 'b' },
   ],
-  params: [{ key: 'R', label: 'Resistenza', unit: 'Ω', kind: 'number', min: 1, max: 1e7, log: true }],
-  defaults: { R: 1000 },
+  params: [
+    { key: 'R', label: 'Resistenza', unit: 'Ω', kind: 'number', min: 1, max: 1e7, log: true },
+    { key: 'ratedPower', label: 'Potenza nominale', unit: 'W', kind: 'number', min: 0.01, max: 100, log: true },
+    { key: 'deratingStart', label: 'Inizio derating', unit: '°C', kind: 'number', min: -40, max: 250 },
+    { key: 'maxTemperature', label: 'Temperatura massima', unit: '°C', kind: 'number', min: -39, max: 300 },
+    { key: 'thermalResistance', label: 'Resistenza termica (0 = automatica)', unit: '°C/W', kind: 'number', min: 0, max: 2000 },
+    { key: 'thermalCapacity', label: 'Capacità termica', unit: 'J/°C', kind: 'number', min: 0.001, max: 100, log: true },
+  ],
+  defaults: { R: 1000, ...RESISTOR_POWER_DEFAULTS },
   model: resistorModel,
   symbol: () => [
     { kind: 'path', d: 'M -40 0 H -24 L -18 -9 L -6 9 L 6 -9 L 18 9 L 24 0 H 40' },

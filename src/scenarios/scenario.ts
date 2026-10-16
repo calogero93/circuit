@@ -22,6 +22,7 @@ export interface Scenario {
   lessonStep: number;
   presentation: boolean;
   rightTab: RightTab;
+  environment?: ReturnType<typeof useStudio.getState>['environment'];
 }
 
 export function captureScenario(name: string): Scenario {
@@ -41,6 +42,7 @@ export function captureScenario(name: string): Scenario {
     lessonStep: s.lessonStep,
     presentation: s.presentation,
     rightTab: s.rightTab,
+    environment: { ...s.environment },
   };
 }
 
@@ -50,9 +52,16 @@ export function applyScenario(raw: unknown): boolean {
   const sc = raw as Partial<Scenario>;
   const circuit = circuitFromJSON(sc.circuit);
   const s = useStudio.getState();
+  const environment = { ...useStudio.getInitialState().environment };
+  const limits = { light: [0, 100], temperature: [-40, 150], pressure: [50, 150], magneticField: [-100, 100], humidity: [0, 100] };
+  for (const key of Object.keys(environment) as (keyof typeof environment)[]) {
+    const value = sc.environment?.[key];
+    if (typeof value === 'number' && Number.isFinite(value)) environment[key] = Math.min(limits[key][1], Math.max(limits[key][0], value));
+  }
   const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai', 'scenari', 'logica', '3d'];
   s.hydrate({
     circuit,
+    environment,
     simulationEpoch: s.simulationEpoch + 1,
     undoStack: [],
     redoStack: [],

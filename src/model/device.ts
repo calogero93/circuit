@@ -49,6 +49,7 @@ export interface StampContext {
 
 /** Lettura della soluzione dopo la convergenza. */
 export interface SolutionReader {
+  readonly ambientTemperature?: number;
   readonly dt: number | null;
   readonly time: number;
   v(node: number): number;

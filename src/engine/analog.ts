@@ -3,7 +3,7 @@
 import { solveInPlace } from './matrix.ts';
 import type { CompiledCircuit } from '../model/netlist.ts';
 import type { DeviceState, SolutionReader, StampContext } from '../model/device.ts';
-import type { SimDiagnostics, SimResult, Simulator, SolverTolerances, TransientOptions, TransientSession } from './simulator.ts';
+import type { SimDiagnostics, SimResult, SimulationContext, Simulator, SolverTolerances, TransientOptions, TransientSession } from './simulator.ts';
 
 const NEWTON: SolverTolerances = { voltageAbs: 1e-7, currentAbs: 1e-10, relative: 1e-5 };
 const ERROR: SolverTolerances = { voltageAbs: 1e-7, currentAbs: 1e-10, relative: 2e-5 };
@@ -17,8 +17,8 @@ function initialStates(circuit: CompiledCircuit, carried?: States): States {
     inst.id, { ...(carried?.get(inst.id) ?? def.model.initState?.(inst.params) ?? {}) },
   ]));
 }
-function reader(x: Float64Array, n: number, dt: number | null, time: number): SolutionReader {
-  return { dt, time, v: (node) => node < 0 ? 0 : x[node], branch: (b) => x[n + b] };
+function reader(x: Float64Array, n: number, dt: number | null, time: number, ambientTemperature = 25): SolutionReader {
+  return { dt, time, ambientTemperature, v: (node) => node < 0 ? 0 : x[node], branch: (b) => x[n + b] };
 }
 
 /** Diagnostica conservativa: isole senza riferimento galvanico a massa.
@@ -142,16 +142,16 @@ function robustSolve(circuit: CompiledCircuit, states: States, dt: number | null
   return { ...last, iterations };
 }
 function result(circuit: CompiledCircuit, states: States, solve: Solve, dt: number | null, time: number,
-  diagnostics: SimDiagnostics): SimResult {
-  const sol = reader(solve.x, circuit.nNodes, dt, time);
+  diagnostics: SimDiagnostics, ambientTemperature = 25): SimResult {
+  const sol = reader(solve.x, circuit.nNodes, dt, time, ambientTemperature);
   const outputs = new Map(circuit.items.map(({ inst, def, nodes, branches }) => [
     inst.id, def.model.outputs(sol, inst.params, nodes, branches, states.get(inst.id)!),
   ]));
   return { converged: solve.converged, time, voltageOfNet: sol.v, outputs, diagnostics };
 }
-function advanceStates(circuit: CompiledCircuit, states: States, solve: Solve, dt: number, time: number, continuousOnly = false): States {
+function advanceStates(circuit: CompiledCircuit, states: States, solve: Solve, dt: number, time: number, continuousOnly = false, ambientTemperature = 25): States {
   const next = cloneStates(states);
-  const sol = reader(solve.x, circuit.nNodes, dt, time);
+  const sol = reader(solve.x, circuit.nNodes, dt, time, ambientTemperature);
   for (const { inst, def, nodes, branches } of circuit.items) {
     if (continuousOnly && def.model.discreteState) continue;
     const updated = def.model.nextState?.(sol, inst.params, nodes, branches, next.get(inst.id)!);
@@ -178,9 +178,11 @@ class AnalogTransient implements TransientSession {
   private baseDiagnostics: SimDiagnostics;
   private circuit: CompiledCircuit;
   private dt: number;
+  private ambientTemperature: number;
   constructor(circuit: CompiledCircuit, dt: number, opts: TransientOptions) {
     this.circuit = circuit;
     this.dt = dt;
+    this.ambientTemperature = opts.ambientTemperature ?? 25;
     if (!(dt > 0) || !Number.isFinite(dt)) throw new Error('dt deve essere positivo e finito');
     const config = typeof opts.adaptive === 'object' ? opts.adaptive : {};
     this.enabled = typeof opts.adaptive === 'boolean' ? opts.adaptive : config.enabled !== false;
@@ -227,7 +229,7 @@ class AnalogTransient implements TransientSession {
         const half = robustSolve(this.circuit, states, h / 2, time + h / 2, x);
         info.iterations += half.iterations;
         if (half.converged) {
-          const middle = advanceStates(this.circuit, states, half, h / 2, time + h / 2, true);
+          const middle = advanceStates(this.circuit, states, half, h / 2, time + h / 2, true, this.ambientTemperature);
           accepted = robustSolve(this.circuit, middle, h / 2, time + h, half.x);
           info.iterations += accepted.iterations;
           if (accepted.converged) {
@@ -253,8 +255,8 @@ class AnalogTransient implements TransientSession {
       info.maxStep = Math.max(info.maxStep!, finalDt);
       info.errorEstimate = Math.max(info.errorEstimate!, error);
       time = h === remaining ? target : time + h;
-      last = result(this.circuit, finalStates, accepted, finalDt, time, info);
-      states = advanceStates(this.circuit, finalStates, accepted, finalDt, time);
+      last = result(this.circuit, finalStates, accepted, finalDt, time, info, this.ambientTemperature);
+      states = advanceStates(this.circuit, finalStates, accepted, finalDt, time, false, this.ambientTemperature);
       x = accepted.x;
       if (time === target) {
         this.time = target;
@@ -271,17 +273,17 @@ class AnalogTransient implements TransientSession {
       converged: false, iterations: info.iterations, residual: Infinity };
     info.residual = Infinity;
     if (!Number.isFinite(info.minStep)) info.minStep = 0;
-    return result(this.circuit, this.stateMap, failed, null, this.time, info);
+    return result(this.circuit, this.stateMap, failed, null, this.time, info, this.ambientTemperature);
   }
   states(): States { return cloneStates(this.stateMap); }
 }
 
 export class AnalogSimulator implements Simulator {
   readonly domain = 'analog' as const;
-  dcOperatingPoint(circuit: CompiledCircuit): SimResult {
+  dcOperatingPoint(circuit: CompiledCircuit, context: SimulationContext = {}): SimResult {
     const states = initialStates(circuit);
     const solve = robustSolve(circuit, states, null, 0, null);
-    return result(circuit, states, solve, null, 0, { ...diagnostics(circuit, null), iterations: solve.iterations, residual: solve.residual });
+    return result(circuit, states, solve, null, 0, { ...diagnostics(circuit, null), iterations: solve.iterations, residual: solve.residual }, context.ambientTemperature ?? 25);
   }
   transient(circuit: CompiledCircuit, opts: TransientOptions): TransientSession {
     return new AnalogTransient(circuit, opts.dt, opts);

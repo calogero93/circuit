@@ -1072,3 +1072,28 @@ select {
   margin-bottom: 0;
 }
 
+
+/* Dimensionamento e stima termica delle resistenze */
+.power-panel {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-left: 3px solid #009e73;
+  border-radius: 8px;
+}
+.power-panel h4 { margin: 0 0 8px; }
+.power-panel .power-status { margin: 0 0 10px; font-weight: 700; }
+.power-panel dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; font-size: 12px; }
+.power-panel dt { color: var(--ink-muted); }
+.power-panel dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+.power-panel .muted, .thermal-settings .muted { font-size: 12px; line-height: 1.5; }
+.power-panel.power-near-limit, .power-panel.power-peak-overload { border-left-color: #bf8500; }
+.power-panel.power-overload, .power-panel.power-thermal-limit, .power-panel.power-invalid-rating { border-left-color: #ff6b6b; }
+.power-panel.power-overload .power-status, .power-panel.power-thermal-limit .power-status, .power-panel.power-invalid-rating .power-status { color: #ff8b8b; }
+.power-warning { stroke: #bf8500; pointer-events: auto; }
+.power-warning circle { fill: var(--panel); stroke-width: 2; }
+.symbol .power-warning text { fill: #e9bd59; font-size: 13px; font-weight: 800; }
+.power-warning.power-overload, .power-warning.power-thermal-limit, .power-warning.power-invalid-rating { stroke: #ff6b6b; }
+.symbol .power-warning.power-overload text, .symbol .power-warning.power-thermal-limit text, .symbol .power-warning.power-invalid-rating text { fill: #ff8b8b; }
+.thermal-settings { margin: 14px 0; padding: 10px; border: 1px solid var(--border); border-radius: 8px; }
+.thermal-settings summary { cursor: pointer; font-weight: 600; }

@@ -110,6 +110,7 @@ class SimController {
   private ab: ABConfig | null = null;
   private ghostOn = false;
   private dt = 1e-4;
+  private ambientTemperature = 25;
   private probes: Probe[] = [];
   private scopeMode: 'time' | 'bode' = 'time';
   private decimation = 1;
@@ -137,16 +138,17 @@ class SimController {
 
   /** Punto di lavoro DC on-demand (probe, tool AI). */
   runDC(): { compiled: CompiledCircuit; result: SimResult } {
-    const circuit = useStudio.getState().circuit;
+    const { circuit, environment } = useStudio.getState();
     const compiled = compile(circuit);
-    return { compiled, result: this.simFor(circuit).dcOperatingPoint(compiled) };
+    return { compiled, result: this.simFor(circuit).dcOperatingPoint(compiled, { ambientTemperature: environment.temperature }) };
   }
 
   private sync(): void {
     const s = useStudio.getState();
     const circuitChanged = s.circuit !== this.circuit;
     const reset = s.simulationEpoch !== this.epoch;
-    if (circuitChanged || reset) this.revision += 1;
+    const temperatureChanged = s.environment.temperature !== this.ambientTemperature;
+    if (circuitChanged || reset || temperatureChanged) this.revision += 1;
     const dtChanged = s.timestep !== this.dt;
     const abChanged = s.ab !== this.ab || (s.abGhost && s.ab !== null) !== this.ghostOn;
     const probesChanged = s.probes !== this.probes;
@@ -175,13 +177,14 @@ class SimController {
       }
     }
 
-    if (!circuitChanged && !dtChanged && !abChanged && !reset) {
+    if (!circuitChanged && !dtChanged && !abChanged && !reset && !temperatureChanged) {
       if (probesChanged || spanChanged || scopeModeChanged) this.samples = [];
       return;
     }
 
     this.circuit = s.circuit;
     this.epoch = s.simulationEpoch;
+    this.ambientTemperature = s.environment.temperature;
     this.dt = s.timestep;
     this.ab = s.ab;
     this.ghostOn = s.abGhost && s.ab !== null;
@@ -193,6 +196,7 @@ class SimController {
     this.frame = null;
     this.session = this.simFor(s.circuit).transient(this.compiled, {
       dt: this.dt,
+      ambientTemperature: this.ambientTemperature,
       initialStates: carried,
       t0,
     });
@@ -203,6 +207,7 @@ class SimController {
       this.ghostCompiled = compile(ghostCircuit);
       this.ghostSession = this.simFor(ghostCircuit).transient(this.ghostCompiled, {
         dt: this.dt,
+        ambientTemperature: this.ambientTemperature,
         initialStates: ghostCarried,
         t0,
       });
@@ -259,7 +264,7 @@ class SimController {
       const dt = T / stepsPerCycle;
       const totalSteps = 4 * stepsPerCycle;
 
-      const session = this.simulator.transient(sweptCompiled, { dt });
+      const session = this.simulator.transient(sweptCompiled, { dt, ambientTemperature: this.ambientTemperature });
 
       const inVals: number[] = [];
       const outVals: number[][] = this.probes.map(() => []);
@@ -351,7 +356,7 @@ class SimController {
       };
     } else if (this.frame === null) {
       // in pausa senza mai aver simulato: mostra il punto di lavoro DC
-      const dc = this.simFor(s.circuit).dcOperatingPoint(this.compiled);
+      const dc = this.simFor(s.circuit).dcOperatingPoint(this.compiled, { ambientTemperature: this.ambientTemperature });
       this.frame = { compiled: this.compiled, result: dc, ghostCompiled: null, ghost: null };
     }
 

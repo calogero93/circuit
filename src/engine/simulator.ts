@@ -44,7 +44,11 @@ export interface AdaptiveOptions {
   tolerances?: Partial<SolverTolerances>;
 }
 
-export interface TransientOptions {
+export interface SimulationContext {
+  ambientTemperature?: number;
+}
+
+export interface TransientOptions extends SimulationContext {
   /** Passo temporale (s). */
   dt: number;
   /** Stati iniziali per componente (per continuità quando il circuito viene modificato al volo). */
@@ -66,7 +70,7 @@ export interface TransientSession {
 export interface Simulator {
   readonly domain: DomainId;
   /** Punto di lavoro DC. */
-  dcOperatingPoint(circuit: CompiledCircuit): SimResult;
+  dcOperatingPoint(circuit: CompiledCircuit, context?: SimulationContext): SimResult;
   /** Analisi transitoria incrementale. */
   transient(circuit: CompiledCircuit, opts: TransientOptions): TransientSession;
 }

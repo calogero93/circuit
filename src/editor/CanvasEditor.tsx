@@ -36,6 +36,7 @@ import {
   type Pt,
 } from './geometry.ts';
 import { SymbolView } from './SymbolView.tsx';
+import { POWER_STATUS_LABELS } from '../library/resistorPower.ts';
 
 const ID_PREFIX: Record<string, string> = {
   resistor: 'R',
@@ -678,13 +679,17 @@ export function CanvasEditor() {
               instrReading = formatSI(Number(out?.data.i ?? 0), 'A', 3);
             }
             const burned = def.maxCurrent !== undefined && ledI > 5 * def.maxCurrent;
+            const powerStatus = inst.type === 'resistor' && frame?.result.converged ? String(out?.data.powerStatus ?? 'ok') : null;
+            const powerWarning = powerStatus !== null && powerStatus !== 'ok';
             const mainParam = def.params[0];
             const isAB = ab?.componentId === inst.id;
             return (
               <g key={inst.id}>
                 <g
                   transform={`translate(${inst.x},${inst.y}) rotate(${inst.rot * 90})`}
-                  className={`symbol${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}`}
+                  className={`symbol${selected ? ' selected' : ''}${highlighted ? ' highlighted' : ''}${powerWarning ? ' power-stress' : ''}`}
+                  data-component-id={inst.id}
+                  data-power-status={powerStatus ?? undefined}
                 >
                   {inst.type === 'led' && ledI > 1e-6 && (
                     <circle cx={0} cy={0} r={16 + 10 * Math.min(1, ledI / 0.02)} className="led-glow"
@@ -694,6 +699,11 @@ export function CanvasEditor() {
                     <circle cx={0} cy={0} r={16} className="led-glow" style={{ opacity: 0.2 + 0.6 * logicLit }} />
                   )}
                   <SymbolView prims={def.symbol(inst.params)} />
+                  {powerWarning && <g className={`power-warning power-${powerStatus}`}>
+                    <title>{inst.id}: {POWER_STATUS_LABELS[powerStatus!]} · {formatSI(Number(out?.data.meanPower), 'W')} / {formatSI(Number(out?.data.allowedPower), 'W')}</title>
+                    <circle cx={0} cy={-24} r={9} />
+                    <text x={0} y={-20} textAnchor="middle">!</text>
+                  </g>}
                   {inst.type === 'seg_display' &&
                     SEG_LINES.map(([x1, y1, x2, y2], i) =>
                       Number(out?.data[`s${i}`] ?? 0) > 0.5 ? (

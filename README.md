@@ -30,8 +30,7 @@ collega automaticamente al relay tramite il proxy WebSocket di Vite. Il tutor
 usa un solo percorso LangGraph e decide quando leggere o simulare il circuito;
 può rispondere alle domande teoriche anche senza browser collegato.
 Provider esterni disponibili solo con configurazione esplicita server-side.
-Dettagli: [`ai/README.md`](ai/README.md),
-[`docs/ARCHITETTURA.md`](docs/ARCHITETTURA.md).
+Configurazione e avvio: [`ai/README.md`](ai/README.md).
 
 ## Cosa c'è dentro
 
@@ -47,7 +46,7 @@ segmenti) e **giunzioni a T**; i fili seguono i componenti spostati.
 - **Analogico**: MNA per stamping, Newton-Raphson con gmin stepping e limiting
   delle giunzioni, transitoria backward Euler con sottopassi adattivi, stima dell’errore e rollback dei passi rifiutati. Convergenza verificata con residui e tolleranze separate per tensioni e correnti; diagnostica delle isole flottanti. Validato contro
   riferimenti analitici (`npm test`) e, offline, contro ngspice
-  ([`docs/VALIDATION.md`](docs/VALIDATION.md)).
+  (`npm run validate:spice`).
 - **Digitale nativo**: combinatoria a punto fisso + sequenziale sul fronte di
   clock, dietro l'interfaccia `Simulator`.
 - **Coordinatore mixed-signal**: co-simula analogico↔digitale nello **stesso
@@ -74,6 +73,13 @@ come modello ruotabile ancorato ai dati vivi (il resistore mostra le sue **bande
 colore reali**, il LED si illumina), con i **campi** animati dalla simulazione:
 **flusso di corrente**, **campo E** fra le armature del condensatore, **campo B**
 attorno alla bobina.
+
+### Dimensionamento di potenza
+Resistenze con potenza nominale configurabile, derating con la temperatura
+ambiente e avvisi live sul canvas. Il pannello distingue potenza istantanea,
+media e temperatura stimata; il modello termico ha parametri regolabili.
+Dati e limiti sono disponibili anche al tutor. Il profilo termico predefinito
+è didattico e non simula automaticamente la rottura del componente.
 
 ### Analisi e didattica
 - **Visualizzazione 2D**: fili colorati per tensione, puntini di corrente animati,

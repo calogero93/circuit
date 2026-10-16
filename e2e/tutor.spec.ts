@@ -48,6 +48,9 @@ test('relay WebSocket: snapshot coerente e calcoli eseguiti dal browser live', a
     expect(snapshot.time_s).toBeGreaterThan(0);
     expect(Object.keys(snapshot.components).length).toBe(snapshot.netlist.components.length);
     expect(snapshot.diagnostics.residual).toBeLessThanOrEqual(1);
+    expect(snapshot.components.R1.data.ratedPower).toBe(0.25);
+    expect(typeof snapshot.components.R1.data.meanPower).toBe('number');
+    expect(typeof snapshot.components.R1.data.allowedPower).toBe('number');
     const dc = await call('runDC');
     expect(dc.revision).toBe(snapshot.revision);
     expect(dc.converged).toBe(true);

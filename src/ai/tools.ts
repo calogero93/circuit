@@ -8,6 +8,7 @@ import { pinKey } from '../model/types.ts';
 import { useStudio } from '../store/studio.ts';
 import { simController } from '../viz/controller.ts';
 import { getLesson } from '../lessons/data.ts';
+import type { SimResult } from '../engine/simulator.ts';
 
 /** Schemi indipendenti dal provider, esposti anche dal relay WebSocket. */
 export const TOOL_DEFINITIONS = [
@@ -89,7 +90,7 @@ function netlistSnapshot(): Json {
         id: c.id,
         type: c.type,
         name: def.name,
-        params: c.params,
+        params: { ...def.defaults, ...c.params },
         pins: def.pins.map((p, i) => ({
           name: p.name,
           net: compiled.netLabel(compiled.netOfPin.get(pinKey({ component: c.id, pin: i })) ?? -1),
@@ -125,7 +126,7 @@ function circuitSnapshot(): Json {
   if (frame) for (let n = -1; n < frame.compiled.nNodes; n++) {
     nodeVoltages[frame.compiled.netLabel(n)] = round(frame.result.voltageOfNet(n));
   }
-  return { revision: simController.revision, netlist, time_s: frame?.result.time ?? null,
+  return { revision: simController.revision, netlist, environment: { ...useStudio.getState().environment }, time_s: frame?.result.time ?? null,
     converged: frame?.result.converged ?? false, diagnostics: frame?.result.diagnostics ?? null,
     measurementsAvailable: !!frame, components, nodeVoltages };
 }
@@ -136,7 +137,7 @@ function transientSnapshot(input: Json): Json {
   const dt = dtUs * 1e-6;
   const { circuit } = useStudio.getState();
   const compiled = compile(circuit);
-  const session = simController.simFor(circuit).transient(compiled, { dt });
+  const session = simController.simFor(circuit).transient(compiled, { dt, ambientTemperature: useStudio.getState().environment.temperature });
   const duration = durationMs / 1000;
   const steps = Math.min(Math.ceil(duration / dt), 500_000);
   const every = Math.max(1, Math.ceil(steps / 100));
@@ -145,6 +146,7 @@ function transientSnapshot(input: Json): Json {
   for (let n = 0; n < compiled.nNodes; n++) nets[compiled.netLabel(n)] = [];
   let converged = true;
   let diagnostics;
+  let lastResult: SimResult | undefined;
   const deadline = performance.now() + 250;
   for (let k = 0; k < steps; k++) {
     // Evita che una richiesta molto lunga blocchi il live per tutti i 500k passi.
@@ -157,12 +159,16 @@ function transientSnapshot(input: Json): Json {
       converged = false;
       break;
     }
+    lastResult = res;
     if (k % every === 0 || k === steps - 1) {
       time.push(round(res.time));
       for (let n = 0; n < compiled.nNodes; n++) nets[compiled.netLabel(n)].push(round(res.voltageOfNet(n)));
     }
   }
-  return { converged, diagnostics, revision: simController.revision, dt_us: dtUs,
+  const components = Object.fromEntries([...lastResult?.outputs ?? []].map(([id, output]) => [id, {
+    data: roundAll(output.data), pinCurrents: output.pinCurrents.map(round),
+  }]));
+  return { converged, diagnostics, components, revision: simController.revision, dt_us: dtUs,
     actualDuration_s: session.time, truncated: session.time + 1e-12 < duration, time_s: time, nodeVoltages: nets };
 }
 
@@ -202,7 +208,7 @@ function measureComponent(input: Json): Json {
   return {
     id,
     type: inst.type,
-    params: inst.params,
+    params: { ...getDef(inst.type).defaults, ...inst.params },
     revision: simController.revision,
     time_s: simController.frame?.result.time ?? null,
     converged: simController.frame?.result.converged ?? false,

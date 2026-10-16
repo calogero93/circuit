@@ -10,6 +10,7 @@ import { useStudio } from '../store/studio.ts';
 import { simController, useSimTick } from '../viz/controller.ts';
 import type { ComponentInstance } from '../model/types.ts';
 import { bridgedComponent } from './instruments.ts';
+import { ResistorPowerPanel } from './ResistorPowerPanel.tsx';
 
 function LogSlider({
   def,
@@ -40,7 +41,7 @@ function LogSlider({
 function NumberParam({ inst, p }: { inst: ComponentInstance; p: ParamDef }) {
   const execute = useStudio((s) => s.execute);
   const markEvent = useStudio((s) => s.markEvent);
-  const value = inst.params[p.key] as number;
+  const value = (inst.params[p.key] ?? getDef(inst.type).defaults[p.key]) as number;
   const [text, setText] = useState<string | null>(null);
 
   useEffect(() => setText(null), [value]);
@@ -61,6 +62,7 @@ function NumberParam({ inst, p }: { inst: ComponentInstance; p: ParamDef }) {
       <LogSlider def={p} value={value} onChange={commit} />
       <input
         className="param-input"
+        aria-label={p.label}
         value={text ?? String(value)}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => text !== null && commit(Number(text))}
@@ -427,6 +429,8 @@ export function PropertiesPanel() {
     : null;
   const dmmTarget = isMultimeter ? bridged ?? inst! : inst!;
   const dmmMode = isMultimeter ? (String(inst!.params.mode ?? 'V') as DmmMode) : undefined;
+  const thermalParams = inst!.type === 'resistor' ? def.params.slice(2) : [];
+  const primaryParams = inst!.type === 'resistor' ? def.params.slice(0, 2) : def.params;
 
   return (
     <div className="props">
@@ -440,10 +444,14 @@ export function PropertiesPanel() {
       )}
       <DigitalMultimeter inst={dmmTarget} mode={dmmMode} />
 
+      {inst!.type === 'resistor' && <ResistorPowerPanel
+        outputs={simController.frame?.result.outputs.get(inst!.id)}
+        converged={simController.frame?.result.converged ?? false} />}
+
       <EnvironmentalPanel />
 
       <h4 style={{ marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>Parametri</h4>
-      {def.params.map((p) =>
+      {primaryParams.map((p) =>
         p.kind === 'number' ? (
           <NumberParam key={p.key} inst={inst!} p={p} />
         ) : p.kind === 'select' ? (
@@ -476,6 +484,12 @@ export function PropertiesPanel() {
           </label>
         ),
       )}
+
+      {thermalParams.length > 0 && <details className="thermal-settings">
+        <summary>Modello termico e derating</summary>
+        <p className="muted">Profilo didattico lineare: sostituisci i valori con quelli del datasheet. Con resistenza termica 0, la stima usa (T massima − T inizio derating) / potenza nominale.</p>
+        {thermalParams.map((p) => <NumberParam key={p.key} inst={inst!} p={p} />)}
+      </details>}
 
       <div className="props-actions">
         <button
