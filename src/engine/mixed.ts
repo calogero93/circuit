@@ -122,7 +122,7 @@ function combine(
       if (o) outputs.set(it.inst.id, o);
     }
   }
-  return { converged: aRes.converged, time, voltageOfNet, outputs };
+  return { converged: aRes.converged, time, voltageOfNet, outputs, diagnostics: aRes.diagnostics };
 }
 
 class MixedTransient implements TransientSession {
@@ -153,12 +153,13 @@ class MixedTransient implements TransientSession {
   private override = (net: number): number | undefined =>
     this.readNets.has(net) ? logicLevel(this.lastAnalog?.voltageOfNet(net) ?? 0, this.vdd).l : undefined;
 
-  step(): SimResult {
-    const t = this.time + this.dt;
+  step(interval = this.dt): SimResult {
+    const t = this.time + interval;
     const levels = evaluateDigital(this.compiled, this.digStates, t, this.override);
-    updateSequential(this.compiled, this.digStates, levels, t);
     for (const bd of this.boundaries) bd.inst.params.v = netLevel(levels, bd.net) * this.vdd;
-    const aRes = this.analog.step();
+    const aRes = this.analog.step(interval);
+    if (!aRes.converged) return combine(this.compiled, aRes, levels, this.analogNets, this.vdd, this.digStates, this.time);
+    updateSequential(this.compiled, this.digStates, levels, t);
     this.lastAnalog = aRes;
     this.time = t;
     return combine(this.compiled, aRes, levels, this.analogNets, this.vdd, this.digStates, t);

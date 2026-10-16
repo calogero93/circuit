@@ -70,6 +70,8 @@ export interface DeviceOutputs {
  * registro. Il motore analogico orchestra; la fisica sta qui.
  */
 export interface DeviceModel {
+  /** Stato a eventi: aggiornato dopo l'accettazione, non fra le due stime LTE. */
+  discreteState?: boolean;
   /** Numero di correnti di branch richieste (sorgenti di tensione, induttori). */
   branches?: number;
   /** true se lo stamp dipende dalla soluzione (richiede iterazione NR). */

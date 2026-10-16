@@ -53,6 +53,7 @@ export function applyScenario(raw: unknown): boolean {
   const validTabs: RightTab[] = ['props', 'math', 'lesson', 'ai', 'scenari', 'logica', '3d'];
   s.hydrate({
     circuit,
+    simulationEpoch: s.simulationEpoch + 1,
     undoStack: [],
     redoStack: [],
     selection: [],

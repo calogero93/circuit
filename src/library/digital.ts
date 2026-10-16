@@ -190,6 +190,7 @@ export const dffDef: ComponentDef = {
   defaults: { vdd: DEFAULT_VDD },
   model: {
     branches: 1,
+    discreteState: true,
     initState: (): DeviceState => ({ q: 0, clkPrev: 0 }),
     stamp(ctx, params, nodes, branches, state) {
       driveNode(ctx, nodes[2], branches[0], state.q > 0.5 ? (params.vdd as number) : 0);
@@ -234,6 +235,7 @@ export const tffDef: ComponentDef = {
   defaults: { vdd: DEFAULT_VDD },
   model: {
     branches: 1,
+    discreteState: true,
     initState: (): DeviceState => ({ q: 0, clkPrev: 0 }),
     stamp(ctx, params, nodes, branches, state) {
       driveNode(ctx, nodes[2], branches[0], state.q > 0.5 ? (params.vdd as number) : 0);
@@ -430,6 +432,7 @@ export const counterDef: ComponentDef = {
   defaults: { vdd: DEFAULT_VDD },
   model: {
     branches: 4,
+    discreteState: true,
     initState: (): DeviceState => ({ count: 0, clkPrev: 0 }),
     stamp(ctx, params, nodes, branches, state) {
       const vdd = (params.vdd as number) ?? DEFAULT_VDD;
@@ -459,6 +462,7 @@ export const shiftRegDef: ComponentDef = {
   defaults: { vdd: DEFAULT_VDD },
   model: {
     branches: 4,
+    discreteState: true,
     initState: (): DeviceState => ({ q: 0, clkPrev: 0 }),
     stamp(ctx, params, nodes, branches, state) {
       const vdd = (params.vdd as number) ?? DEFAULT_VDD;

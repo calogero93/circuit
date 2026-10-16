@@ -7,7 +7,7 @@ v2: corregge 4 bug trovati testando su partitore, parallelo, BJT, loop senza sor
 
 import networkx as nx
 
-ALWAYS_JUNCTION_TYPES = {"vdc", "vac", "isrc", "ipulse"}
+ALWAYS_JUNCTION_TYPES = {"vdc", "vsin", "vsin_phase", "idc", "pulse", "vac", "isrc", "ipulse"}
 
 
 def build_graph(netlist: dict) -> nx.MultiGraph:

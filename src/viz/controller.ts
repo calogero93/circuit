@@ -86,11 +86,12 @@ const MAX_SAMPLES = 3000;
 const FRAME_BUDGET_MS = 8;
 
 class SimController {
+  revision = 0;
   readonly simulator: Simulator = new AnalogSimulator();
   private digitalSim: Simulator = new DigitalSimulator();
   private mixedSim: Simulator = new MixedSignalSimulator();
   /** Sceglie il motore per dominio: digitale puro, misto (coordinatore) o analogico. */
-  private simFor(circuit: Circuit): Simulator {
+  simFor(circuit: Circuit): Simulator {
     if (isPurelyDigital(circuit)) return this.digitalSim;
     if (isMixed(circuit)) return this.mixedSim;
     return this.simulator;
@@ -105,6 +106,7 @@ class SimController {
   private compiled: CompiledCircuit | null = null;
   private ghostCompiled: CompiledCircuit | null = null;
   private circuit: Circuit | null = null;
+  private epoch = -1;
   private ab: ABConfig | null = null;
   private ghostOn = false;
   private dt = 1e-4;
@@ -143,6 +145,8 @@ class SimController {
   private sync(): void {
     const s = useStudio.getState();
     const circuitChanged = s.circuit !== this.circuit;
+    const reset = s.simulationEpoch !== this.epoch;
+    if (circuitChanged || reset) this.revision += 1;
     const dtChanged = s.timestep !== this.dt;
     const abChanged = s.ab !== this.ab || (s.abGhost && s.ab !== null) !== this.ghostOn;
     const probesChanged = s.probes !== this.probes;
@@ -171,20 +175,22 @@ class SimController {
       }
     }
 
-    if (!circuitChanged && !dtChanged && !abChanged) {
+    if (!circuitChanged && !dtChanged && !abChanged && !reset) {
       if (probesChanged || spanChanged || scopeModeChanged) this.samples = [];
       return;
     }
 
     this.circuit = s.circuit;
+    this.epoch = s.simulationEpoch;
     this.dt = s.timestep;
     this.ab = s.ab;
     this.ghostOn = s.abGhost && s.ab !== null;
 
     // continuità: gli stati (carica dei condensatori...) sopravvivono all'edit
-    const carried = this.session?.states();
-    const t0 = this.session?.time ?? 0;
+    const carried = reset ? undefined : this.session?.states();
+    const t0 = reset ? 0 : this.session?.time ?? 0;
     this.compiled = compile(s.circuit);
+    this.frame = null;
     this.session = this.simFor(s.circuit).transient(this.compiled, {
       dt: this.dt,
       initialStates: carried,
@@ -192,7 +198,7 @@ class SimController {
     });
 
     if (this.ghostOn && s.ab) {
-      const ghostCarried = this.ghostSession?.states() ?? carried;
+      const ghostCarried = reset ? undefined : this.ghostSession?.states() ?? carried;
       const ghostCircuit = applyAB(s.circuit, s.ab);
       this.ghostCompiled = compile(ghostCircuit);
       this.ghostSession = this.simFor(ghostCircuit).transient(this.ghostCompiled, {
@@ -204,7 +210,7 @@ class SimController {
       this.ghostCompiled = null;
       this.ghostSession = null;
     }
-    if (dtChanged || spanChanged || scopeModeChanged) this.samples = [];
+    if (reset || dtChanged || spanChanged || scopeModeChanged) this.samples = [];
   }
 
   runBodeFor(compiled: CompiledCircuit | null): BodePoint[] {
@@ -321,7 +327,7 @@ class SimController {
 
   private advance(): void {
     const s = useStudio.getState();
-    if (!this.session || !this.compiled) return;
+    if (!this.session || !this.compiled || this.compiled.items.length === 0) return;
     const start = performance.now();
     let result: SimResult | null = null;
     let ghost: SimResult | null = null;
@@ -329,8 +335,8 @@ class SimController {
     if (s.running) {
       while (performance.now() - start < FRAME_BUDGET_MS) {
         result = this.session.step();
-        if (this.ghostSession) ghost = this.ghostSession.step();
         if (!result.converged) break;
+        if (this.ghostSession) ghost = this.ghostSession.step();
         this.stepCount += 1;
         if (this.stepCount % this.decimation === 0) this.pushSample(result, ghost);
       }
@@ -345,7 +351,7 @@ class SimController {
       };
     } else if (this.frame === null) {
       // in pausa senza mai aver simulato: mostra il punto di lavoro DC
-      const dc = this.simulator.dcOperatingPoint(this.compiled);
+      const dc = this.simFor(s.circuit).dcOperatingPoint(this.compiled);
       this.frame = { compiled: this.compiled, result: dc, ghostCompiled: null, ghost: null };
     }
 

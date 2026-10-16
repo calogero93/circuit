@@ -7,6 +7,8 @@ import type { Circuit, ComponentInstance, ParamValue, Wire } from '../model/type
 export interface CircuitCommand {
   label: string;
   coalesceKey?: string;
+  /** Un caricamento integrale inizia una nuova simulazione. */
+  resetSimulation?: boolean;
   apply(c: Circuit): Circuit;
   revert(c: Circuit): Circuit;
   /** Fonde questo comando con quello successivo (stesso coalesceKey). */
@@ -162,6 +164,7 @@ export function setParam(id: string, key: string, from: ParamValue, to: ParamVal
 export function replaceCircuit(label: string, before: Circuit, after: Circuit): CircuitCommand {
   return {
     label,
+    resetSimulation: true,
     apply: () => after,
     revert: () => before,
   };

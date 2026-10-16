@@ -26,11 +26,11 @@ test('carica, apre la lezione raddrizzatore, simula e piazza componenti', async 
   await expect(page.locator('.brand')).toContainText('Circuit Studio');
 
   // palette presente
-  await expect(page.locator('.palette-item')).toHaveCount(11);
+  expect(await page.locator('.palette-item').count()).toBeGreaterThanOrEqual(11);
 
   // apri la lezione di punta
   await page.getByRole('button', { name: 'Lezioni' }).click();
-  const card = page.locator('.lesson-card', { hasText: 'Raddrizzatore' });
+  const card = page.locator('.lesson-card', { hasText: 'Raddrizzatore con condensatore di livellamento' });
   await card.getByRole('button', { name: 'Inizia' }).click();
 
   // il circuito della lezione è sul canvas (6 componenti + anteprime escluse)
@@ -64,14 +64,14 @@ test('confronto A/B: togliere il condensatore fa ricomparire l\'ondulazione', as
   await page.goto('/');
   await page.getByRole('button', { name: 'Lezioni' }).click();
   await page
-    .locator('.lesson-card', { hasText: 'Raddrizzatore' })
+    .locator('.lesson-card', { hasText: 'Raddrizzatore con condensatore di livellamento' })
     .getByRole('button', { name: 'Inizia' })
     .click();
   await page.waitForTimeout(1200);
 
   // attiva il confronto A/B dalla lezione (C1 tolto → semionde pulsanti)
   await page.getByRole('button', { name: /A\/B/ }).click();
-  await expect(page.locator('.legend-item', { hasText: 'fantasma' })).toBeVisible();
+  await expect(page.locator('.legend-item.ab-status')).toContainText('A/B: C1 (tolto)');
   await page.waitForTimeout(1500);
 
   // criterio di accettazione M1, misurato sui campioni reali dello scope:

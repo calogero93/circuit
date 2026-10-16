@@ -1,12 +1,15 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    proxy: {
-      // Proxy AI: la chiave API sta solo in server/proxy.mjs (mai nel client).
-      '/api': 'http://localhost:8787',
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    plugins: [react()],
+    server: {
+      proxy: {
+        '/api': env.AI_SERVICE_URL || 'http://127.0.0.1:8080',
+        '/tool-bridge': { target: env.TOOL_BRIDGE_URL || 'ws://127.0.0.1:8787', ws: true },
+      },
     },
-  },
+  };
 });

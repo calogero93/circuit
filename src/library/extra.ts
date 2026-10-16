@@ -808,6 +808,7 @@ export const relayDef: ComponentDef = {
 
 // ----------------------------------------------------------- FUSIBILE DIDATTICO (Salvavita)
 const fuseModel: DeviceModel = {
+  discreteState: true,
   initState: () => ({ blown: 0 }),
   stamp(ctx, _params, nodes, _branches, state) {
     const isBlown = state.blown === 1;

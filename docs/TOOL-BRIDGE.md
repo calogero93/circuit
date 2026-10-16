@@ -15,9 +15,15 @@ npm run tool-bridge     # relay su ws://localhost:8787 (env TOOL_BRIDGE_PORT per
 npm run dev             # l'app; il browser si registra come host
 ```
 
-Il browser si connette al relay se è definito `VITE_TOOL_BRIDGE_URL` (mettilo in
-`.env.local`, es. `VITE_TOOL_BRIDGE_URL=ws://localhost:8787`), oppure a mano dalla
-console: `window.__circuitStudio.connectToolBridge('ws://localhost:8787')`.
+Il browser si connette automaticamente a `/tool-bridge` sullo stesso host;
+Vite inoltra il WebSocket al relay. `VITE_TOOL_BRIDGE_URL` permette un override.
+In produzione configura lo stesso inoltro nel reverse proxy. Il relay espone
+anche `GET /healthz`, con il campo `connected` per lo stato dell'host.
+
+Il tutor usa FastAPI/LangGraph (vedi [`ai/README.md`](../ai/README.md));
+il relay inoltra soltanto le operazioni sul circuito. Lo snapshot restituisce
+`revision`, `time_s`, `converged`, `diagnostics`, `measurementsAvailable`,
+netlist e misure acquisite nella stessa esecuzione sincrona sul browser.
 
 ## Protocollo (JSON su WebSocket)
 
@@ -31,7 +37,7 @@ Client → relay:
 relay → Client:
 
 ```jsonc
-{ "type": "tools",  "id": 1, "tools": [ /* schemi in formato Anthropic tool */ ] }
+{ "type": "tools",  "id": 1, "tools": [ /* schemi con name, description e input_schema */ ] }
 { "type": "result", "id": 2, "result": { /* ... */ } }      // oppure: "error": "..."
 ```
 
@@ -41,6 +47,7 @@ relay → Client:
 
 | tool | input | cosa restituisce |
 | --- | --- | --- |
+| `getCircuitSnapshot` | — | netlist e misure coerenti dello stesso frame, versione e diagnostica |
 | `getNetlist` | — | componenti (parametri + net per pin), nets, `hasGround` |
 | `runDC` | — | punto di lavoro DC: tensioni di nodo, correnti/dati per componente |
 | `runTransient` | `duration_ms`, `dt_us?` | forme d'onda campionate delle tensioni di nodo |
@@ -54,38 +61,13 @@ Gli schemi completi (con `input_schema`) arrivano da `list_tools`.
 ## Esempio client Python
 
 ```python
-import asyncio, json, itertools, websockets
-
-class ToolBridge:
-    def __init__(self, url="ws://localhost:8787"):
-        self.url, self.ws, self._ids = url, None, itertools.count(1)
-
-    async def connect(self):
-        self.ws = await websockets.connect(self.url)
-
-    async def _rpc(self, payload):
-        rid = next(self._ids)
-        await self.ws.send(json.dumps({**payload, "id": rid}))
-        while True:                      # scarta eventuali messaggi con altro id
-            msg = json.loads(await self.ws.recv())
-            if msg.get("id") == rid:
-                return msg
-
-    async def list_tools(self):
-        return (await self._rpc({"type": "list_tools"}))["tools"]
-
-    async def call(self, tool, **input):
-        msg = await self._rpc({"type": "call", "tool": tool, "input": input})
-        if "error" in msg and msg["error"]:
-            raise RuntimeError(msg["error"])
-        return msg["result"]
+import asyncio
+from modules.tool_bridge import ToolBridge
 
 async def main():
-    bridge = ToolBridge()
-    await bridge.connect()
-    print([t["name"] for t in await bridge.list_tools()])
-    print(await bridge.call("getNetlist"))
-    print(await bridge.call("measureComponent", componentId="R1"))
+    async with ToolBridge("ws://127.0.0.1:8787") as bridge:
+        print(await bridge.call("getCircuitSnapshot"))
+        print(await bridge.call("measureComponent", componentId="R1"))
 
 asyncio.run(main())
 ```

@@ -12,11 +12,11 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test \"tests/engine/*.test.ts\"",
     "test:e2e": "playwright test",
-    "proxy": "node --env-file-if-exists=.env server/proxy.mjs",
-    "tool-bridge": "node server/tool-bridge.mjs"
+    "tool-bridge": "node --env-file-if-exists=.env server/tool-bridge.mjs",
+    "ai": "cd ai && uv run python main.py",
+    "validate:spice": "node scripts/validate-spice.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.111.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "katex": "^0.17.0",

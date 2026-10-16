@@ -9,8 +9,13 @@ import { useStudio } from '../store/studio.ts';
 import { simController } from '../viz/controller.ts';
 import { getLesson } from '../lessons/data.ts';
 
-/** Definizioni tool in formato API Anthropic. */
+/** Schemi indipendenti dal provider, esposti anche dal relay WebSocket. */
 export const TOOL_DEFINITIONS = [
+  {
+    name: 'getCircuitSnapshot',
+    description: 'Legge insieme netlist, misure live, tempo, versione e diagnostica dello stesso frame.',
+    input_schema: { type: 'object', properties: {}, additionalProperties: false },
+  },
   {
     name: 'getNetlist',
     description:
@@ -77,6 +82,7 @@ function netlistSnapshot(): Json {
   const { circuit } = useStudio.getState();
   const compiled = compile(circuit);
   return {
+    revision: simController.revision,
     components: circuit.components.map((c) => {
       const def = getDef(c.type);
       return {
@@ -106,7 +112,22 @@ function dcSnapshot(): Json {
   for (const [id, out] of result.outputs) {
     components[id] = { data: roundAll(out.data), pinCurrents: out.pinCurrents.map(round) };
   }
-  return { converged: result.converged, nodeVoltages, components };
+  return { converged: result.converged, diagnostics: result.diagnostics, revision: simController.revision, nodeVoltages, components };
+}
+
+function circuitSnapshot(): Json {
+  const frame = simController.frame;
+  const netlist = netlistSnapshot();
+  const components = Object.fromEntries([...frame?.result.outputs ?? []].map(([id, output]) => [id, {
+    data: roundAll(output.data), pinCurrents: output.pinCurrents.map(round),
+  }]));
+  const nodeVoltages: Record<string, number> = {};
+  if (frame) for (let n = -1; n < frame.compiled.nNodes; n++) {
+    nodeVoltages[frame.compiled.netLabel(n)] = round(frame.result.voltageOfNet(n));
+  }
+  return { revision: simController.revision, netlist, time_s: frame?.result.time ?? null,
+    converged: frame?.result.converged ?? false, diagnostics: frame?.result.diagnostics ?? null,
+    measurementsAvailable: !!frame, components, nodeVoltages };
 }
 
 function transientSnapshot(input: Json): Json {
@@ -115,26 +136,34 @@ function transientSnapshot(input: Json): Json {
   const dt = dtUs * 1e-6;
   const { circuit } = useStudio.getState();
   const compiled = compile(circuit);
-  const session = simController.simulator.transient(compiled, { dt });
-  const steps = Math.min(Math.round((durationMs / 1000) / dt), 500_000);
-  const samplesWanted = 100;
-  const every = Math.max(1, Math.floor(steps / samplesWanted));
+  const session = simController.simFor(circuit).transient(compiled, { dt });
+  const duration = durationMs / 1000;
+  const steps = Math.min(Math.ceil(duration / dt), 500_000);
+  const every = Math.max(1, Math.ceil(steps / 100));
   const time: number[] = [];
   const nets: Record<string, number[]> = {};
   for (let n = 0; n < compiled.nNodes; n++) nets[compiled.netLabel(n)] = [];
   let converged = true;
+  let diagnostics;
+  const deadline = performance.now() + 250;
   for (let k = 0; k < steps; k++) {
-    const res = session.step();
+    // Evita che una richiesta molto lunga blocchi il live per tutti i 500k passi.
+    if (k > 0 && performance.now() >= deadline) break;
+    const remaining = duration - session.time;
+    if (remaining <= Math.max(1e-15, duration * 1e-12)) break;
+    const res = session.step(Math.min(dt, remaining));
+    diagnostics = res.diagnostics;
     if (!res.converged) {
       converged = false;
       break;
     }
-    if (k % every === 0) {
+    if (k % every === 0 || k === steps - 1) {
       time.push(round(res.time));
       for (let n = 0; n < compiled.nNodes; n++) nets[compiled.netLabel(n)].push(round(res.voltageOfNet(n)));
     }
   }
-  return { converged, dt_us: dtUs, time_s: time, nodeVoltages: nets };
+  return { converged, diagnostics, revision: simController.revision, dt_us: dtUs,
+    actualDuration_s: session.time, truncated: session.time + 1e-12 < duration, time_s: time, nodeVoltages: nets };
 }
 
 function measureNode(input: Json): Json {
@@ -155,6 +184,10 @@ function measureNode(input: Json): Json {
     liveVoltage: round(frame.result.voltageOfNet(net)),
     liveTime: round(frame.result.time),
     dcVoltage: round(dc.result.voltageOfNet(net)),
+    converged: frame.result.converged,
+    dcConverged: dc.result.converged,
+    diagnostics: frame.result.diagnostics,
+    revision: simController.revision,
   };
 }
 
@@ -170,6 +203,9 @@ function measureComponent(input: Json): Json {
     id,
     type: inst.type,
     params: inst.params,
+    revision: simController.revision,
+    time_s: simController.frame?.result.time ?? null,
+    converged: simController.frame?.result.converged ?? false,
     live: out ? { data: roundAll(out.data), pinCurrents: out.pinCurrents.map(round) } : null,
   };
 }
@@ -200,6 +236,8 @@ function roundAll(o: Record<string, number | string | boolean>): Record<string, 
 export function executeTool(name: string, input: Json): Json {
   try {
     switch (name) {
+      case 'getCircuitSnapshot':
+        return circuitSnapshot();
       case 'getNetlist':
         return netlistSnapshot();
       case 'runDC':

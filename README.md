@@ -15,13 +15,23 @@ npm install
 npm run dev        # app su http://localhost:5173
 ```
 
-Per il **tutor AI** (opzionale) serve il proxy server-side (la chiave API non
-sta mai nel client):
+Per il **tutor AI** (opzionale), avvia il modello locale configurato e il
+servizio LangGraph. Il default non usa API cloud:
 
 ```sh
-cp .env.example .env    # inserisci ANTHROPIC_API_KEY
-ANTHROPIC_API_KEY=sk-ant-... npm run proxy   # oppure: export e npm run proxy
+cp .env.example .env     # configura LLM_BASE_URL e LLM_MODEL
+cd ai
+uv sync --extra dev
+uv run python main.py   # FastAPI su http://127.0.0.1:8080
 ```
+
+In un altro terminale, dalla radice: `npm run tool-bridge`. Il browser si
+collega automaticamente al relay tramite il proxy WebSocket di Vite. Il tutor
+usa un solo percorso LangGraph e decide quando leggere o simulare il circuito;
+può rispondere alle domande teoriche anche senza browser collegato.
+Provider esterni disponibili solo con configurazione esplicita server-side.
+Dettagli: [`ai/README.md`](ai/README.md),
+[`docs/ARCHITETTURA.md`](docs/ARCHITETTURA.md).
 
 ## Cosa c'è dentro
 
@@ -35,7 +45,7 @@ segmenti) e **giunzioni a T**; i fili seguono i componenti spostati.
 
 ### Motori di simulazione (proprietari, MIT, niente GPL)
 - **Analogico**: MNA per stamping, Newton-Raphson con gmin stepping e limiting
-  delle giunzioni, transitoria backward Euler con companion model. Validato contro
+  delle giunzioni, transitoria backward Euler con sottopassi adattivi, stima dell’errore e rollback dei passi rifiutati. Convergenza verificata con residui e tolleranze separate per tensioni e correnti; diagnostica delle isole flottanti. Validato contro
   riferimenti analitici (`npm test`) e, offline, contro ngspice
   ([`docs/VALIDATION.md`](docs/VALIDATION.md)).
 - **Digitale nativo**: combinatoria a punto fisso + sequenziale sul fronte di
@@ -83,7 +93,9 @@ attorno alla bobina.
 | Comando | Cosa fa |
 | --- | --- |
 | `npm run dev` | dev server Vite |
-| `npm run proxy` | proxy tutor AI (serve `ANTHROPIC_API_KEY`) |
+| `npm run ai` | servizio tutor FastAPI/LangGraph (default LLM locale) |
+| `npm run tool-bridge` | relay WebSocket per i tool live |
+| `npm run validate:spice` | confronto automatico con ngspice installato, oppure `NGSPICE_BIN` |
 | `npm test` | test del motore (`node --test`, validazione analitica) |
 | `npm run test:e2e` | e2e Playwright |
 | `npm run build` | typecheck + build di produzione |

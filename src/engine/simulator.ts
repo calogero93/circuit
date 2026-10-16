@@ -15,6 +15,33 @@ export interface SimResult {
   voltageOfNet(net: number): number;
   /** Uscite per componente: correnti ai pin + grandezze didattiche. */
   outputs: Map<string, DeviceOutputs>;
+  diagnostics?: SimDiagnostics;
+}
+
+export interface SimDiagnostics {
+  iterations: number;
+  /** Massimo residuo normalizzato: <= 1 soddisfa le tolleranze delle equazioni. */
+  residual: number;
+  floatingNets: string[];
+  warnings: string[];
+  acceptedSubsteps?: number;
+  rejectedSubsteps?: number;
+  minStep?: number;
+  maxStep?: number;
+  errorEstimate?: number;
+}
+
+export interface SolverTolerances {
+  voltageAbs: number;
+  currentAbs: number;
+  relative: number;
+}
+
+export interface AdaptiveOptions {
+  enabled?: boolean;
+  minStep?: number;
+  maxAttempts?: number;
+  tolerances?: Partial<SolverTolerances>;
 }
 
 export interface TransientOptions {
@@ -24,12 +51,14 @@ export interface TransientOptions {
   initialStates?: Map<string, DeviceState>;
   /** Tempo iniziale. */
   t0?: number;
+  /** Sottopassi adattivi interni; l'intervallo di uscita rimane dt. */
+  adaptive?: boolean | AdaptiveOptions;
 }
 
 export interface TransientSession {
   readonly time: number;
   /** Avanza di un passo dt e restituisce il risultato. */
-  step(): SimResult;
+  step(interval?: number): SimResult;
   /** Stati correnti dei componenti (per travaso in una nuova sessione). */
   states(): Map<string, DeviceState>;
 }

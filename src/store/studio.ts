@@ -44,6 +44,7 @@ const COALESCE_WINDOW_MS = 800;
 
 export interface StudioState {
   circuit: Circuit;
+  simulationEpoch: number;
   undoStack: UndoEntry[];
   redoStack: CircuitCommand[];
   selection: string[];
@@ -104,6 +105,7 @@ let probeCounter = 0;
 
 export const useStudio = create<StudioState>((set, get) => ({
   circuit: emptyCircuit(),
+  simulationEpoch: 0,
   undoStack: [],
   redoStack: [],
   selection: [],
@@ -151,6 +153,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     }
     set({
       circuit: cmd.apply(circuit),
+      simulationEpoch: get().simulationEpoch + (cmd.resetSimulation ? 1 : 0),
       undoStack: [...stack, entry],
       redoStack: [],
     });
@@ -165,6 +168,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     set({
       circuit: next,
       undoStack: undoStack.slice(0, -1),
+      simulationEpoch: get().simulationEpoch + (top.cmd.resetSimulation ? 1 : 0),
       redoStack: [...redoStack, top.cmd],
       selection: selection.filter((id) => alive.has(id)),
     });
@@ -179,6 +183,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     set({
       circuit: next,
       undoStack: [...undoStack, { cmd, at: 0 }], // at:0 → mai coalescato con comandi futuri
+      simulationEpoch: get().simulationEpoch + (cmd.resetSimulation ? 1 : 0),
       redoStack: redoStack.slice(0, -1),
       selection: selection.filter((id) => alive.has(id)),
     });

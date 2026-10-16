@@ -15,11 +15,16 @@
 
 import { WebSocketServer } from 'ws';
 import { randomUUID } from 'node:crypto';
+import http from 'node:http';
 
 const PORT = Number(process.env.TOOL_BRIDGE_PORT ?? 8787);
 const CALL_TIMEOUT_MS = 15_000;
 
-const wss = new WebSocketServer({ port: PORT });
+const server = http.createServer((req, res) => {
+  res.writeHead(req.url === '/healthz' ? 200 : 404, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ connected: !!host && host.readyState === host.OPEN }));
+});
+const wss = new WebSocketServer({ server });
 
 let host = null; // il browser che esegue i tool
 let hostTools = []; // schemi tool ricevuti dall'host
@@ -100,3 +105,4 @@ wss.on('connection', (ws) => {
 });
 
 console.log(`Tool-bridge WS su ws://localhost:${PORT}  (browser = host · client = multiagent)`);
+server.listen(PORT);

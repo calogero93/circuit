@@ -125,8 +125,8 @@ class DigitalTransient implements TransientSession {
     this.stateMap = initDigitalStates(circuit, opts.initialStates);
   }
 
-  step(): SimResult {
-    const t = this.time + this.dt;
+  step(interval = this.dt): SimResult {
+    const t = this.time + interval;
     const levels = evaluateDigital(this.circuit, this.stateMap, t);
     const result = buildResult(this.circuit, this.stateMap, levels, this.vdd, t);
     updateSequential(this.circuit, this.stateMap, levels, t);

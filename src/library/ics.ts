@@ -10,6 +10,7 @@ import type { DeviceModel, DeviceState } from '../model/device.ts';
 // OUT segue VCC (q=1) o GND (q=0); DISCH va a massa quando q=0.
 
 const ne555Model: DeviceModel = {
+  discreteState: true,
   branches: 1,
   initState: (): DeviceState => ({ q: 0 }),
   stamp(ctx, _params, nodes, branches, state) {
@@ -73,6 +74,7 @@ const COMP_BAND = 0.1; // larghezza della transizione (V)
 
 function comparatorModel(): DeviceModel {
   return {
+    discreteState: true,
     branches: 1,
     nonlinear: true,
     initState: (): DeviceState => ({ out: 0 }),

@@ -43,7 +43,8 @@ M1 costruisce tutti i seam che rendono possibili M2–M4. Questa è la mappa.
 - `src/ai/tools.ts` — `getNetlist`, `runDC`, `runTransient`, `measureNode`,
   `measureComponent`, `listComponents`, `getLessonState`. Ogni feature AI futura
   (M4: generazione circuiti, curriculum adattivo) riusa questi tool.
-- `server/proxy.mjs` — la chiave API sta solo qui.
+- `ai/main.py`, `ai/graph.py`, `ai/config.py` — un solo tutor LangGraph con LLM locale per default e provider esterni configurabili solo sul server.
+- `src/ai/toolBridge.ts`, `server/tool-bridge.mjs`, `ai/modules/tool_bridge.py` — accesso ai tool live via WebSocket. `getCircuitSnapshot` acquisisce insieme versione, netlist e misure dello stesso frame.
 
 ## 6. Hook per i campi a livello componente (M2, §4.6)
 

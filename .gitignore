@@ -15,3 +15,6 @@ ai/dataset/
 ai/meta.json
 ai/.lock
 *.db
+ai/.uv-cache/
+ai/data/
+.validation/

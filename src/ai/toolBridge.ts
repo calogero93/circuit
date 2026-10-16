@@ -1,7 +1,6 @@
 // Connettore lato browser al tool-bridge (server/tool-bridge.mjs): registra i
-// tool ed esegue le chiamate provenienti da un client esterno (es. multiagente
-// Python) usando lo stato VIVO del circuito. Opt-in: si attiva solo se è definito
-// un URL (via VITE_TOOL_BRIDGE_URL o chiamando connectToolBridge(url)).
+// tool ed esegue le chiamate provenienti da LangGraph usando lo stato live.
+// Default: /tool-bridge sullo stesso host (proxy WS); URL sovrascrivibile.
 
 import { TOOL_DEFINITIONS, executeTool } from './tools.ts';
 
@@ -9,7 +8,8 @@ let socket: WebSocket | null = null;
 let retryTimer: number | undefined;
 
 /** Connette (e riconnette) al relay; no-op se non c'è un URL. */
-export function connectToolBridge(url = import.meta.env.VITE_TOOL_BRIDGE_URL as string | undefined): void {
+export function connectToolBridge(url = import.meta.env.VITE_TOOL_BRIDGE_URL as string | undefined ??
+  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/tool-bridge`): void {
   if (!url) return;
   clearTimeout(retryTimer);
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;

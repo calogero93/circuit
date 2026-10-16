@@ -29,6 +29,7 @@ export function Toolbar() {
   const timestep = useStudio((s) => s.timestep);
   const setTimestep = useStudio((s) => s.setTimestep);
   const { time, converged } = useSimTick();
+  const diagnostics = simController.frame?.result.diagnostics;
 
   const circuitFile = useRef<HTMLInputElement>(null);
   const scenarioFile = useRef<HTMLInputElement>(null);
@@ -154,14 +155,15 @@ export function Toolbar() {
         <button className={`btn${running ? ' on' : ''}`} onClick={() => setRunning(!running)}>
           {running ? '‖ Pausa' : '▶ Esegui'}
         </button>
-        <select value={timestep} onChange={(e) => setTimestep(Number(e.target.value))} title="Passo temporale">
+        <select value={timestep} onChange={(e) => setTimestep(Number(e.target.value))} title="Intervallo dei campioni; il solver analogico usa sottopassi adattivi">
           {[1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3].map((dt) => (
             <option key={dt} value={dt}>
-              dt {formatSI(dt, 's', 1)}
+              Δt uscita {formatSI(dt, 's', 1)}
             </option>
           ))}
         </select>
-        <span className={`sim-status${converged ? '' : ' error'}`}>
+        <span className={`sim-status${converged ? '' : ' error'}`}
+          title={diagnostics?.warnings.join('\n') || 'Simulazione con controllo di convergenza e sottopassi adattivi'}>
           {converged ? `t = ${formatSI(time, 's', 3)}` : '⚠ non converge'}
         </span>
       </div>

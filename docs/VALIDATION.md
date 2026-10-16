@@ -50,3 +50,38 @@ Confronta i valori stampati con quelli dei test (`npm test`) o con l'app
 Nota: il nostro motore usa backward Euler (stabile, dissipativo); ngspice di
 default usa il trapezio. Sul RC a `t=τ` con `dt = τ/1000` la differenza attesa
 è < 0,1%.
+
+## 3. Solver adattivo e confronto automatico (16 ottobre 2026)
+
+La transitoria usa ora sottopassi backward Euler con stima dell'errore per
+step doubling, rifiuto e rollback. `dt` è l'intervallo di uscita, mantenuto
+costante; `adaptive: false` consente il confronto con il precedente passo fisso.
+Newton distingue tensioni e correnti e verifica i residui dopo aver ricostruito
+le equazioni alla soluzione candidata. `diagnostics` riporta residui e avvisi.
+
+`tests/engine/accuracy.test.ts` aggiunge sweep analitici RC/RL e partitori,
+rollback dopo un passo rifiutato e diagnostica di isole senza riferimento.
+
+Il confronto ngspice è ora automatizzato:
+
+```sh
+npm run validate:spice
+# oppure con un eseguibile estratto/localizzato separatamente:
+NGSPICE_BIN=/percorso/ngspice npm run validate:spice
+```
+
+Lo script `scripts/validate-spice.ts` genera le netlist in una directory
+temporanea, esegue ngspice, confronta 12 casi e termina con errore se manca
+l'eseguibile o un confronto non rispetta la soglia. Non include ngspice nell'app.
+Le temperature operative e nominali sono allineate a 300 K per i diodi.
+
+Con ngspice 45.2 sono passati tutti i casi: partitori <0.0001%, diodi
+<0.00004%, RC circa 0.0835%, RL circa 0.1435%. Questi risultati non garantiscono
+un errore globale per circuiti arbitrari. Il RAG e il modello locale effettivo
+non fanno parte della verifica numerica.
+
+Verifica complessiva delle modifiche: suite motore passata (15 file), build
+TypeScript/Vite passata, 10 test Python passati e 4 prove Playwright passate
+(simulazione, A/B, tutor e RPC verso il browser). I test del tutor usano un
+modello controllato; il collegamento al modello locale effettivo richiede
+l'endpoint configurato dall'utente e non è stato verificato con un LLM avviato.

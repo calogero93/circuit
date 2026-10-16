@@ -44,8 +44,8 @@ Non rinegoziabili senza aggiornare questo Charter.
 | Licenza | **MIT** |
 | Motore di simulazione | **Proprietario**, scritto da noi. Nessun motore GPL (no Falstad). Validazione offline contro **ngspice (BSD)** come oracolo di riferimento, **mai spedito** nell'app. |
 | Esecuzione simulazione | **Real-time client-side** (TypeScript; WASM in seguito solo se serve performance). |
-| Backend Python | Rimandato a **M4**, come servizio opzionale "laboratorio calcolo & AI" (simbolico, SPICE di riferimento, FEM). Non in M1–M3. |
-| AI | **API Claude**, ancorata alla simulazione via **tool-use**. La chiave API **non sta mai nel client**: un proxy minimale server-side (TypeScript) instrada le chiamate. |
+| Backend Python | Servizio FastAPI per il tutor unificato LangGraph; opzionale rispetto a editor e simulazione live. |
+| AI | Un solo percorso: **tutor → FastAPI → LangGraph → LLM locale per default**. L'agente decide se rispondere o usare i tool live tramite WebSocket. Provider esterni configurabili esplicitamente, credenziali solo server-side; nessun fallback automatico al cloud. |
 | Frontend | **React + TypeScript + Vite** |
 | Editor circuiti | **2D**, SVG/Canvas custom |
 | Visore 3D + campi | **React Three Fiber**, da **M2** |
@@ -131,6 +131,6 @@ Questo Charter garantisce che il codice li sappia già accogliere.
 - **Stato**: Zustand + command pattern (undo/redo).
 - **Matematica**: rendering formule con **KaTeX** (MIT), termini collegati ai
   valori simulati correnti.
-- **AI**: Claude API via proxy TypeScript (chiave server-side).
+- **AI**: LangGraph con LLM locale e tool live; provider esterni opzionali, configurati sul server.
 - **Test**: `node --test` per il motore (validazione analitica), Playwright per la UI.
 - **Backend (M4)**: Python FastAPI.
