@@ -1,0 +1,126 @@
+[
+  {
+    "name": "getCircuitSnapshot",
+    "description": "Legge netlist, ambiente, misure LIVE, versione, tempo e diagnostica insieme. Prima scelta per domande sul circuito aperto.",
+    "input_schema": {
+      "additionalProperties": false,
+      "description": "Il tool legge lo stato corrente e non richiede argomenti.",
+      "properties": {},
+      "title": "NoInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "getNetlist",
+    "description": "Legge solo componenti, parametri e collegamenti; non fornisce misure.",
+    "input_schema": {
+      "additionalProperties": false,
+      "description": "Il tool legge lo stato corrente e non richiede argomenti.",
+      "properties": {},
+      "title": "NoInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "runDC",
+    "description": "Calcola il punto di lavoro DC. Per segnali AC non sostituisce una transitoria; la temperatura è una previsione a regime.",
+    "input_schema": {
+      "additionalProperties": false,
+      "description": "Il tool legge lo stato corrente e non richiede argomenti.",
+      "properties": {},
+      "title": "NoInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "runTransient",
+    "description": "Calcola una transitoria dedicata; non altera la sessione live. Controllare converged, truncated e actualDuration_s.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_ms": {
+          "description": "Durata richiesta in millisecondi, >0 e <=5000. La durata effettiva può essere minore: controllare truncated e actualDuration_s.",
+          "exclusiveMinimum": 0,
+          "maximum": 5000,
+          "title": "Duration Ms",
+          "type": "number"
+        },
+        "dt_us": {
+          "default": 100,
+          "description": "Intervallo di uscita in microsecondi, da 1 a 10000. Usare un passo molto inferiore al periodo del segnale; il solver può usare sottopassi interni.",
+          "maximum": 10000,
+          "minimum": 1,
+          "title": "Dt Us",
+          "type": "number"
+        }
+      },
+      "required": [
+        "duration_ms"
+      ],
+      "title": "TransientInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "measureComponent",
+    "description": "Legge parametri e misure LIVE di un ID ottenuto dalla netlist, anche potenza e dati termici delle resistenze.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "componentId": {
+          "description": "ID esatto dalla netlist, ad esempio R1 o LED1; non il tipo né il nome visualizzato.",
+          "minLength": 1,
+          "title": "Componentid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "componentId"
+      ],
+      "title": "ComponentInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "measureNode",
+    "description": "Legge tensioni LIVE e DC di una net ottenuta dallo snapshot; controllare separatamente converged e dcConverged.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "nodeId": {
+          "description": "Etichetta esatta di una net ottenuta dallo snapshot, ad esempio n1 o gnd; non un ID componente.",
+          "minLength": 1,
+          "title": "Nodeid",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodeId"
+      ],
+      "title": "NodeInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "listComponents",
+    "description": "Elenca tipologie, parametri e unità della libreria, non i componenti del circuito corrente.",
+    "input_schema": {
+      "additionalProperties": false,
+      "description": "Il tool legge lo stato corrente e non richiede argomenti.",
+      "properties": {},
+      "title": "NoInput",
+      "type": "object"
+    }
+  },
+  {
+    "name": "getLessonState",
+    "description": "Legge lezione, passo, confronto A/B e sonde; non misura tensioni o correnti.",
+    "input_schema": {
+      "additionalProperties": false,
+      "description": "Il tool legge lo stato corrente e non richiede argomenti.",
+      "properties": {},
+      "title": "NoInput",
+      "type": "object"
+    }
+  }
+]

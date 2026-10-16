@@ -1,108 +1,86 @@
-// Relay WebSocket per esporre i tool del circuito (seam §4.5) a client esterni
-// (es. un sistema multiagente Python). I tool NON girano qui: leggono lo stato
-// vivo del browser (store + simulazione in corso), quindi l'esecutore è il
-// browser. Questo relay fa da rendez-vous:
-//
-//   [ Browser: host, esegue i tool ]  ⇄  relay  ⇄  [ Client Python: chiama i tool ]
-//
-// Protocollo (JSON su WS):
-//   Client → relay:  { "type":"list_tools", "id":<n> }
-//                    { "type":"call", "id":<n>, "tool":"runDC", "input":{...} }
-//   relay → Client:  { "type":"tools", "id":<n>, "tools":[...schemi...] }
-//                    { "type":"result", "id":<n>, "result":{...} | "error":"..." }
-//
-// Il browser si registra da solo (register) e risponde alle call inoltrate.
-
+// Relay dei tool live con routing per scheda browser. I calcoli restano nel browser.
 import { WebSocketServer } from 'ws';
 import { randomUUID } from 'node:crypto';
 import http from 'node:http';
 
 const PORT = Number(process.env.TOOL_BRIDGE_PORT ?? 8787);
-const CALL_TIMEOUT_MS = 15_000;
-
+const hosts = new Map(); // session_id → { socket, tools }
+const pending = new Map();
+const send = (ws, obj) => { if (ws?.readyState === ws.OPEN) ws.send(JSON.stringify(obj)); };
 const server = http.createServer((req, res) => {
   res.writeHead(req.url === '/healthz' ? 200 : 404, { 'content-type': 'application/json' });
-  res.end(JSON.stringify({ connected: !!host && host.readyState === host.OPEN }));
+  res.end(JSON.stringify({ connected: hosts.size > 0, sessions: hosts.size }));
 });
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, maxPayload: 8_000_000 });
 
-let host = null; // il browser che esegue i tool
-let hostTools = []; // schemi tool ricevuti dall'host
-const pending = new Map(); // callId → { client, reqId, timer }
-
-const send = (ws, obj) => {
-  if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(obj));
-};
-
-function failPending(reason) {
-  for (const [, p] of pending) {
+function failPending(socket, reason) {
+  for (const [id, p] of pending) {
+    if (p.host !== socket && p.client !== socket) continue;
     clearTimeout(p.timer);
-    send(p.client, { type: 'result', id: p.reqId, error: reason });
+    if (p.client !== socket) send(p.client, { type: 'result', id: p.reqId, error: reason });
+    pending.delete(id);
   }
-  pending.clear();
+}
+
+function selectHost(sessionId) {
+  if (sessionId) return hosts.get(sessionId);
+  // Compatibilità con client esterni legacy solo quando la destinazione è univoca.
+  if (hosts.size === 1) return hosts.values().next().value;
 }
 
 wss.on('connection', (ws) => {
+  ws.on('error', () => {});
   ws.on('message', (raw) => {
     let msg;
-    try {
-      msg = JSON.parse(raw.toString());
-    } catch {
-      return;
-    }
-
+    try { msg = JSON.parse(raw.toString()); } catch { return; }
+    if (!msg || typeof msg !== 'object') return;
     switch (msg.type) {
-      // il browser si annuncia come esecutore dei tool
-      case 'register':
-        host = ws;
-        hostTools = Array.isArray(msg.tools) ? msg.tools : [];
-        console.log(`host connesso (${hostTools.length} tool disponibili)`);
+      case 'register': {
+        const sessionId = msg.session_id ?? 'legacy';
+        if (typeof sessionId !== 'string' || !sessionId.length || sessionId.length > 200) return;
+        const previous = hosts.get(sessionId);
+        if (previous && previous.socket !== ws) failPending(previous.socket, 'sessione browser riconnessa');
+        for (const [key, host] of hosts) if (host.socket === ws) hosts.delete(key);
+        hosts.set(sessionId, { socket: ws, tools: Array.isArray(msg.tools) ? msg.tools : [] });
         break;
-
-      // risposta del browser a una call inoltrata
+      }
       case 'result': {
         const p = pending.get(msg.callId);
-        if (!p) break;
+        // Soltanto l'host scelto può rispondere alla chiamata.
+        if (!p || p.host !== ws) break;
         clearTimeout(p.timer);
         pending.delete(msg.callId);
         send(p.client, { type: 'result', id: p.reqId, result: msg.result, error: msg.error });
         break;
       }
-
-      // client: chiede gli schemi dei tool
-      case 'list_tools':
-        send(ws, { type: 'tools', id: msg.id, tools: hostTools });
+      case 'list_tools': {
+        const host = selectHost(msg.session_id);
+        send(ws, { type: 'tools', id: msg.id, tools: host?.tools ?? [],
+          error: !host && hosts.size > 1 ? 'specificare session_id: più circuiti connessi' : undefined });
         break;
-
-      // client: invoca un tool → inoltra all'host
+      }
       case 'call': {
-        if (!host || host.readyState !== host.OPEN) {
-          send(ws, { type: 'result', id: msg.id, error: 'nessun circuito connesso: apri Circuit Studio nel browser' });
+        const host = selectHost(msg.session_id);
+        if (!host || host.socket.readyState !== ws.OPEN) {
+          send(ws, { type: 'result', id: msg.id, error: hosts.size > 1 && !msg.session_id
+            ? 'specificare session_id: più circuiti connessi'
+            : 'nessun circuito connesso per questa sessione: apri Circuit Studio nel browser' });
           break;
         }
         const callId = randomUUID();
         const timer = setTimeout(() => {
-          if (pending.has(callId)) {
-            pending.delete(callId);
-            send(ws, { type: 'result', id: msg.id, error: 'timeout del tool' });
-          }
-        }, CALL_TIMEOUT_MS);
-        pending.set(callId, { client: ws, reqId: msg.id, timer });
-        send(host, { type: 'call', callId, tool: msg.tool, input: msg.input ?? {} });
+          pending.delete(callId);
+          send(ws, { type: 'result', id: msg.id, error: 'timeout del tool' });
+        }, 15_000);
+        pending.set(callId, { client: ws, host: host.socket, reqId: msg.id, timer });
+        send(host.socket, { type: 'call', callId, tool: msg.tool, input: msg.input ?? {} });
         break;
       }
     }
   });
-
   ws.on('close', () => {
-    if (ws === host) {
-      host = null;
-      hostTools = [];
-      console.log('host disconnesso');
-      failPending('circuito disconnesso');
-    }
+    for (const [key, host] of hosts) if (host.socket === ws) hosts.delete(key);
+    failPending(ws, 'circuito disconnesso');
   });
 });
-
-console.log(`Tool-bridge WS su ws://localhost:${PORT}  (browser = host · client = multiagent)`);
-server.listen(PORT);
+server.listen(PORT, () => console.log(`Tool-bridge WS sulla porta ${PORT}`));

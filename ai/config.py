@@ -20,6 +20,11 @@ class Settings:
     rag_enabled: bool = False
     request_timeout: float = 120.0
     max_tool_rounds: int = 8
+    database_url: str = "postgresql://circuit:circuit@127.0.0.1:5433/circuit"
+    summary_threshold_tokens: int = 6000
+    context_max_tokens: int = 12000
+    keep_recent_turns: int = 3
+    max_schema_retries: int = 2
 
     @classmethod
     def from_env(cls):
@@ -39,7 +44,19 @@ class Settings:
         return cls(provider=provider, model=model, base_url=base_url, api_key=key,
                    bridge_url=os.getenv("TOOL_BRIDGE_URL", "ws://127.0.0.1:8787"),
                    data_dir=Path(os.getenv("AI_DATA_DIR", str(ROOT / "data"))).resolve(),
-                   rag_enabled=os.getenv("RAG_ENABLED", "false").lower() == "true")
+                   rag_enabled=os.getenv("RAG_ENABLED", "false").lower() == "true",
+                   database_url=os.getenv("DATABASE_URL", cls.database_url),
+                   summary_threshold_tokens=int(os.getenv("AI_SUMMARY_THRESHOLD_TOKENS", "6000")),
+                   context_max_tokens=int(os.getenv("AI_CONTEXT_MAX_TOKENS", "12000")),
+                   keep_recent_turns=int(os.getenv("AI_KEEP_RECENT_TURNS", "3")),
+                   request_timeout=float(os.getenv("AI_REQUEST_TIMEOUT", "120")),
+                   max_tool_rounds=int(os.getenv("AI_MAX_TOOL_ROUNDS", "8")))
+
+    def __post_init__(self):
+        if not 0 < self.summary_threshold_tokens < self.context_max_tokens:
+            raise ValueError("La soglia riassunti deve essere positiva e inferiore al limite di contesto")
+        if self.keep_recent_turns < 1 or self.max_tool_rounds < 1 or self.request_timeout <= 0:
+            raise ValueError("Numero di turni, round e timeout devono essere positivi")
 
 
 def create_model(settings: Settings):

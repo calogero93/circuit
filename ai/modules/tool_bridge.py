@@ -43,8 +43,9 @@ class ToolBridge:
                             raise RuntimeError(msg["error"])
                         return msg
 
-    async def list_tools(self):
-        return (await self._rpc({"type": "list_tools"}))["tools"]
+    async def list_tools(self, session_id=None):
+        return (await self._rpc({"type": "list_tools", "session_id": session_id}))["tools"]
 
-    async def call(self, tool, **input):
-        return (await self._rpc({"type": "call", "tool": tool, "input": input}))["result"]
+    async def call(self, tool, *, session_id=None, **input):
+        return (await self._rpc({"type": "call", "tool": tool, "input": input,
+                                 "session_id": session_id}))["result"]

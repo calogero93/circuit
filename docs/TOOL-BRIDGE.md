@@ -18,7 +18,7 @@ npm run dev             # l'app; il browser si registra come host
 Il browser si connette automaticamente a `/tool-bridge` sullo stesso host;
 Vite inoltra il WebSocket al relay. `VITE_TOOL_BRIDGE_URL` permette un override.
 In produzione configura lo stesso inoltro nel reverse proxy. Il relay espone
-anche `GET /healthz`, con il campo `connected` per lo stato dell'host.
+anche `GET /healthz`, con `connected` e il numero di `sessions` connesse.
 
 Il tutor usa FastAPI/LangGraph (vedi [`ai/README.md`](../ai/README.md));
 il relay inoltra soltanto le operazioni sul circuito. Lo snapshot restituisce
@@ -30,8 +30,8 @@ netlist e misure acquisite nella stessa esecuzione sincrona sul browser.
 Client → relay:
 
 ```jsonc
-{ "type": "list_tools", "id": 1 }
-{ "type": "call", "id": 2, "tool": "runDC", "input": {} }
+{ "type": "list_tools", "id": 1, "session_id": "scheda" }
+{ "type": "call", "id": 2, "session_id": "scheda", "tool": "runDC", "input": {} }
 ```
 
 relay → Client:
@@ -40,6 +40,12 @@ relay → Client:
 { "type": "tools",  "id": 1, "tools": [ /* schemi con name, description e input_schema */ ] }
 { "type": "result", "id": 2, "result": { /* ... */ } }      // oppure: "error": "..."
 ```
+
+Il browser registra un `session_id` distinto per scheda. Il client indica la
+sessione da interrogare; ometterla è ammesso soltanto con un unico host
+connesso. Le risposte sono accettate soltanto dal browser destinatario.
+Il catalogo degli argomenti è generato da `ai/schemas.py`; gli output vengono
+validati in Python prima di essere passati al modello.
 
 `id` è scelto dal client e restituito così com'è (correlazione richiesta/risposta).
 
@@ -66,8 +72,8 @@ from modules.tool_bridge import ToolBridge
 
 async def main():
     async with ToolBridge("ws://127.0.0.1:8787") as bridge:
-        print(await bridge.call("getCircuitSnapshot"))
-        print(await bridge.call("measureComponent", componentId="R1"))
+        print(await bridge.call("getCircuitSnapshot", session_id="scheda"))
+        print(await bridge.call("measureComponent", session_id="scheda", componentId="R1"))
 
 asyncio.run(main())
 ```

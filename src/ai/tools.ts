@@ -10,72 +10,8 @@ import { simController } from '../viz/controller.ts';
 import { getLesson } from '../lessons/data.ts';
 import type { SimResult } from '../engine/simulator.ts';
 
-/** Schemi indipendenti dal provider, esposti anche dal relay WebSocket. */
-export const TOOL_DEFINITIONS = [
-  {
-    name: 'getCircuitSnapshot',
-    description: 'Legge insieme netlist, misure live, tempo, versione e diagnostica dello stesso frame.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    name: 'getNetlist',
-    description:
-      'Restituisce la netlist corrente: componenti con parametri e connettività per nodo (net). Chiamalo SEMPRE prima di ragionare sul circuito.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    name: 'runDC',
-    description:
-      'Calcola il punto di lavoro DC: tensioni di tutti i nodi e correnti/tensioni di ogni componente.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    name: 'runTransient',
-    description:
-      'Esegue una simulazione transitoria dedicata e restituisce le forme d\'onda campionate delle tensioni di nodo (per vedere ripple, transitori, forme d\'onda).',
-    input_schema: {
-      type: 'object',
-      properties: {
-        duration_ms: { type: 'number', description: 'Durata simulata in millisecondi (max 5000)' },
-        dt_us: { type: 'number', description: 'Passo temporale in microsecondi (default 100)' },
-      },
-      required: ['duration_ms'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'measureNode',
-    description:
-      'Misura la tensione LIVE di un nodo (etichetta net, es. "n1" o "gnd") nella simulazione in corso, più il valore al punto di lavoro DC.',
-    input_schema: {
-      type: 'object',
-      properties: { nodeId: { type: 'string', description: 'Etichetta della net, es. "n1"' } },
-      required: ['nodeId'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'measureComponent',
-    description:
-      'Misura un componente nella simulazione live: parametri, correnti ai pin e grandezze interne (vd, ic, vbe...).',
-    input_schema: {
-      type: 'object',
-      properties: { componentId: { type: 'string', description: 'Id del componente, es. "R1"' } },
-      required: ['componentId'],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: 'listComponents',
-    description: 'Elenca i tipi di componente disponibili nella libreria, con descrizione didattica e parametri.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-  {
-    name: 'getLessonState',
-    description: 'Stato della lezione corrente: quale lezione, a che passo, configurazione A/B e sonde attive.',
-    input_schema: { type: 'object', properties: {}, additionalProperties: false },
-  },
-] as const;
+// Catalogo generato dagli schemi Pydantic: ai/export_schemas.py.
+export { TOOL_DEFINITIONS } from './contracts.ts';
 
 type Json = Record<string, unknown>;
 
@@ -132,7 +68,7 @@ function circuitSnapshot(): Json {
 }
 
 function transientSnapshot(input: Json): Json {
-  const durationMs = Math.min(Math.max(Number(input.duration_ms) || 100, 1), 5000);
+  const durationMs = Math.min(Math.max(Number(input.duration_ms) || 100, Number.EPSILON), 5000);
   const dtUs = Math.min(Math.max(Number(input.dt_us) || 100, 1), 10_000);
   const dt = dtUs * 1e-6;
   const { circuit } = useStudio.getState();

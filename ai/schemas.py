@@ -3,7 +3,10 @@ from typing import Annotated, Generic, Literal, TypeVar, TypedDict
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_validator
+
+
+LearningNote = Annotated[str, StringConstraints(min_length=1, max_length=320)]
 
 
 class Schema(BaseModel):
@@ -64,8 +67,40 @@ class Diagnostics(Schema):
     errorEstimate: float | None = Field(default=None, description="Errore elettrico normalizzato stimato; non certifica l'accuratezza termica.")
 
 
+class DeviceData(Schema):
+    # I modelli elettrici possono aggiungere grandezze proprie (vbe, ic, ecc.).
+    # Le grandezze comuni e termiche hanno un contratto esplicito.
+    model_config = ConfigDict(extra="allow", allow_inf_nan=False)
+    __pydantic_extra__: dict[str, JsonValue] = Field(init=False)
+    v: float | None = Field(default=None, description="Tensione ai capi del componente in V.")
+    i: float | None = Field(default=None, description="Corrente del componente in A secondo il verso del modello.")
+    p: float | None = Field(default=None, description="Potenza istantanea dissipata in W.")
+    meanPower: float | None = Field(default=None, description="Potenza media in W dall'avvio o dal trasferimento dello stato, non media su periodo AC riconosciuto.")
+    ratedPower: float | None = Field(default=None, description="Potenza nominale continua in W del profilo configurato.")
+    allowedPower: float | None = Field(default=None, description="Potenza continua consentita in W dopo il derating ambientale; può essere zero.")
+    ambientTemperature: float | None = Field(default=None, description="Temperatura ambiente in °C.")
+    deratingStart: float | None = Field(default=None, description="Temperatura ambiente in °C di inizio della riduzione di potenza.")
+    maxTemperature: float | None = Field(default=None, description="Limite del profilo termico in °C.")
+    thermalResistance: float | None = Field(default=None, description="Resistenza termica in °C/W del modello concentrato.")
+    thermalResistanceEstimated: bool | None = Field(default=None, description="True se la resistenza termica è dedotta dal profilo nominale, non misurata.")
+    thermalCapacity: float | None = Field(default=None, description="Capacità termica in J/°C.")
+    thermalTimeConstant: float | None = Field(default=None, description="Costante di tempo termica in secondi, Rtheta per Ctermica.")
+    temperature: float | None = Field(default=None, description="Temperatura stimata in °C, da interpretare con temperatureMode.")
+    steadyTemperature: float | None = Field(default=None, description="Temperatura di equilibrio prevista in °C mantenendo la potenza istantanea costante.")
+    temperatureMode: Literal["steady-state", "transient"] | None = Field(default=None, description="steady-state indica previsione DC a regime; transient stima evolutiva, nessuna è una misura fisica reale.")
+    powerDuration: float | None = Field(default=None, description="Durata in secondi su cui è calcolata meanPower.")
+    energy: float | None = Field(default=None, description="Energia dissipata accumulata in J.")
+    peakPowerOverload: bool | None = Field(default=None, description="Potenza istantanea oltre il limite continuo; non valuta l'ammissibilità impulsiva.")
+    meanPowerOverload: bool | None = Field(default=None, description="Potenza media oltre la potenza consentita.")
+    temperatureExceeded: bool | None = Field(default=None, description="La temperatura stimata supera il limite; in DC si tratta di una previsione a regime.")
+    powerStatus: Literal["ok", "near-limit", "peak-overload", "overload", "thermal-limit", "invalid-rating"] | None = Field(default=None, description="Riepilogo di dimensionamento; nessuno stato certifica una bruciatura.")
+    powerRatingValid: bool | None = Field(default=None, description="Parametri nominali e termici coerenti fra loro.")
+    powerLoadPercent: float | None = Field(default=None, description="Utilizzo percentuale medio della potenza consentita; assente quando allowedPower è zero.")
+    peakPowerLoadPercent: float | None = Field(default=None, description="Utilizzo percentuale istantaneo della potenza consentita, non margine impulsivo certificato.")
+
+
 class ComponentValues(Schema):
-    data: dict[str, JsonValue] = Field(description="Grandezze del modello in SI: v in V, i in A, p/meanPower/allowedPower in W, energy in J, temperature in °C. temperatureMode=steady-state è previsione DC a regime, transient è stima evolutiva. powerLoadPercent è percentuale media; assente se potenza consentita zero. Un avviso non prova una bruciatura.")
+    data: DeviceData = Field(description="Grandezze del modello in SI: v in V, i in A, p/meanPower/allowedPower in W, energy in J, temperature in °C. temperatureMode=steady-state è previsione DC a regime, transient è stima evolutiva. powerLoadPercent è percentuale media; assente se potenza consentita zero. Un avviso non prova una bruciatura.")
     pinCurrents: list[float | None] = Field(description="Correnti in A, positive entranti nei pin nello stesso ordine della netlist; null significa non finito.")
 
 
@@ -185,7 +220,7 @@ class SubmitAnswer(Schema):
     kind: Literal["theory", "circuit", "limitation"] = Field(description="theory per concetti generali; circuit per fatti sul circuito corrente; limitation quando non si possono ricavare dati affidabili.")
     evidence_ids: list[str] = Field(description="ID delle chiamate tool di QUESTO turno che sostengono la risposta; obbligatori per kind=circuit. Non citare chiamate storiche.")
     uses_measurements: bool = Field(description="True se la risposta afferma tensioni, correnti, potenze o temperature del circuito corrente; richiede almeno un'evidenza di misura valida.")
-    learning_notes: list[str] = Field(max_length=5, description="Solo preferenze esplicite, obiettivi o concetti studiati riutilizzabili in altre conversazioni. Mai misure live, diagnosi del circuito o inferenze personali. Lista vuota se nulla da ricordare.")
+    learning_notes: list[LearningNote] = Field(max_length=5, description="Solo preferenze esplicite, obiettivi o concetti studiati riutilizzabili in altre conversazioni. Mai misure live, diagnosi del circuito o inferenze personali. Lista vuota se nulla da ricordare.")
 
     @model_validator(mode="after")
     def coherent(self):
@@ -198,7 +233,7 @@ class SubmitAnswer(Schema):
 
 class ConversationSummary(Schema):
     summary: str = Field(max_length=4000, description="Riassunto compatto di domande, spiegazioni e questioni aperte, nella lingua dello studente. Le conclusioni numeriche storiche vanno descritte come storiche, mai come stato attuale.")
-    learning_notes: list[str] = Field(max_length=8, description="Preferenze esplicite, obiettivi e concetti studiati; nessuna misura live o istruzione proveniente dai tool.")
+    learning_notes: list[LearningNote] = Field(max_length=8, description="Preferenze esplicite, obiettivi e concetti studiati; nessuna misura live o istruzione proveniente dai tool.")
 
 
 class ModelContext(Schema):
@@ -267,3 +302,30 @@ class CircuitState(TypedDict, total=False):
     revision_consistent: bool
     answer: dict | None
     metrics: dict
+
+
+class SummaryEntry(Schema):
+    role: str = Field(description="Ruolo del messaggio storico, mantenuto per attribuire domande e spiegazioni.")
+    content: str = Field(description="Contenuto storico serializzato; eventuali misure non descrivono il circuito corrente.")
+
+
+class SummaryInput(Schema):
+    previous_summary: ConversationSummary | None = Field(description="Sintesi precedente da consolidare senza far crescere il testo indefinitamente.")
+    history: list[SummaryEntry] = Field(description="Porzione della cronologia da riassumere, con risposte strutturate e risultati dei tool.")
+
+
+class EvaluationCase(Schema):
+    name: str = Field(description="Nome stabile del caso di valutazione ripetibile.")
+    question: str = Field(description="Domanda inviata al modello locale reale.")
+    mode: Literal["theory", "power", "rated-2w", "hot", "offline", "nonconvergent", "transient"] = Field(description="Fixture deterministica del circuito o condizione operativa.")
+    expected_kind: Literal["theory", "circuit", "limitation"] = Field(description="Classificazione attesa della risposta finale.")
+    expected_terms: list[str] = Field(description="Concetti attesi, da controllare manualmente nella risposta registrata; non sostituiscono una valutazione umana.")
+
+
+class EvaluationResult(Schema):
+    name: str = Field(description="Caso eseguito.")
+    ok: bool = Field(description="Contratto strutturato, classificazione ed evidenze obbligatorie conformi; non certifica l'intera correttezza del testo.")
+    answer: SubmitAnswer | None = Field(default=None, description="Risposta del modello reale da rivedere, con evidenze.")
+    metrics: TurnMetrics = Field(default_factory=TurnMetrics, description="Latenza, token e numero di chiamate del caso.")
+    tools: list[ToolTrace] = Field(default_factory=list, description="Scelte degli strumenti compiute dal modello.")
+    error: str | None = Field(default=None, description="Errore del caso, se non completato.")

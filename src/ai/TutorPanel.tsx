@@ -1,18 +1,19 @@
 // Tutor unificato: una richiesta a LangGraph; il server gestisce modello, memoria e tool.
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { simController } from '../viz/controller.ts';
 
-interface ChatEntry {
-  kind: 'user' | 'assistant' | 'tool' | 'error';
-  text: string;
-}
+import { browserSessionId, readTutorStream, storedId } from './contracts.ts';
+import type { ChatEntry } from './contracts.ts';
 
 export function TutorPanel() {
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const threadId = useRef(crypto.randomUUID());
+  const threadId = useRef(storedId(sessionStorage, 'circuit-tutor-thread'));
+  const userId = useRef(storedId(localStorage, 'circuit-tutor-user'));
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => () => abort.current?.abort(), []);
   const logRef = useRef<HTMLDivElement>(null);
 
   const append = (entry: ChatEntry) => {
@@ -28,21 +29,43 @@ export function TutorPanel() {
     append({ kind: 'user', text });
 
     try {
-      const res = await fetch('/api/chat', {
+      abort.current = new AbortController();
+      const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ query: text, thread_id: threadId.current }),
-        signal: AbortSignal.timeout(125_000),
+        body: JSON.stringify({ query: text, thread_id: threadId.current,
+          user_id: userId.current, session_id: browserSessionId() }),
+        signal: AbortSignal.any([abort.current.signal, AbortSignal.timeout(125_000)]),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? 'Errore del servizio tutor');
-      for (const call of data.tools ?? []) {
-        append({ kind: 'tool', text: `🔧 ${call.tool}(${JSON.stringify(call.input)})${call.ok ? '' : `: ${call.error}`}` });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.detail ?? 'Errore del servizio tutor');
       }
-      append({ kind: 'assistant', text: data.response });
-      if (data.snapshot_revision != null && data.snapshot_revision !== simController.revision) {
-        append({ kind: 'tool', text: 'Il circuito è cambiato durante l’analisi: la risposta si riferisce alla configurazione precedente.' });
-      }
+      let finished = false;
+      await readTutorStream(res, (event) => {
+        switch (event.event) {
+          case 'tool_start':
+            if (event.data.tool !== 'SubmitAnswer') append({ kind: 'tool', text: `🔧 ${event.data.tool} in corso…` });
+            break;
+          case 'tool_end':
+            append({ kind: 'tool', text: `🔧 ${event.data.tool} ${event.data.ok ? 'completato' : `: ${event.data.error}`}` });
+            break;
+          case 'summary':
+            append({ kind: 'tool', text: event.data.message });
+            break;
+          case 'error': throw new Error(event.data.message);
+          case 'final': {
+            finished = true;
+            append({ kind: 'assistant', text: event.data.response });
+            if (!event.data.revision_consistent || (event.data.snapshot_revision != null &&
+                event.data.snapshot_revision !== simController.revision)) {
+              append({ kind: 'tool', text: 'Il circuito è cambiato durante l’analisi: i dati si riferiscono alla configurazione precedente. Ripeti la domanda per aggiornarli.' });
+            }
+            break;
+          }
+        }
+      });
+      if (!finished) throw new Error('La connessione si è chiusa prima della risposta finale');
     } catch (error) {
       append({ kind: 'error', text: error instanceof Error ? error.message : 'Tutor non raggiungibile. Avvia il servizio Python e il modello locale.' });
     } finally {
@@ -52,6 +75,11 @@ export function TutorPanel() {
 
   return (
     <div className="tutor">
+      <button className="btn" disabled={busy} onClick={() => {
+        threadId.current = crypto.randomUUID();
+        sessionStorage.setItem('circuit-tutor-thread', threadId.current);
+        setEntries([]);
+      }}>Nuova conversazione</button>
       <div className="tutor-log" ref={logRef}>
         {entries.length === 0 && (
           <div className="props-empty">

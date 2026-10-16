@@ -18,11 +18,8 @@ def extract_text_from_markdown(path:str):
     return cleaned_text
 
 def extract_text_from_pdf(path:str):
-    doc = fitz.open(path)
-    full_text = []
-
-    for page in doc:
-        full_text.append(page.get_text())
+    with fitz.open(path) as doc:
+        full_text = [page.get_text() for page in doc]
 
     text = " ".join(full_text)
 
@@ -49,7 +46,7 @@ def mapping_document(data_path:str):
     file_paths = [
         str(element.resolve()) 
         for element in path_root.rglob('*') 
-        if element.is_file()
+        if element.is_file() and element.suffix.lower() in mapping_function
     ]
 
     return file_paths
@@ -63,10 +60,10 @@ def prepare_docs(data_path:str):
     files = []
     for file_path in file_paths:
         file = Path(file_path)
-        extension = file.suffix
+        extension = file.suffix.lower()
         file_name = file.name
         file = mapping_function[extension](file_path)
-        files.append({"file_name": file_name, "payload": file})
+        files.append({"file_name": file_name, "source": str(Path(file_path).resolve()), "payload": file})
 
     return files
 
@@ -76,7 +73,7 @@ def chunk_data(list_files: list[dict]):
     for file in list_files:
         chunks = text_splitter.split_text(file["payload"])
 
-        chunks_with_metadata = [{"file_name": file["file_name"], "payload": chunk, "index_chunk": idx} for idx, chunk in enumerate(chunks)]
+        chunks_with_metadata = [{"file_name": file["file_name"], "source": file.get("source", file["file_name"]), "payload": chunk, "index_chunk": idx} for idx, chunk in enumerate(chunks)]
 
         full_dataset = full_dataset + chunks_with_metadata
 

@@ -20,6 +20,7 @@ servizio LangGraph. Il default non usa API cloud:
 
 ```sh
 cp .env.example .env     # configura LLM_BASE_URL e LLM_MODEL
+docker compose up -d --wait postgres
 cd ai
 uv sync --extra dev
 uv run python main.py   # FastAPI su http://127.0.0.1:8080
@@ -29,7 +30,9 @@ In un altro terminale, dalla radice: `npm run tool-bridge`. Il browser si
 collega automaticamente al relay tramite il proxy WebSocket di Vite. Il tutor
 usa un solo percorso LangGraph e decide quando leggere o simulare il circuito;
 può rispondere alle domande teoriche anche senza browser collegato.
-Provider esterni disponibili solo con configurazione esplicita server-side.
+Schemi Pydantic per tool e risposte, memoria PostgreSQL e riassunti automatici
+al superamento della soglia configurata. Provider esterni disponibili solo con
+configurazione esplicita server-side.
 Configurazione e avvio: [`ai/README.md`](ai/README.md).
 
 ## Cosa c'è dentro
@@ -99,6 +102,7 @@ Dati e limiti sono disponibili anche al tutor. Il profilo termico predefinito
 | Comando | Cosa fa |
 | --- | --- |
 | `npm run dev` | dev server Vite |
+| `docker compose up -d --wait postgres` | database persistente per il tutor |
 | `npm run ai` | servizio tutor FastAPI/LangGraph (default LLM locale) |
 | `npm run tool-bridge` | relay WebSocket per i tool live |
 | `npm run validate:spice` | confronto automatico con ngspice installato, oppure `NGSPICE_BIN` |

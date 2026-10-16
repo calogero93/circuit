@@ -3,6 +3,7 @@
 // Default: /tool-bridge sullo stesso host (proxy WS); URL sovrascrivibile.
 
 import { TOOL_DEFINITIONS, executeTool } from './tools.ts';
+import { browserSessionId } from './contracts.ts';
 
 let socket: WebSocket | null = null;
 let retryTimer: number | undefined;
@@ -24,7 +25,7 @@ export function connectToolBridge(url = import.meta.env.VITE_TOOL_BRIDGE_URL as 
   socket = ws;
 
   ws.onopen = () => {
-    ws.send(JSON.stringify({ type: 'register', tools: TOOL_DEFINITIONS }));
+    ws.send(JSON.stringify({ type: 'register', session_id: browserSessionId(), tools: TOOL_DEFINITIONS }));
   };
 
   ws.onmessage = (ev) => {
