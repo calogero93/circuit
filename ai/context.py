@@ -7,7 +7,7 @@ from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.utils.function_calling import convert_to_openai_tool
 from langgraph.config import get_stream_writer
 
-from schemas import ConversationSummary, ModelContext, TurnMetrics, SummaryEntry, SummaryInput
+from schemas import ConversationSummary, ModelContext, ModelObservation, TurnMetrics, SummaryEntry, SummaryInput
 
 
 def estimate(messages):
@@ -23,6 +23,14 @@ def record_call(metrics, message, prompt, duration):
     usage = message.usage_metadata or {}
     result["input_tokens"] += usage.get("input_tokens", 0)
     result["output_tokens"] += usage.get("output_tokens", 0)
+    metadata = message.response_metadata or {}
+    observed = ModelObservation(
+        model_name=metadata.get("model_name") if isinstance(metadata.get("model_name"), str) else None,
+        system_fingerprint=metadata.get("system_fingerprint") if isinstance(metadata.get("system_fingerprint"), str) else None)
+    if observed.model_name or observed.system_fingerprint:
+        item = observed.model_dump(mode="json")
+        if item not in result["model_observations"]:
+            result["model_observations"].append(item)
     return result
 
 
@@ -61,7 +69,7 @@ async def compact(state, settings, model, reserved_tokens=0):
                        for i in range(0, len(content), chunk_chars))
     summary = ConversationSummary.model_validate(state["summary"]) if state.get("summary") else None
     metrics = state.get("metrics", {})
-    bound = model.bind_tools([ConversationSummary], tool_choice="ConversationSummary")
+    bound = model.bind_tools([ConversationSummary], tool_choice="any")
     schema_cost = tools_cost([ConversationSummary])
     while entries:
         batch = []

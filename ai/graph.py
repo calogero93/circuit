@@ -77,7 +77,9 @@ def create_graph(settings: Settings, model=None, tools=None):
     # Una funzione terminale evita due percorsi diversi JSON/tool calling ed è
     # compatibile con i server locali che implementano il protocollo dei tool.
     bound_model = model.bind_tools([*tools, SubmitAnswer], tool_choice="any")
-    final_model = model.bind_tools([SubmitAnswer], tool_choice="SubmitAnswer")
+    # Un solo tool + any mantiene l'obbligo senza la forma object di tool_choice,
+    # non supportata da alcuni server locali. Il nome viene comunque validato.
+    final_model = model.bind_tools([SubmitAnswer], tool_choice="any")
     by_name = {tool.name: tool for tool in tools}
     schema_cost = tools_cost([*tools, SubmitAnswer])
 

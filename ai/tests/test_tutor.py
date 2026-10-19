@@ -331,6 +331,52 @@ class ApiTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=2)
 
+    def test_local_server_accepts_final_answer_after_tool_round_limit(self):
+        requests = []
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *_): pass
+            def do_POST(self):
+                request = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                requests.append(request)
+                # Alcuni server locali rifiutano il tool_choice object, anche
+                # quando il suo nome è l'unica funzione esposta.
+                if request.get("tool_choice") not in ("none", "auto", "required"):
+                    data = b'{"error":{"message":"Invalid tool_choice type: object"}}'
+                    self.send_response(400)
+                else:
+                    final = len(request["tools"]) == 1
+                    args = {"response": "R1 è presente nel circuito.", "kind": "circuit",
+                        "evidence_ids": ["observed"], "uses_measurements": False, "learning_notes": []} if final else {}
+                    function = {"name": "SubmitAnswer" if final else "getCircuitSnapshot", "arguments": json.dumps(args)}
+                    data = json.dumps({"id": "reply", "object": "chat.completion", "created": 1, "model": "local-test",
+                        "choices": [{"index": 0, "message": {"role": "assistant", "content": None,
+                            "tool_calls": [{"id": "final" if final else "observed", "type": "function", "function": function}]},
+                            "finish_reason": "tool_calls"}]}).encode()
+                    self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            async def snapshot(): return {"revision": 3}
+            settings = replace(Settings(), base_url=f"http://127.0.0.1:{server.server_port}/v1", model="local-test", max_tool_rounds=1, reasoning_effort="none")
+            factory = lambda s: create_graph(s, tools=[custom_tool(snapshot)])
+            with TestClient(create_app(settings, factory, TestMemory)) as client:
+                res = client.post("/api/chat", json={"query": "Leggi il circuito", "thread_id": "required-choice"})
+                self.assertEqual(res.status_code, 200, res.text)
+                self.assertEqual(res.json()["answer"]["kind"], "circuit")
+            self.assertEqual(len(requests), 2)
+            self.assertEqual(requests[-1]["tool_choice"], "required")
+            self.assertEqual(requests[-1]["reasoning_effort"], "none")
+            self.assertEqual([t["function"]["name"] for t in requests[-1]["tools"]], ["SubmitAnswer"])
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
     def test_schema_fields_are_described_and_constraints_enforced(self):
         import schemas
         from pydantic import BaseModel

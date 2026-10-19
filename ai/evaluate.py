@@ -2,105 +2,188 @@
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
+from dataclasses import replace
 
 import httpx
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, ToolMessage
+from langgraph.checkpoint.memory import InMemorySaver
 
 from config import Settings
 from graph import create_graph
-from schemas import EvaluationCase, EvaluationResult, ModelQuestion
+from schemas import DatasetTurnResult, EvaluationResult, EvaluationTrial, JudgeEvaluation, ModelQuestion, TurnMetrics
+from experiments import ROOT, create_manifest, new_report, save_report, summarize, utc_now, validate_run_identity
 from tools import make_tools
+from dataset import DATA_DIR, load_dataset, select_cases
+from evaluation_fixtures import FixtureRuntime
+from evaluators import deterministic_checks, deterministic_passed, semantic_passed
+from judge import evaluation_protocol, judge_answer, judge_input, local_judge_settings
 
-CASES = [
-    EvaluationCase(name="theory", question="Cos'è una resistenza?", mode="theory", expected_kind="theory", expected_terms=["corrente", "ohm"]),
-    EvaluationCase(name="power", question="Quanto dissipa R1 e la taglia scelta è sufficiente?", mode="power", expected_kind="circuit", expected_terms=["1 W", "0.25 W", "sovraccarico"]),
-    EvaluationCase(name="rated-2w", question="Ho aumentato la potenza nominale di R1 a 2 W: cambia la corrente e quanto margine ho?", mode="rated-2w", expected_kind="circuit", expected_terms=["0.1 A", "50%", "corrente invariata"]),
-    EvaluationCase(name="hot", question="Fa caldo: posso ancora dissipare 1 W su R1?", mode="hot", expected_kind="circuit", expected_terms=["112.5", "0.125 W", "derating"]),
-    EvaluationCase(name="dc-temperature", question="La temperatura restituita da runDC è quella fisica di R1 in questo momento?", mode="power", expected_kind="circuit", expected_terms=["stima", "regime"]),
-    EvaluationCase(name="offline", question="Misura la potenza di R1 nel circuito aperto.", mode="offline", expected_kind="limitation", expected_terms=["browser", "collegato"]),
-    EvaluationCase(name="nonconvergent", question="Che tensione misuri su R1?", mode="nonconvergent", expected_kind="limitation", expected_terms=["convergenza", "non attendibile"]),
-    EvaluationCase(name="transient", question="Simula per 100 ms e dimmi se hai raggiunto il regime e se R1 regge i picchi.", mode="transient", expected_kind="circuit", expected_terms=["troncata", "10 ms", "limiti impulsivi"]),
-]
+DEFAULT_DATASET = load_dataset()
+CASES = DEFAULT_DATASET.dataset.cases
 
 
-def fixture(case):
-    rated = 2 if case.mode == "rated-2w" else .25
-    hot = case.mode == "hot"
-    converged = case.mode != "nonconvergent"
-    params = {"R": 100, "ratedPower": rated}
-    values = {"data": {"v": 10, "i": .1, "p": 1, "meanPower": 1, "ratedPower": rated,
-        "allowedPower": .125 if hot else rated, "powerLoadPercent": 800 if hot else 100 / rated,
-        "ambientTemperature": 112.5 if hot else 25, "temperature": 25 + 85 / rated,
-        "temperatureMode": "steady-state", "powerStatus": "overload" if rated < 1 else "ok"},
-        "pinCurrents": [.1, -.1]}
-    diagnostics = {"iterations": 1, "residual": 0 if converged else None, "floatingNets": [], "warnings": []}
-    netlist = {"revision": 1, "components": [{"id": "R1", "type": "resistor", "name": "Resistenza", "params": params,
-        "pins": [{"name": "a", "net": "n1"}, {"name": "b", "net": "gnd"}]}], "wires": 2, "nets": ["n1", "gnd"], "hasGround": True}
-    dc = {"revision": 1, "converged": converged, "diagnostics": diagnostics, "nodeVoltages": {"n1": 10, "gnd": 0}, "components": {"R1": values}}
-    return dc, netlist, values
-
-
-async def evaluate(case, settings):
-    dc, netlist, values = fixture(case)
-    class Bridge:
-        def __init__(self, url): pass
-        async def __aenter__(self):
-            if case.mode == "offline": raise ConnectionError("Browser non collegato")
-            return self
-        async def __aexit__(self, *_): pass
-        async def call(self, name, **args):
-            if name == "getCircuitSnapshot": return {**dc, "netlist": netlist, "environment": {
-                "temperature": 112.5 if case.mode == "hot" else 25, "light": 50, "pressure": 101, "magneticField": 0, "humidity": 50},
-                "time_s": .1, "measurementsAvailable": True}
-            if name == "getNetlist": return netlist
-            if name == "runDC": return dc
-            if name == "measureComponent":
-                if args.get("componentId") != "R1": return {"error": "ID sconosciuto; disponibile R1"}
-                return {"id": "R1", "type": "resistor", "params": netlist["components"][0]["params"],
-                        "revision": 1, "time_s": .1, "converged": dc["converged"], "live": values}
-            if name == "measureNode": return {"nodeId": args["nodeId"], "liveVoltage": 10, "liveTime": .1, "dcVoltage": 10,
-                    "converged": dc["converged"], "dcConverged": dc["converged"], "revision": 1, "diagnostics": dc["diagnostics"]}
-            if name == "runTransient": return {"revision": 1, "converged": True, "diagnostics": dc["diagnostics"], "components": dc["components"],
-                "dt_us": args.get("dt_us", 100), "actualDuration_s": .01, "truncated": True, "time_s": [0, .01], "nodeVoltages": {"n1": [0, 10]}}
-            if name == "listComponents": return {"library": []}
-            return {"lessonId": None, "title": None, "objective": None, "step": None, "ab": None, "probes": [], "presentazione": False}
+async def evaluate(case, settings, *, bundle=DEFAULT_DATASET, model=None, judge_settings=None, judge_model=None):
+    runtime = FixtureRuntime(bundle.fixtures)
+    results, trace, history = [], [], []
+    if case.summary_threshold_tokens:
+        settings = replace(settings, summary_threshold_tokens=case.summary_threshold_tokens, keep_recent_turns=1)
+    async def search(query):
+        hits = [{"text": bundle.corpus[id].excerpt, "source": bundle.corpus[id].path} for id in case.retrieved_source_ids]
+        if case.adversarial_document:
+            hits.append({"text": case.adversarial_document, "source": "synthetic-adversarial-document"})
+        return {"hits": hits}
     try:
-        graph = create_graph(settings, tools=make_tools(settings, Bridge)).compile()
-        async with asyncio.timeout(settings.request_timeout):
-            state = await graph.ainvoke({"messages": [HumanMessage(content=ModelQuestion(question=case.question).model_dump_json())],
-                "trace": [], "evidence": [], "tool_rounds": 0, "snapshot_revision": None,
-                "revision_consistent": True, "answer": None, "metrics": {}}, config={"recursion_limit": settings.max_tool_rounds * 3 + 20})
-        ok = state["answer"]["kind"] == case.expected_kind
-        if case.expected_kind == "theory": ok = ok and not state.get("trace")
-        return EvaluationResult(name=case.name, ok=ok, answer=state["answer"], metrics=state["metrics"], tools=state.get("trace", []))
+        if case.retrieved_source_ids and not settings.rag_enabled:
+            raise ValueError("Il caso documentale richiede --include-rag")
+        tools = make_tools(settings, runtime.bridge_factory, search_provider=search)
+        graph = create_graph(settings, model=model, tools=tools).compile(checkpointer=InMemorySaver())
+        config = {"configurable": {"thread_id": case.name}, "recursion_limit": settings.max_tool_rounds * 3 + 20}
+        for index, turn in enumerate([case, *case.followups], 1):
+            runtime.activate(turn.fixture_id)
+            async with asyncio.timeout(settings.request_timeout):
+                state = await graph.ainvoke({"messages": [HumanMessage(content=ModelQuestion(question=turn.question).model_dump_json())],
+                "trace": [], "evidence": [], "tool_rounds": 0, "schema_errors": 0, "snapshot_revision": None,
+                "revision_consistent": True, "answer": None, "metrics": {}, "memories": []}, config=config)
+            start = max(i for i, message in enumerate(state["messages"]) if isinstance(message, HumanMessage))
+            call_ids = {t["call_id"] for t in state.get("trace", [])}
+            outputs = [{"call_id": m.tool_call_id, "tool": m.name, "result": json.loads(m.content)}
+                for m in state["messages"][start:] if isinstance(m, ToolMessage) and m.tool_call_id in call_ids]
+            result = DatasetTurnResult(turn=index, ok=False, answer=state["answer"],
+                metrics=state["metrics"], tools=state.get("trace", []), tool_outputs=outputs,
+                evidence=state.get("evidence", []), revision_consistent=state.get("revision_consistent", True), context_summary=state.get("summary"))
+            result.checks = deterministic_checks(turn.reference, result, bundle.corpus)
+            result.evaluation_input = judge_input(turn, result, history)
+            failed = any(check.status == "fail" for check in result.checks)
+            if judge_settings:
+                result.judge = JudgeEvaluation(status="skipped", error="Controlli deterministici falliti; judge non chiamato.") if failed else await judge_answer(
+                    result.evaluation_input, judge_settings, model=judge_model)
+                result.ok = not failed and semantic_passed(result.judge)
+            else:
+                result.ok = deterministic_passed(result.checks)
+            history.append({"question": turn.question, "answer": result.answer.model_dump(mode="json"),
+                "tool_outputs": [o.model_dump(mode="json") for o in result.tool_outputs]})
+            results.append(result)
+            trace.extend(state.get("trace", []))
+        metrics = combined_metrics(results)
+        return EvaluationResult(name=case.name, ok=all(turn.ok for turn in results),
+            answer=results[-1].answer, metrics=metrics, tools=trace, turns=results)
     except Exception as exc:
-        return EvaluationResult(name=case.name, ok=False, error=str(exc) or type(exc).__name__)
+        return EvaluationResult(name=case.name, ok=False, error=str(exc) or type(exc).__name__,
+            metrics=combined_metrics(results), tools=trace, turns=results)
+
+
+def combined_metrics(turns):
+    metrics = TurnMetrics()
+    for turn in turns:
+        for field in ("model_calls", "input_tokens", "output_tokens", "model_duration_ms", "summaries"):
+            setattr(metrics, field, getattr(metrics, field) + getattr(turn.metrics, field))
+        metrics.prompt_tokens_estimate = max(metrics.prompt_tokens_estimate, turn.metrics.prompt_tokens_estimate)
+        for observation in turn.metrics.model_observations:
+            if observation not in metrics.model_observations:
+                metrics.model_observations.append(observation)
+    return metrics
+
+
+async def check_endpoint(settings):
+    async with httpx.AsyncClient(timeout=5, headers={"Authorization": f"Bearer {settings.api_key}"}) as client:
+        response = await client.get(settings.base_url.rstrip("/") + "/models")
+        response.raise_for_status()
+
+
+async def run_experiment(settings, cases, *, repetitions=1, output=None, manifest_only=False,
+                         model_file=None, evaluator=None, preflight=check_endpoint, root=ROOT, bundle=DEFAULT_DATASET,
+                         judge_settings=None):
+    if settings.provider != "local":
+        raise ValueError("Questa valutazione richiede LLM_PROVIDER=local")
+    manifest = create_manifest(settings, cases, repetitions, root=root, model_file=model_file,
+                               dataset_identity=bundle.identity() if bundle else None)
+    manifest.evaluation_protocol = evaluation_protocol(judge_settings, candidate=settings)
+    manifest.limitations = [text for text in manifest.limitations if "controlli attuali" not in text]
+    manifest.limitations.extend(manifest.evaluation_protocol["limitations"])
+    output = Path(output) if output else root / ".local-notes/llmops" / manifest.experiment_id / "report.json"
+    if output.exists():
+        raise ValueError("Il report esiste già: scegliere un nuovo percorso per non perdere l'esperimento precedente")
+    report = new_report(manifest)
+    save_report(report, output)
+    if manifest_only:
+        return report, output
+    try:
+        try:
+            await preflight(settings)
+        except (httpx.HTTPError, OSError) as exc:
+            report.status = "unavailable"
+            report.error = f"Endpoint locale non disponibile ({type(exc).__name__}). Avvia il modello configurato in LLM_BASE_URL."
+            return report, output
+        report.status = "running"
+        save_report(report, output)
+        for repetition in range(1, repetitions + 1):
+            for case in cases:
+                result = await evaluate(case, settings, bundle=bundle, judge_settings=judge_settings) if evaluator is None else await evaluator(case, settings)
+                report.results.append(EvaluationTrial(repetition=repetition, case=case, result=result))
+                report.summary = summarize(report.results)
+                save_report(report, output)
+                print(f"{case.name} [{repetition}/{repetitions}]: {'OK' if result.ok else 'DA RIVEDERE'}", flush=True)
+        error = validate_run_identity(report, root)
+        report.status = "invalidated" if error else "completed"
+        report.error = error
+    except asyncio.CancelledError:
+        report.status = "interrupted"
+        report.error = "Valutazione interrotta; i risultati già ottenuti sono stati conservati."
+        raise
+    except Exception:
+        report.status = "interrupted"
+        report.error = "Valutazione interrotta da un errore operativo; il report parziale è conservato."
+        raise
+    finally:
+        report.completed_at = utc_now()
+        save_report(report, output)
+    return report, output
 
 
 async def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--case", choices=[c.name for c in CASES])
-    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parents[1] / ".local-notes/ai-evaluation.json")
+    parser.add_argument("--case", help="ID del caso; se specificato cerca in entrambi gli split")
+    parser.add_argument("--dataset-directory", type=Path, default=DATA_DIR)
+    parser.add_argument("--split", choices=["development", "validation", "all"], default=None)
+    parser.add_argument("--category", help="Famiglia da eseguire, per esempio power, memory o adversarial")
+    parser.add_argument("--include-rag", action="store_true", help="Abilita i casi RAG con estratti controllati, senza aprire Qdrant")
+    parser.add_argument("--output", type=Path, help="Nuovo file report; per default ogni esperimento ha una propria directory locale ignorata da Git")
+    parser.add_argument("--repetitions", type=int, default=1, help="Ripetizioni per caso, da 1 a 100")
+    parser.add_argument("--manifest-only", action="store_true", help="Prepara identità e configurazione senza contattare il modello o il database")
+    parser.add_argument("--model-file", type=Path, help="File locale dei pesi di cui verificare SHA-256; non carica né scarica il modello")
+    parser.add_argument("--judge-model", help="Abilita il judge locale con questo modello; per default nessun voto semantico")
+    parser.add_argument("--judge-base-url", default="http://127.0.0.1:1234/v1", help="Endpoint loopback locale del judge, anche distinto da quello del tutor")
+    parser.add_argument("--judge-context-tokens", type=int, default=24000, help="Budget totale stimato del judge, output incluso; non tronca le evidenze")
     args = parser.parse_args()
-    settings = Settings.from_env()
-    if settings.provider != "local": raise SystemExit("Questa valutazione richiede LLM_PROVIDER=local")
-    async with httpx.AsyncClient(timeout=5) as client:
-        try:
-            response = await client.get(settings.base_url.rstrip("/") + "/models")
-            response.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise SystemExit(f"Endpoint locale non disponibile ({type(exc).__name__}). Avvia il modello configurato in LLM_BASE_URL.") from exc
-    results = []
-    for case in CASES:
-        if args.case and case.name != args.case: continue
-        result = await evaluate(case, settings)
-        results.append({"case": case.model_dump(mode="json"), "result": result.model_dump(mode="json")})
-        print(f"{case.name}: {'OK' if result.ok else 'DA RIVEDERE'}", flush=True)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps({"model": settings.model, "results": results}, ensure_ascii=False, indent=2) + "\n")
-    print(f"Risultati: {args.output}")
-    if not all(item["result"]["ok"] for item in results): raise SystemExit(1)
+    if not 1 <= args.repetitions <= 100:
+        parser.error("--repetitions deve essere fra 1 e 100")
+    try:
+        bundle = load_dataset(args.dataset_directory)
+        cases = select_cases(bundle, split=args.split or ("all" if args.case else "development"),
+            category=args.category, case_name=args.case, include_rag=args.include_rag)
+        settings = Settings.from_env()
+        if args.include_rag:
+            settings = replace(settings, rag_enabled=True, rag_corpus_revision="evaluation-corpus:" + bundle.identity()["bundle_sha256"])
+        judge_config = local_judge_settings(settings, model=args.judge_model, base_url=args.judge_base_url,
+            api_key=os.getenv("JUDGE_LLM_API_KEY", "local"), context_tokens=args.judge_context_tokens) if args.judge_model else None
+        report, output = await run_experiment(settings, cases,
+            repetitions=args.repetitions, output=args.output,
+            manifest_only=args.manifest_only, model_file=args.model_file, bundle=bundle, judge_settings=judge_config)
+    except (ValueError, OSError) as exc:
+        parser.error(str(exc))
+    print(f"Esperimento: {report.manifest.experiment_id}")
+    print(f"Configurazione: {report.manifest.configuration_id}")
+    print(f"Report: {output}")
+    print(f"Stato: {report.status}")
+    if report.error:
+        print(report.error)
+    if report.status == "completed":
+        print(f"Esiti ({report.summary.criterion}): {report.summary.passed}/{report.summary.attempted}.")
+        print(f"Judge completato: {report.summary.semantic_evaluated_turns}/{report.summary.evaluated_turns} turni; calibrazione umana separata, non ancora attestata.")
+    if report.status not in {"prepared", "completed"} or (report.summary.attempted and report.summary.passed != report.summary.attempted):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__": asyncio.run(main())

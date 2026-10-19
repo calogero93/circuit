@@ -34,7 +34,7 @@ def tool_schemas():
             for name, _, args, output in BROWSER_TOOLS}
 
 
-def make_tools(settings: Settings, bridge_factory=ToolBridge):
+def make_tools(settings: Settings, bridge_factory=ToolBridge, *, search_provider=None):
     def browser_tool(name, description, schema, output):
         async def call(config: RunnableConfig, **kwargs):
             session_id = config.get("configurable", {}).get("session_id")
@@ -71,6 +71,8 @@ def make_tools(settings: Settings, bridge_factory=ToolBridge):
             return SearchOutput(hits=hits).model_dump(mode="json")
 
         async def search_info(query: str):
+            if search_provider is not None:
+                return SearchOutput.model_validate(await search_provider(query)).model_dump(mode="json")
             def serialized_search():
                 with search_lock:
                     return search_sync(query)

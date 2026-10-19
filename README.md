@@ -35,6 +35,175 @@ al superamento della soglia configurata. Provider esterni disponibili solo con
 configurazione esplicita server-side.
 Configurazione e avvio: [`ai/README.md`](ai/README.md).
 
+## Architettura
+
+La **simulazione vive nel browser**: editor, strumenti, formule e viste leggono
+lo stesso circuito e i risultati dei motori TypeScript. Il tutor usa un unico
+grafo LangGraph sul servizio Python; il modello sceglie quando rispondere alla
+teoria e quando interrogare il circuito live tramite tool.
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser — React e TypeScript"]
+        Editor["Editor, lezioni e scenari"]
+        Store["Zustand: circuito e configurazione"]
+        Controller["SimController: sessioni e confronto A/B"]
+        Engines["Motori analogico, digitale e mixed-signal"]
+        Views["Canvas, oscilloscopio, formule e 3D"]
+        Tutor["TutorPanel: chat"]
+        Host["Host WebSocket ed executeTool"]
+        Editor --> Store --> Controller
+        Controller -->|"netlist e avanzamento"| Engines
+        Engines -->|"SimResult e diagnostica"| Controller
+        Controller --> Views
+        Host <-->|"snapshot e simulazioni richieste"| Controller
+        Host -->|"letture"| Store
+    end
+
+    subgraph Services["Servizi del tutor"]
+        API["FastAPI — porta 8080"]
+        Graph["LangGraph: prepare, agent, tools"]
+        Tools["Tool Python e validazione Pydantic"]
+        Bridge["ToolBridge Python: client RPC"]
+        Relay["Relay WebSocket Node — porta 8787"]
+        Memory[("PostgreSQL: checkpoint, sintesi e note")]
+        RAG["RAG opzionale: embedding e Qdrant locale"]
+        API <--> Graph
+        Graph <--> Tools
+        Tools <--> Bridge <--> Relay
+        Graph <-->|"checkpoint"| Memory
+        API <-->|"sintesi e note per utente"| Memory
+        Tools -.->|"search_info"| RAG
+    end
+
+    Model["LLM locale: endpoint configurato"]
+    Tutor <-->|"HTTP e stream NDJSON"| API
+    Graph <--> Model
+    Host <-->|"WebSocket e session_id"| Relay
+```
+
+Il diagramma mostra i collegamenti logici. In sviluppo **Vite** inoltra `/api`
+a FastAPI e `/tool-bridge` al relay; in produzione questi inoltri spettano al
+reverse proxy. Il relay Node instrada richieste e risposte verso la scheda
+browser indicata da `session_id`. I calcoli elettrici sono eseguiti dai motori
+nel browser; l'LLM interpreta i risultati e costruisce la spiegazione.
+
+Il provider predefinito è locale, con protocollo compatibile OpenAI su
+`LLM_BASE_URL`. I provider cloud richiedono configurazione esplicita sul server.
+Il RAG, quando abilitato, cerca documenti; PostgreSQL conserva il contesto delle
+conversazioni e le note didattiche. Memoria e ricerca documentale hanno quindi
+compiti distinti.
+
+| Area | Codice | Responsabilità |
+| --- | --- | --- |
+| Stato e modifiche | [`src/store/`](src/store/) | Zustand, comandi, undo/redo, ambiente e configurazione della UI. |
+| Modello e componenti | [`src/model/`](src/model/), [`src/library/`](src/library/) | Circuito, compilazione dei fili in nodi elettrici, modelli dei dispositivi e formule. |
+| Simulazione | [`src/engine/`](src/engine/), [`controller.ts`](src/viz/controller.ts) | Soluzioni numeriche, stato delle sessioni, campioni e confronto A/B. |
+| Interfaccia e didattica | [`src/editor/`](src/editor/), [`src/viz/`](src/viz/), [`src/math/`](src/math/), [`src/viz3d/`](src/viz3d/), [`src/lessons/`](src/lessons/), [`src/scenarios/`](src/scenarios/) | Editor, strumenti, visualizzazioni, lezioni e scenari salvabili. |
+| Tutor e contratti | [`ai/main.py`](ai/main.py), [`ai/graph.py`](ai/graph.py), [`ai/schemas.py`](ai/schemas.py), [`ai/config.py`](ai/config.py) | HTTP, orchestrazione, schemi di input/output e configurazione del modello. |
+| Collegamento ai tool live | [`src/ai/`](src/ai/), [`tool-bridge.mjs`](server/tool-bridge.mjs), [`tool_bridge.py`](ai/modules/tool_bridge.py), [`ai/tools.py`](ai/tools.py) | Registrazione delle schede, RPC WebSocket, esecuzione browser e validazione dei risultati. |
+| Memoria e contesto | [`ai/memory.py`](ai/memory.py), [`ai/context.py`](ai/context.py) | Checkpoint PostgreSQL, note fra conversazioni, budget e riassunti del contesto. |
+| Valutazione offline | [`ai/evals/`](ai/evals/), [`ai/evaluate.py`](ai/evaluate.py), [`ai/evaluators.py`](ai/evaluators.py), [`ai/judge.py`](ai/judge.py), [`ai/calibrate_judge.py`](ai/calibrate_judge.py) | Dataset, esperimenti ripetibili, controlli deterministici, judge locale e confronto con etichette umane. |
+
+### Flusso della simulazione live
+
+```mermaid
+flowchart TD
+    Edit["Avvio o modifica del circuito in Zustand"]
+    Compile["Compila la netlist e sceglie il motore"]
+    Session["Crea o aggiorna la sessione; eventuale sessione A/B"]
+    Frame["Callback requestAnimationFrame"]
+    Running{"Simulazione in esecuzione?"}
+    Step["Avanza le sessioni nel budget del frame"]
+    Paused["Mantiene il risultato; DC iniziale se necessario"]
+    Result["Pubblica SimResult, campioni e diagnostica"]
+    Render["Aggiorna strumenti e visualizzazioni"]
+    Edit --> Compile --> Session --> Frame --> Running
+    Running -->|"Sì"| Step --> Result
+    Running -->|"No"| Paused --> Result
+    Result --> Render --> Frame
+```
+
+Una **sessione di simulazione** conserva il tempo e gli stati fisici necessari
+al passo successivo, come tensioni dei condensatori e correnti degli induttori.
+Le modifiche ordinarie trasferiscono gli stati disponibili; il caricamento
+integrale di uno scenario riavvia la simulazione. Il confronto A/B usa una
+seconda sessione con il circuito modificato.
+
+Il passo numerico e il frame grafico hanno ritmi diversi: il controller può
+eseguire più passi per callback e il solver analogico usa sottopassi adattivi.
+Gli strumenti leggono risultati e diagnostica pubblicati dal controller.
+`runDC` e `runTransient`, richiesti dal tutor, effettuano analisi dedicate;
+la transitoria richiesta via tool usa una sessione separata da quella live.
+
+### Cosa fa il grafo LangGraph
+
+Il grafo coordina **contesto → decisione del modello → tool → risposta
+validata**. La stessa implementazione serve la chat del browser e i client
+HTTP esterni.
+
+```mermaid
+flowchart TD
+    Request["Domanda, user_id, thread_id e session_id"]
+    Restore["FastAPI: ripristina checkpoint e recupera memoria didattica"]
+    Start(["START"])
+    Prepare["prepare: controlla il budget e riassume se necessario"]
+    Agent["agent: LLM con domanda, contesto e schemi dei tool"]
+    Tools["tools: esegue strumenti oppure valida SubmitAnswer"]
+    End(["END"])
+    Final["FastAPI: salva sintesi e note; invia la risposta finale"]
+    Request --> Restore --> Start --> Prepare --> Agent
+    Agent -->|"Chiamate strutturate"| Tools
+    Agent -->|"Budget superato: risposta limitation"| End
+    Tools -->|"Risultati o risposta da correggere"| Prepare
+    Tools -->|"SubmitAnswer accettato"| End
+    End --> Final
+```
+
+- **`prepare`** compatta la cronologia oltre la soglia configurata, conservando
+  il turno corrente e le coppie chiamata/risposta dei tool.
+- **`agent`** sceglie gli strumenti oppure conclude con `SubmitAnswer`. Anche
+  una spiegazione teorica usa questo schema finale, senza richiedere tool del
+  browser.
+- **`tools`** esegue le chiamate: letture e calcoli passano dal bridge al browser;
+  `search_info`, se abilitato, consulta i documenti. Per `SubmitAnswer` controlla
+  schema, evidenze citate e coerenza delle revisioni prima di terminare il grafo.
+
+Gli output del browser sono validati con Pydantic prima di diventare evidenze.
+Le misure dichiarate nella risposta richiedono un'evidenza convergente acquisita
+nel turno corrente. Se le revisioni cambiano fra letture, il modello deve
+concludere con una limitazione. Gli errori dei tool ritornano al modello come
+risultati strutturati; round, tentativi di correzione e tempi sono limitati.
+Questi controlli verificano contratti e metadati: la correttezza di ogni frase
+richiede anche valutazione semantica.
+
+La chat mostra progressivamente gli eventi dei tool e pubblica il testo finale
+dopo la validazione. Per domande sul circuito live serve il browser collegato;
+teoria e saluti possono essere gestiti anche senza una scheda connessa.
+
+### Identità e memoria
+
+| Identità | Cosa rappresenta |
+| --- | --- |
+| Sessione numerica (`TransientSession`) | Il calcolo in corso nel browser, con tempo e stati fisici; una seconda sessione sostiene il confronto A/B. |
+| `session_id` | La scheda browser cui indirizzare i tool via WebSocket. |
+| `thread_id` | La conversazione da riprendere dai checkpoint del grafo. |
+| `user_id` | Il contesto utente cui appartengono conversazioni e note didattiche condivise fra thread. |
+
+PostgreSQL usa `AsyncPostgresSaver` per i checkpoint e `AsyncPostgresStore` per
+sintesi e note. Le richieste dello stesso utente/thread sono serializzate con
+lock PostgreSQL. Quando il contesto cresce, `ConversationSummary` riduce la
+cronologia attiva conservandone una sintesi persistente; i vecchi checkpoint
+rimangono nel database. Misure e riassunti storici vanno distinti dallo stato
+live appena letto.
+
+La valutazione **LLMOps offline** riusa il grafo con fixture controllate e
+checkpoint in memoria: verifica prima i contratti, poi usa facoltativamente un
+judge locale e prepara il confronto umano. Questo percorso valuta il tutor
+senza richiedere il browser; i report e le annotazioni sono salvati in
+`.local-notes/llmops/`, ignorata da Git. Dataset e codice degli evaluator sono
+versionati. Configurazione, comandi e criteri: [`ai/README.md`](ai/README.md).
+
 ## Cosa c'è dentro
 
 ### Editor 2D

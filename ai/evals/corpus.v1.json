@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "sources": [
+    {
+      "id": "divider-formula",
+      "path": "src/lessons/data.ts",
+      "excerpt": "Vout = Vin·R2/(R1+R2).",
+      "sha256": "92e6aacd4ad6e19e23ea9a7863586e5d6f04859b7df2508e34fe908e91526468"
+    },
+    {
+      "id": "rc-time",
+      "path": "src/lessons/data.ts",
+      "excerpt": "τ = RC è IL parametro: a t = τ ha raggiunto il 63,2% del valore finale.",
+      "sha256": "6b29bd5120b240b0e83ab9106544ee2454d3479911e48e92a91bb6acdaec49c5"
+    },
+    {
+      "id": "thermal-profile",
+      "path": "src/library/resistorPower.ts",
+      "excerpt": "ratedPower: 0.25,\n  deratingStart: 70,\n  maxTemperature: 155,",
+      "sha256": "45125d896fc5a5b98683fb3cfde343a807263b24db61b378915e53dae263ec4c"
+    },
+    {
+      "id": "thermal-model-limit",
+      "path": "src/library/resistorPower.ts",
+      "excerpt": "I valori predefiniti non identificano un componente commerciale specifico.",
+      "sha256": "8ea5713c41641c59f1c26aba13c24ec353fc4dd618bb1052107b5bf6bbe942fc"
+    },
+    {
+      "id": "live-bridge",
+      "path": "docs/TOOL-BRIDGE.md",
+      "excerpt": "Il browser si connette automaticamente a `/tool-bridge` sullo stesso host;",
+      "sha256": "d722d04d4c280332fc90b3281a5a7334b07b703ebf8926d45f8e2558071453eb"
+    }
+  ]
+}
