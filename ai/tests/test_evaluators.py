@@ -13,9 +13,9 @@ from dataset import load_dataset
 from evaluate import evaluate
 from evaluation_schemas import AnnotationSet, HumanAnnotation
 from evaluators import deterministic_checks, quantities
-from experiments import create_manifest, new_report, summarize, validate_run_identity
+from experiments import create_manifest, digest, new_report, summarize, validate_run_identity
 from judge import CRITERIA, evaluation_protocol, judge_answer, judge_input, local_judge_settings
-from schemas import (DatasetTurnResult, EvaluationResult, EvaluationTrial, JudgeEvaluation,
+from schemas import (DatasetTurnResult, EvaluationReport, EvaluationResult, EvaluationTrial, JudgeEvaluation,
                      JudgeVerdict, SubmitAnswer, ToolTrace, TurnMetrics)
 from test_tutor import FakeModel, answer, call
 
@@ -55,6 +55,17 @@ class DeterministicTests(unittest.TestCase):
         # La presenza non dimostra l'associazione semantica, che rimane al judge.
         check = self.checks("ohm-calculation", "I = 9 A. Un altro circuito avrebbe 0.1 A.")["numeric_presence:0"]
         self.assertIn("associazioni", check.detail)
+
+    def test_latex_unit_presentation_preserves_numeric_values_and_units(self):
+        self.assertEqual(quantities(r"$I = 6 \, \text{A}$; $P = 108 \, \mathrm{W}$; $R = 3 \, \Omega$"),
+            [(6., "A"), (108., "W"), (3., "ohm")])
+        self.assertEqual(quantities(r"100\,\mathrm{mA}; 1,25\;\text{W}; 4.7 kΩ"),
+            [(.1, "A"), (1.25, "W"), (4700., "ohm")])
+        self.assertEqual(quantities(r"\text{108 W}"), [(108., "W")])
+
+    def test_powers_compound_units_and_latex_fractions_are_not_base_quantities(self):
+        for text in (r"6 \text{A}^2", "6 A²", "1 W/s", r"\frac{108}{\text{W}}"):
+            self.assertEqual(quantities(text), [], text)
 
     def test_failed_calls_do_not_satisfy_required_group_and_forbidden_attempts_count(self):
         tool = {"call_id": "a", "tool": "getCircuitSnapshot", "input": {}, "ok": False, "error": "offline", "duration_ms": 1}
@@ -110,6 +121,10 @@ class DeterministicTests(unittest.TestCase):
         self.assertFalse(protocol["human_calibrated"])
         self.assertNotIn("candidate-secret", json.dumps(protocol))
         self.assertNotEqual(protocol["id"], evaluation_protocol(replace(settings, model="changed"), candidate=candidate)["id"])
+        self.assertEqual(protocol["judge_policy"], "advisory")
+        blocking = evaluation_protocol(settings, candidate=candidate, judge_policy="blocking")
+        self.assertNotEqual(protocol["id"], blocking["id"])
+        self.assertFalse(blocking["human_calibrated"])
 
 
 class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
@@ -155,19 +170,57 @@ class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary.criterion, "deterministic_checks")
         self.assertEqual(summary.semantic_evaluated_turns, 0)
         result = await evaluate(case, Settings(), model=FakeModel([answer("La resistenza accumula energia magnetica.")]),
-            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply(0)]))
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply(0)]), judge_policy="blocking")
         self.assertFalse(result.ok)
         self.assertEqual(result.turns[0].judge.status, "completed")
 
     async def test_semantic_review_can_resolve_unparsed_numeric_answer(self):
         case = next(c for c in load_dataset().dataset.cases if c.name == "ohm-calculation")
         result = await evaluate(case, Settings(), model=FakeModel([answer("La corrente è un decimo di ampere.")]),
-            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply()]))
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply()]), judge_policy="blocking")
         self.assertTrue(result.ok, result.error)
         self.assertTrue(any(c.status == "review" for c in result.turns[0].checks))
         summary = summarize([EvaluationTrial(repetition=1, case=case, result=result)])
         self.assertEqual(summary.deterministic_passed_turns, 0)
         self.assertEqual(summary.semantic_passed_turns, 1)
+
+    async def test_advisory_low_score_is_reported_without_failing_deterministic_success(self):
+        case = load_dataset().dataset.cases[0]
+        result = await evaluate(case, Settings(), model=FakeModel([answer("Una resistenza limita la corrente.")]),
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply(0)]))
+        self.assertTrue(result.ok, result.error)
+        self.assertEqual(result.turns[0].judge.verdict.ratings[0].score, 0)
+        self.assertEqual(result.turns[0].judge_policy, "advisory")
+        summary = summarize([EvaluationTrial(repetition=1, case=case, result=result)])
+        self.assertEqual(summary.passed, 1)
+        self.assertEqual(summary.judge_policy, "advisory")
+        self.assertEqual(summary.semantic_evaluated_turns, 1)
+        self.assertEqual(summary.semantic_passed_turns, 0)
+        self.assertFalse(summary.human_calibrated)
+
+    async def test_advisory_judge_unavailable_does_not_hide_the_error_or_fail_the_case(self):
+        case = load_dataset().dataset.cases[0]
+        for policy, expected_ok in [("advisory", True), ("blocking", False)]:
+            result = await evaluate(case, Settings(), model=FakeModel([answer("Una resistenza limita la corrente.")]),
+                judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([ConnectionError()]), judge_policy=policy)
+            self.assertEqual(result.ok, expected_ok)
+            self.assertEqual(result.turns[0].judge.status, "unavailable")
+            self.assertIsNotNone(result.turns[0].judge.error)
+
+    async def test_advisory_does_not_promote_uncertain_numbers_using_judge_score(self):
+        case = next(c for c in load_dataset().dataset.cases if c.name == "ohm-calculation")
+        result = await evaluate(case, Settings(), model=FakeModel([answer("Un decimo di ampere.")]),
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply()]))
+        self.assertFalse(result.ok)
+        self.assertTrue(any(c.status == "review" for c in result.turns[0].checks))
+        self.assertEqual(result.turns[0].judge.status, "completed")
+
+    async def test_invalid_policy_or_blocking_without_judge_fails_before_calling_model(self):
+        model = FakeModel([])
+        for policy in ("typo", "blocking"):
+            with self.assertRaises(ValueError):
+                await evaluate(load_dataset().dataset.cases[0], Settings(), model=model, judge_policy=policy)
+        self.assertEqual(model.calls, [])
 
     async def test_invalid_unavailable_and_oversized_judge_never_pass(self):
         case = load_dataset().dataset.cases[0]
@@ -234,6 +287,18 @@ class CalibrationTests(unittest.TestCase):
         self.assertLess(metric.agreement_wilson_95[0], .75)
         self.assertIsNone(agreement([(2, 2)] * 50).cohen_kappa)
         self.assertIsNone(agreement([]).exact_agreement)
+
+    def test_policy_fields_preserve_legacy_annotation_fingerprint(self):
+        report = self.report()
+        data = report.model_dump(mode="json")
+        data["summary"].pop("judge_policy")
+        for trial in data["results"]:
+            for turn in trial["result"]["turns"]:
+                turn.pop("judge_policy")
+        annotations = export_annotations(report)
+        annotations.report_sha256 = digest(data)
+        loaded = EvaluationReport.model_validate(data)
+        self.assertEqual(compare(loaded, annotations).status, "insufficient_data")
 
     def test_labels_need_real_reviewer_and_immutable_answer_identity(self):
         report = self.report()

@@ -1,0 +1,44 @@
+Lessons In Electric Circuits, Volume IV – Digital
+Tony R. Kuphaldt
+Fourth Edition, last update November 06, 2021
+Section: 3.4.1 The AND gate
+Printed pages: 49–50; PDF pages: [58, 59]
+Source: https://www.ibiblio.org/kuphaldt/electricCircuits/DIGI/index.html
+License: Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF
+https://creativecommons.org/licenses/by/4.0/
+Changes: selected layout-preserving text extraction; diagrams require the original PDF.
+
+3.4.1    The AND gate
+
+
+One of the easiest multiple-input gates to understand is the AND gate, so-called because the
+output of this gate will be ”high” (1) if and only if all inputs (first input and the second input
+and . . .) are ”high” (1). If any input(s) are ”low” (0), the output is guaranteed to be in a ”low”
+state as well.
+
+
+
+                  2-input AND gate                         3-input AND gate
+                                                     InputA
+              InputA
+                                     Output          InputB                 Output
+              InputB                                 InputC
+
+   In case you might have been wondering, AND gates are made with more than three inputs,
+but this is less common than the simple two-input variety.
+
+   A two-input AND gate’s truth table looks like this:
+50                                                                     CHAPTER 3. LOGIC GATES
+
+                                        2-input AND gate
+
+                                 InputA
+                                                              Output
+                                 InputB
+
+
+                                         A B Output
+                                         0 0   0
+                                         0 1   0
+                                         1 0   0
+                                         1 1   1

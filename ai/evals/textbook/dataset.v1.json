@@ -1,0 +1,996 @@
+{
+  "format_version": 1,
+  "id": "circuit-tutor-textbook",
+  "version": "1.0.1",
+  "status": "provisional",
+  "description": "11 casi in 8 famiglie da soluzioni pubblicate di Tony R. Kuphaldt (DC, AC, Digital): 9 senza tool, inclusa la variante sul raddoppio della tensione, e 2 adattamenti con tool live su fixture. I PDF sono fonti delle risposte attese riservate agli evaluator; nessun retrieval viene usato dal tutor. Fonti trascritte e confrontate visivamente, riferimenti numerici ricalcolati con formule indipendenti; adattamenti proposti, nessuna calibrazione umana o baseline approvata. Tutte le varianti della stessa pagina restano nello stesso split.",
+  "cases": [
+    {
+      "name": "book-dc-power-closed",
+      "category": "power",
+      "split": "development",
+      "group_id": "textbook-dc-power",
+      "critical": true,
+      "question": "Una sorgente ideale continua da 18 V alimenta una lampada modellata come resistenza costante di 3 ohm. Calcola corrente e potenza dissipata, mostrando le formule. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "Modello didattico a resistenza costante: I = V/R = 18/3 = 6 A; P = VI = V²/R = 108 W.",
+          "Associa 6 A alla corrente nella lampada e 108 W alla sua dissipazione; non deduce il comportamento reale di una lampada al variare della temperatura."
+        ],
+        "forbidden_claims": [
+          "Dichiara 6 W oppure 108 A.",
+          "Afferma che una lampada reale mantenga necessariamente resistenza costante.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Corrente lampada",
+            "value": 6,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Potenza lampada",
+            "value": 108,
+            "unit": "W",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "resistor_power",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-dc-series-closed",
+      "category": "calculation",
+      "split": "development",
+      "group_id": "textbook-dc-series",
+      "critical": false,
+      "question": "Una batteria ideale da 9 V alimenta tre resistori ideali in serie: R1 = 3 kohm, R2 = 10 kohm, R3 = 5 kohm. Calcola resistenza totale, corrente e caduta su ciascun resistore. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "Rtot = 18 kohm; corrente uguale nei tre resistori: 500 µA.",
+          "V_R1 = 1.5 V, V_R2 = 5 V, V_R3 = 2.5 V; le cadute sommano a 9 V."
+        ],
+        "forbidden_claims": [
+          "Applica tutti i 9 V a ciascun resistore per calcolarne la corrente.",
+          "Scambia la caduta su R1 con quella su R3.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Resistenza totale",
+            "value": 18000,
+            "unit": "ohm",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_resistance",
+            "inputs": {
+              "V": 9,
+              "R1": 3000,
+              "R2": 10000,
+              "R3": 5000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente comune (RMS se la tensione è RMS)",
+            "value": 0.0005,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_current",
+            "inputs": {
+              "V": 9,
+              "R1": 3000,
+              "R2": 10000,
+              "R3": 5000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R1 (RMS nel caso AC)",
+            "value": 1.5,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 9,
+              "R1": 3000,
+              "R2": 10000,
+              "R3": 5000,
+              "Rtarget": 3000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R2 (RMS nel caso AC)",
+            "value": 5,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 9,
+              "R1": 3000,
+              "R2": 10000,
+              "R3": 5000,
+              "Rtarget": 10000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R3 (RMS nel caso AC)",
+            "value": 2.5,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 9,
+              "R1": 3000,
+              "R2": 10000,
+              "R3": 5000,
+              "Rtarget": 5000
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-series"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-dc-parallel-closed",
+      "category": "calculation",
+      "split": "validation",
+      "group_id": "textbook-dc-parallel",
+      "critical": false,
+      "question": "Una batteria ideale da 9 V alimenta in parallelo R1 = 10 kohm, R2 = 2 kohm e R3 = 1 kohm. Calcola le tre correnti, la corrente totale e la resistenza equivalente. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "Ogni ramo ha 9 V: I_R1 = 0.9 mA, I_R2 = 4.5 mA, I_R3 = 9 mA.",
+          "I_tot = 14.4 mA; R_eq = 625 ohm, inferiore al più piccolo resistore."
+        ],
+        "forbidden_claims": [
+          "Somma le resistenze come se fossero in serie.",
+          "Afferma che le correnti nei rami siano tutte uguali.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Corrente R1",
+            "value": 0.0009,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 9,
+              "R": 10000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente R2",
+            "value": 0.0045,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 9,
+              "R": 2000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente R3",
+            "value": 0.009,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 9,
+              "R": 1000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente totale",
+            "value": 0.0144,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "parallel_current",
+            "inputs": {
+              "V": 9,
+              "R1": 10000,
+              "R2": 2000,
+              "R3": 1000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Resistenza equivalente",
+            "value": 625,
+            "unit": "ohm",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "parallel_resistance",
+            "inputs": {
+              "V": 9,
+              "R1": 10000,
+              "R2": 2000,
+              "R3": 1000
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-parallel"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-dc-divider-closed",
+      "category": "calculation",
+      "split": "development",
+      "group_id": "textbook-dc-divider",
+      "critical": false,
+      "question": "Un generatore ideale da 45 V alimenta R1 = 5 kohm, R2 = 10 kohm e R3 = 7.5 kohm in serie, senza altri carichi. Calcola la caduta ai capi di ogni resistore usando il partitore. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "La formula è V_Rn = V_tot * Rn/(R1+R2+R3), con R_tot = 22.5 kohm.",
+          "V_R1 = 10 V; V_R2 = 20 V; V_R3 = 15 V. Le cadute sommano a 45 V."
+        ],
+        "forbidden_claims": [
+          "Divide la tensione in tre parti uguali.",
+          "Usa una formula da partitore non caricato in presenza di un carico aggiunto non dichiarato.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Caduta su R1 (RMS nel caso AC)",
+            "value": 10,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 45,
+              "R1": 5000,
+              "R2": 10000,
+              "R3": 7500,
+              "Rtarget": 5000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R2 (RMS nel caso AC)",
+            "value": 20,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 45,
+              "R1": 5000,
+              "R2": 10000,
+              "R3": 7500,
+              "Rtarget": 10000
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R3 (RMS nel caso AC)",
+            "value": 15,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 45,
+              "R1": 5000,
+              "R2": 10000,
+              "R3": 7500,
+              "Rtarget": 7500
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-ac-rms-closed",
+      "category": "power",
+      "split": "development",
+      "group_id": "textbook-ac-rms",
+      "critical": true,
+      "question": "Un resistore ideale da 2 ohm è alimentato prima con 10 V RMS in alternata e poi con 10 V continui. Calcola la corrente RMS nel primo caso, quella continua nel secondo e confronta le potenze medie dissipate. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "I_AC,RMS = 5 A e I_DC = 5 A; entrambe le potenze medie sono 50 W.",
+          "RMS di tensione/corrente esprime equivalenza termica su uguale resistenza; la potenza media non va chiamata potenza RMS.",
+          "Non confonde tensione RMS con tensione di picco e non assume che la potenza istantanea AC sia costante."
+        ],
+        "forbidden_claims": [
+          "Calcola la potenza media usando 10 V come valore di picco.",
+          "Afferma che RMS e media aritmetica siano la stessa grandezza.",
+          "Chiama la potenza media potenza RMS.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Corrente RMS e DC",
+            "value": 5,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 10,
+              "R": 2
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Potenza media AC e DC",
+            "value": 50,
+            "unit": "W",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "resistor_power",
+            "inputs": {
+              "V": 10,
+              "R": 2
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "ac-rms"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-ac-series-closed",
+      "category": "calculation",
+      "split": "validation",
+      "group_id": "textbook-ac-series",
+      "critical": false,
+      "question": "Una sorgente da 10 V RMS alimenta esclusivamente tre resistori ideali in serie: R1 = 100 ohm, R2 = 500 ohm, R3 = 400 ohm. Calcola resistenza totale, corrente RMS e le tre cadute RMS. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "R_tot = 1 kohm; I_RMS = 10 mA; V_R1,RMS = 1 V, V_R2,RMS = 5 V, V_R3,RMS = 4 V.",
+          "In un circuito puramente resistivo si applicano Ohm e Kirchhoff conservando la convenzione RMS per tensioni e correnti."
+        ],
+        "forbidden_claims": [
+          "Interpreta i 10 V RMS come valore di picco.",
+          "Introduce reattanze o sfasamenti non presenti nel circuito puramente resistivo.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Resistenza totale",
+            "value": 1000,
+            "unit": "ohm",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_resistance",
+            "inputs": {
+              "V": 10,
+              "R1": 100,
+              "R2": 500,
+              "R3": 400
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente comune (RMS se la tensione è RMS)",
+            "value": 0.01,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_current",
+            "inputs": {
+              "V": 10,
+              "R1": 100,
+              "R2": 500,
+              "R3": 400
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R1 (RMS nel caso AC)",
+            "value": 1,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 10,
+              "R1": 100,
+              "R2": 500,
+              "R3": 400,
+              "Rtarget": 100
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R2 (RMS nel caso AC)",
+            "value": 5,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 10,
+              "R1": 100,
+              "R2": 500,
+              "R3": 400,
+              "Rtarget": 500
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Caduta su R3 (RMS nel caso AC)",
+            "value": 4,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "series_voltage",
+            "inputs": {
+              "V": 10,
+              "R1": 100,
+              "R2": 500,
+              "R3": 400,
+              "Rtarget": 400
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "ac-series"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-digital-and-closed",
+      "category": "theory",
+      "split": "development",
+      "group_id": "textbook-digital-and",
+      "critical": false,
+      "question": "Scrivi la tabella di verità completa di una porta AND ideale a due ingressi A e B, specificando l’uscita per 00, 01, 10 e 11. Spiega quando vale 1. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "Tabella AND a due ingressi: 00 → 0; 01 → 0; 10 → 0; 11 → 1.",
+          "L’uscita vale 1 soltanto se entrambi gli ingressi valgono 1; nessuna deduzione su soglie analogiche o tensioni reali."
+        ],
+        "forbidden_claims": [
+          "Descrive OR o XOR al posto di AND.",
+          "Assume valori di tensione delle soglie logiche non forniti.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "digital-and"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-digital-xor-closed",
+      "category": "theory",
+      "split": "validation",
+      "group_id": "textbook-digital-xor",
+      "critical": false,
+      "question": "Scrivi la tabella di verità completa di una porta XOR ideale a due ingressi A e B per 00, 01, 10 e 11. Spiega in particolare perché 11 produce quell’uscita. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "Tabella XOR a due ingressi: 00 → 0; 01 → 1; 10 → 1; 11 → 0.",
+          "L’uscita vale 1 quando i due ingressi sono diversi; con 11 sono uguali e l’uscita è 0."
+        ],
+        "forbidden_claims": [
+          "Tratta XOR come OR inclusivo e assegna uscita 1 al caso 11.",
+          "Generalizza la regola due-ingressi a una porta con numero di ingressi diverso senza precisare la parità.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "digital-xor"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-dc-power-doubled",
+      "category": "power",
+      "split": "development",
+      "group_id": "textbook-dc-power",
+      "critical": true,
+      "question": "Nel modello ideale a resistenza costante di 3 ohm, la tensione passa da 18 V a 36 V. Calcola corrente e potenza prima e dopo e spiega i fattori di aumento. Rispondi in italiano usando solo i dati della domanda, senza chiamare alcun tool.",
+      "fixture_id": "unused",
+      "reference": {
+        "answer_kinds": [
+          "theory"
+        ],
+        "tool_policy": "forbidden",
+        "required_tool_groups": [],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [],
+        "concepts": [
+          "A 18 V: 6 A e 108 W. A 36 V: 12 A e 432 W.",
+          "A resistenza costante raddoppia la corrente e quadruplica la potenza: P = V²/R."
+        ],
+        "forbidden_claims": [
+          "Afferma che raddoppiando la tensione la potenza raddoppi.",
+          "Dichiara il modello valido senza limiti per una lampada reale.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Corrente lampada",
+            "value": 6,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Potenza lampada",
+            "value": 108,
+            "unit": "W",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "resistor_power",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Corrente a 36 V",
+            "value": 12,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 36,
+              "R": 3
+            },
+            "fixture_path": null
+          },
+          {
+            "label": "Potenza a 36 V",
+            "value": 432,
+            "unit": "W",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "resistor_power",
+            "inputs": {
+              "V": 36,
+              "R": 3
+            },
+            "fixture_path": null
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "closed_book"
+    },
+    {
+      "name": "book-dc-power-live",
+      "category": "power",
+      "split": "development",
+      "group_id": "textbook-dc-power",
+      "critical": true,
+      "question": "Il circuito aperto riproduce l’esempio ideale della lampada di DC 2.4 mediante R1, un resistore costante. Leggi i dati attuali e determina corrente e potenza di R1. Distingui misure ed eventuali ipotesi sul componente reale. Usa i tool del circuito aperto e cita le evidenze correnti; rispondi in italiano.",
+      "fixture_id": "lamp-equivalent",
+      "reference": {
+        "answer_kinds": [
+          "circuit"
+        ],
+        "tool_policy": "required",
+        "required_tool_groups": [
+          [
+            "getCircuitSnapshot",
+            "runDC",
+            "measureComponent"
+          ]
+        ],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [
+          "search_info"
+        ],
+        "concepts": [
+          "Modello didattico a resistenza costante: I = V/R = 18/3 = 6 A; P = VI = V²/R = 108 W.",
+          "Associa 6 A alla corrente nella lampada e 108 W alla sua dissipazione; non deduce il comportamento reale di una lampada al variare della temperatura.",
+          "Legge evidenze correnti di R1: 18 V, 3 ohm, 6 A e 108 W; la lampada è sostituita da un resistore ideale.",
+          "Il rating della fixture è aggiunto per il simulatore e non è una specifica pubblicata della lampada."
+        ],
+        "forbidden_claims": [
+          "Dichiara 6 W oppure 108 A.",
+          "Afferma che una lampada reale mantenga necessariamente resistenza costante.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Corrente lampada",
+            "value": 6,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": "runDC.components.R1.data.i"
+          },
+          {
+            "label": "Potenza lampada",
+            "value": 108,
+            "unit": "W",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "resistor_power",
+            "inputs": {
+              "V": 18,
+              "R": 3
+            },
+            "fixture_path": "runDC.components.R1.data.p"
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "live_tools"
+    },
+    {
+      "name": "book-dc-divider-live",
+      "category": "measurement",
+      "split": "development",
+      "group_id": "textbook-dc-divider",
+      "critical": false,
+      "question": "Il circuito aperto è un adattamento a due resistori dell’esempio DC 6.1: R1 raggruppa i due resistori superiori, R2 rappresenta quello inferiore originale. Misura la tensione ai capi di R2 e la corrente che lo attraversa, verificando i parametri attuali. Usa i tool del circuito aperto e cita le evidenze correnti; rispondi in italiano.",
+      "fixture_id": "divider-equivalent",
+      "reference": {
+        "answer_kinds": [
+          "circuit"
+        ],
+        "tool_policy": "required",
+        "required_tool_groups": [
+          [
+            "getCircuitSnapshot",
+            "runDC",
+            "measureComponent"
+          ]
+        ],
+        "required_tool_outcome": "success",
+        "forbidden_tools": [
+          "search_info"
+        ],
+        "concepts": [
+          "Dalle evidenze: 45 V, R1 = 15 kohm, R2 = 7.5 kohm; R1 rappresenta 5 kohm + 10 kohm del libro.",
+          "R2 della fixture corrisponde a R3 del libro: 15 V e 2 mA; il partitore è ideale e non caricato."
+        ],
+        "forbidden_claims": [
+          "Scambia R2 della fixture con R2 da 10 kohm del libro.",
+          "Dichiara che la fixture riproduca tre componenti distinti.",
+          "Presenta dati del circuito aperto come dati della soluzione pubblicata senza averli misurati.",
+          "Attribuisce al libro parametri o garanzie reali non presenti nella fonte."
+        ],
+        "numbers": [
+          {
+            "label": "Tensione R2 della fixture",
+            "value": 15,
+            "unit": "V",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "divider_voltage",
+            "inputs": {
+              "V": 45,
+              "R": 15000,
+              "R2": 7500
+            },
+            "fixture_path": "runDC.nodeVoltages.n2"
+          },
+          {
+            "label": "Corrente R2 della fixture",
+            "value": 0.002,
+            "unit": "A",
+            "absolute_tolerance": 1e-09,
+            "relative_tolerance": 0.005,
+            "calculation": "ohm_current",
+            "inputs": {
+              "V": 15,
+              "R": 7500
+            },
+            "fixture_path": "runDC.components.R2.data.i"
+          }
+        ],
+        "citation_source_ids": [],
+        "response_language": "it",
+        "summary_required": false
+      },
+      "provenance": {
+        "origin": "curated",
+        "author": "Codex: traduzione/adattamento del caso; soluzione tecnica di Tony R. Kuphaldt, fonte e pagine nel corpus.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "generator_experiment_id": null,
+        "trace_id": null,
+        "review_status": "proposed",
+        "reviewed_by": null
+      },
+      "followups": [],
+      "retrieved_source_ids": [],
+      "adversarial_document": null,
+      "summary_threshold_tokens": null,
+      "evaluation_mode": "live_tools"
+    }
+  ]
+}

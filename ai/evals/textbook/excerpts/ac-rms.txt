@@ -1,0 +1,20 @@
+Lessons In Electric Circuits, Volume II – AC
+Tony R. Kuphaldt
+Sixth Edition, last update November 06, 2021
+Section: 1.3 Measurements of AC magnitude, Figure 1.20
+Printed pages: 16; PDF pages: [25]
+Source: https://www.ibiblio.org/kuphaldt/electricCircuits/AC/index.html
+License: Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF
+https://creativecommons.org/licenses/by/4.0/
+Changes: selected layout-preserving text extraction; diagrams require the original PDF.
+
+In the two circuits above, we have the same amount of load resistance (2 Ω) dissipating the
+same amount of power in the form of heat (50 watts), one powered by AC and the other by
+DC. Because the AC voltage source pictured above is equivalent (in terms of power delivered
+to a load) to a 10 volt DC battery, we would call this a “10 volt” AC source. More specifically,
+we would denote its voltage value as being 10 volts RMS. The qualifier “RMS” stands for
+Root Mean Square, the algorithm used to obtain the DC equivalent value from points on a
+graph (essentially, the procedure consists of squaring all the positive and negative points on a
+waveform graph, averaging those squared values, then taking the square root of that average
+to obtain the final answer). Sometimes the alternative terms equivalent or DC equivalent are
+used instead of “RMS,” but the quantity and principle are both the same.

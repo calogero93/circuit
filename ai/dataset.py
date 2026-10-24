@@ -9,11 +9,13 @@ from pathlib import Path
 import re
 
 from evaluation_fixtures import build_fixture, transient
+from evaluation_sources import local_source, verify_publications
 from experiments import ROOT, digest, file_digest
 from schemas import DatasetCase, DatasetCorpus, EvaluationDataset, FixtureCatalog
 from tools import BROWSER_TOOLS
 
 DATA_DIR = Path(__file__).resolve().parent / "evals"
+TEXTBOOK_DIR = DATA_DIR / "textbook"
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,11 @@ def calculate_reference(reference):
         "ohm_current": lambda: p["V"] / p["R"],
         "resistor_power": lambda: p["V"] ** 2 / p["R"],
         "divider_voltage": lambda: p["V"] * p["R2"] / (p["R"] + p["R2"]),
+        "series_resistance": lambda: p["R1"] + p["R2"] + p["R3"],
+        "series_current": lambda: p["V"] / (p["R1"] + p["R2"] + p["R3"]),
+        "series_voltage": lambda: p["V"] * p["Rtarget"] / (p["R1"] + p["R2"] + p["R3"]),
+        "parallel_resistance": lambda: 1 / (1 / p["R1"] + 1 / p["R2"] + 1 / p["R3"]),
+        "parallel_current": lambda: p["V"] * (1 / p["R1"] + 1 / p["R2"] + 1 / p["R3"]),
         "rc_tau": lambda: p["R"] * p["C"],
         "rc_step": lambda: p["V"] * -math.expm1(-p["t"] / (p["R"] * p["C"])),
         "cutoff": lambda: 1 / (2 * math.pi * p["R"] * p["C"]),
@@ -64,7 +71,7 @@ def resolve_fixture_path(scenario, path):
 
 
 def validate_cases(cases, fixtures, corpus):
-    ids, questions, groups = set(), set(), {}
+    ids, questions, groups, publication_splits = set(), set(), {}, {}
     tool_names = {name for name, *_ in BROWSER_TOOLS} | {"search_info"}
     for case in cases:
         if case.name in ids: raise ValueError(f"ID duplicato: {case.name}")
@@ -75,6 +82,20 @@ def validate_cases(cases, fixtures, corpus):
         if case.group_id in groups and groups[case.group_id] != case.split:
             raise ValueError(f"Varianti dello stesso gruppo in split diversi: {case.group_id}")
         groups[case.group_id] = case.split
+        if case.evaluation_mode == "closed_book" and (case.retrieved_source_ids or
+                any(t.reference.tool_policy != "forbidden" for t in [case, *case.followups])):
+            raise ValueError(f"Caso closed_book con accesso ai tool o alle soluzioni: {case.name}")
+        if case.evaluation_mode == "controlled_rag" and (not case.retrieved_source_ids or
+                any(t.reference.tool_policy != "required" or
+                    not t.reference.citation_source_ids or
+                    not set(t.reference.citation_source_ids) <= set(case.retrieved_source_ids) or
+                    ["search_info"] not in t.reference.required_tool_groups for t in [case, *case.followups])):
+            raise ValueError(f"Caso controlled_rag senza retrieval e citazioni richiesti: {case.name}")
+        if case.evaluation_mode == "live_tools" and (case.retrieved_source_ids or
+                any(t.reference.tool_policy != "required" or
+                    not any(group and set(group) <= {name for name, *_ in BROWSER_TOOLS} for group in t.reference.required_tool_groups)
+                    for t in [case, *case.followups])):
+            raise ValueError(f"Caso live_tools senza evidenze browser richieste: {case.name}")
         sources = set(case.provenance.source_ids) | set(case.retrieved_source_ids)
         for turn in [case, *case.followups]:
             if turn.fixture_id not in fixtures: raise ValueError(f"Fixture sconosciuta in {case.name}: {turn.fixture_id}")
@@ -88,6 +109,8 @@ def validate_cases(cases, fixtures, corpus):
                 raise ValueError(f"Tool vietati e richiesti nello stesso caso: {case.name}")
             for number in ref.numbers:
                 units = {"ohm_current": "A", "resistor_power": "W", "divider_voltage": "V", "rc_tau": "s",
+                    "series_resistance": "ohm", "series_current": "A", "series_voltage": "V",
+                    "parallel_resistance": "ohm", "parallel_current": "A",
                     "rc_step": "V", "cutoff": "Hz", "derating": "W", "power_load_percent": "percent",
                     "thermal_equilibrium": "degC", "led_resistor": "ohm", "logic_and": "logic"}
                 if number.calculation in units and number.unit != units[number.calculation]:
@@ -101,6 +124,16 @@ def validate_cases(cases, fixtures, corpus):
                             rel_tol=1e-9, abs_tol=1e-10):
                         raise ValueError(f"Fixture e riferimento discordano in {case.name}: {number.label}")
         if sources - corpus.keys(): raise ValueError(f"Fonti sconosciute in {case.name}: {sources - corpus.keys()}")
+        for source_id in sources:
+            publication = corpus[source_id].publication
+            if publication:
+                if case.evaluation_mode is None:
+                    raise ValueError(f"Un caso da pubblicazione richiede evaluation_mode: {case.name}")
+                for page in publication.pdf_pages:
+                    key = (publication.pdf_sha256, page)
+                    if key in publication_splits and publication_splits[key] != case.split:
+                        raise ValueError(f"Soluzioni della stessa pagina pubblicata in split diversi: {case.name}")
+                    publication_splits[key] = case.split
         if case.adversarial_document and not case.retrieved_source_ids:
             raise ValueError("Un documento malevolo deve appartenere a un caso RAG controllato")
         if "search_info" in {tool for group in case.reference.required_tool_groups for tool in group} and not case.retrieved_source_ids:
@@ -121,22 +154,23 @@ def load_dataset(directory=DATA_DIR, *, root=ROOT, verify_sources=True):
         if hashlib.sha256(source.excerpt.encode()).hexdigest() != source.sha256:
             raise ValueError(f"Hash estratto non valido: {source.id}")
         if verify_sources:
-            path = (root / source.path).resolve()
-            if not path.is_relative_to(root.resolve()) or not path.is_file():
-                raise ValueError(f"Fonte non locale alla repository: {source.id}")
+            path = local_source(root, source.path)
             if source.excerpt not in path.read_text():
                 raise ValueError(f"Estratto non più presente nella fonte: {source.id}; revisionare il caso")
+            if source.publication:
+                paths.append(path)  # Include anche attribuzioni e trascrizioni nell'identità.
     validate_cases(data.cases, fixtures, corpus)
     if data.status == "reviewed" and any(c.provenance.review_status != "accepted" for c in data.cases):
         raise ValueError("Un dataset reviewed richiede la revisione di tutti i casi")
     return DatasetBundle(data, fixtures, corpus, {path.resolve(): file_digest(path) for path in paths})
 
 
-def select_cases(bundle, *, split="development", category=None, case_name=None, include_rag=False):
+def select_cases(bundle, *, split="development", category=None, case_name=None, include_rag=False, mode=None):
     cases = [case for case in bundle.dataset.cases if case.provenance.review_status != "rejected"
         and (split == "all" or case.split == split)
         and (not category or case.category == category)
         and (not case_name or case.name == case_name)
+        and (not mode or case.evaluation_mode == mode)
         and (include_rag or not case.retrieved_source_ids)]
     if not cases: raise ValueError("Nessun caso corrisponde ai filtri; verificare split, ID e abilitazione RAG")
     return cases
@@ -147,8 +181,12 @@ def main():
     parser.add_argument("--list", action="store_true", help="Elenca domande e categorie senza contattare il modello")
     parser.add_argument("--show", help="Mostra tutti i riferimenti di un caso, riservati alla revisione")
     parser.add_argument("--directory", type=Path, default=DATA_DIR)
+    parser.add_argument("--source", help="Mostra estratto e provenienza di una fonte, riservati alla revisione")
+    parser.add_argument("--verify-publications", action="store_true", help="Verifica SHA-256 dei PDF locali e presenza degli estratti nelle pagine dichiarate; richiede Poppler")
     args = parser.parse_args()
     bundle = load_dataset(args.directory)
+    if args.verify_publications:
+        print("Estratti verificati nei PDF:", verify_publications(bundle.corpus, ROOT))
     print(f"{bundle.dataset.id} {bundle.dataset.version}: {len(bundle.dataset.cases)} casi, stato {bundle.dataset.status}")
     print("Split:", dict(Counter(c.split for c in bundle.dataset.cases)))
     print("Categorie:", dict(Counter(c.category for c in bundle.dataset.cases)))
@@ -156,11 +194,14 @@ def main():
     print("SHA-256 bundle:", bundle.identity()["bundle_sha256"])
     if args.list:
         for case in bundle.dataset.cases:
-            print(f"{case.name:30} {case.split:12} {case.category:13} {case.question}")
+            print(f"{case.name:30} {case.split:12} {case.category:13} {case.evaluation_mode or 'legacy':15} {case.question}")
     if args.show:
         case = next((c for c in bundle.dataset.cases if c.name == args.show), None)
         if case is None: parser.error("Caso sconosciuto")
         print(case.model_dump_json(indent=2))
+    if args.source:
+        if args.source not in bundle.corpus: parser.error("Fonte sconosciuta")
+        print(bundle.corpus[args.source].model_dump_json(indent=2))
 
 
 if __name__ == "__main__": main()

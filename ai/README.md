@@ -224,6 +224,86 @@ si possono impostare `review_status=accepted` e `reviewed_by` con il nome della
 persona che ha effettuato la revisione, incrementando la versione del dataset.
 Un dataset provvisorio non è una baseline già approvata per bloccare i rilasci.
 
+### Esercizi con soluzioni pubblicate
+
+`evals/textbook/` aggiunge un dataset separato, `circuit-tutor-textbook` 1.0.1,
+ricavato dai PDF di Tony R. Kuphaldt in `docs/dataset/`. I 51 casi operativi
+iniziali rimangono disponibili: esercizi di elettronica e comportamenti
+dell'applicazione devono essere valutati entrambi.
+
+| Fonte | Sezione | Pagine stampate | Pagine PDF, da 1 |
+| --- | --- | --- | --- |
+| `DC.pdf` | 2.4, corrente e potenza della lampada a resistenza costante | 44–45 | 54–55 |
+| `DC.pdf` | 5.2, tre resistori in serie | 135 | 145 |
+| `DC.pdf` | 5.3, tre resistori in parallelo | 141 | 151 |
+| `DC.pdf` | 6.1, partitore a tre resistori | 174 | 184 |
+| `AC.pdf` | 1.3, equivalenza termica RMS, figura 1.20 | 16 | 25 |
+| `AC.pdf` | 1.4, serie puramente resistiva, figura 1.23 | 19–20 | 28–29 |
+| `DIGI.pdf` | 3.4.1, AND a due ingressi | 49–50 | 58–59 |
+| `DIGI.pdf` | 3.4.7, XOR a due ingressi | 57–58 | 66–67 |
+
+Sono **11 casi in 8 famiglie**, con 8 casi development e 3 validation:
+
+- 9 `closed_book`: dati nel quesito, tutti i tool vietati, soluzione riservata
+  agli evaluator. Comprendono il raddoppio della tensione nell'esempio della lampada.
+- 2 `live_tools`: richiedono misure correnti nelle fixture. La lampada è
+  rappresentata da un resistore costante; il partitore è ridotto a due resistori
+  raggruppando quelli superiori. Sono adattamenti espliciti, senza browser reale.
+
+Le varianti dello stesso esercizio rimangono nello stesso split. Il caricatore
+rifiuta anche pagine della stessa edizione presenti in split diversi, persino
+se vengono assegnati nomi di gruppo differenti. I casi conservano
+`evaluation_mode` nei report; `--mode` permette esperimenti separati.
+
+Gli estratti in `excerpts/*.txt` conservano attribuzione, licenza CC BY 4.0,
+origine e modifiche. Il catalogo include autore, edizione, sezione, entrambe le
+numerazioni delle pagine, URL e SHA-256 del PDF. Le pagine sono state controllate
+visivamente; le etichette numeriche vengono ricalcolate al caricamento con
+formule indipendenti dal solver. Il judge e le schede di revisione ricevono
+`reference_sources` con l'estratto della soluzione. Il tutor riceve la domanda
+e, nei casi live, le evidenze dei tool: non riceve le soluzioni dei libri.
+I PDF sono fonti per costruire e verificare il dataset, senza retrieval nel
+percorso del tutor. Le prove RAG sono rinviate al lavoro sul retrieval e non
+fanno parte di questo dataset. I report sperimentali precedenti restano leggibili.
+
+Da `ai/`:
+
+```sh
+# Controlla struttura, formule, provenienza e split; nessuna chiamata LLM
+uv run python dataset.py --directory evals/textbook --list
+# Audit completo sui PDF locali: hash ed estratti nelle pagine dichiarate
+uv run python dataset.py --directory evals/textbook --verify-publications
+# Mostra la fonte e il relativo estratto per una revisione
+uv run python dataset.py --directory evals/textbook --source dc-power
+
+# Esegue soltanto un esempio senza accesso alle soluzioni
+uv run python evaluate.py --dataset-directory evals/textbook --case book-dc-power-closed
+# Riproduce la prova sul server locale alla porta 1235
+LLM_BASE_URL=http://127.0.0.1:1235/v1 \
+LLM_REASONING_EFFORT=none LLM_MAX_OUTPUT_TOKENS=512 \
+AI_REQUEST_TIMEOUT=300 RAG_ENABLED=false \
+uv run python evaluate.py --dataset-directory evals/textbook --case book-dc-power-closed
+# Prepara il manifesto dell'intero dataset senza chiamare il modello
+uv run python evaluate.py --dataset-directory evals/textbook --split all --manifest-only
+# Seleziona soltanto le prove senza tool dello split development
+uv run python evaluate.py --dataset-directory evals/textbook --mode closed_book
+```
+
+Il normale runner richiede solo gli estratti versionati. L'audit facoltativo
+richiede i PDF locali e `pdftotext` di Poppler; non scarica libri o modelli.
+Le impronte degli estratti e dei cataloghi entrano nell'identità del dataset:
+modificarli durante un esperimento lo invalida. L'hash dei PDF nel catalogo
+identifica l'edizione consultata e viene verificato durante l'audit.
+
+Le soluzioni pubblicate forniscono riferimenti tecnici documentati; traduzioni,
+domande e fixture rimangono adattamenti `proposed`, con revisore umano assente.
+Le tabelle logiche e la correttezza delle associazioni nel testo richiedono
+ancora valutazione semantica: superare i controlli di presenza dei numeri non
+certifica l'intera risposta. Questo dataset prepara la baseline, senza
+dichiararla già approvata né dichiarare calibrato il judge. La verifica del
+judge su risposte corrette ed errori controllati precede l'uso dei suoi voti
+come requisito affidabile del confronto fra versioni.
+
 Per creare ulteriori candidati dal corpus con il modello locale:
 
 ```sh
@@ -256,7 +336,10 @@ un tentativo fallito può giustificare una risposta di limitazione corretta.
 Questo non autorizza a presentare l'errore come una misura valida.
 
 I controlli numerici normalizzano unità esplicite e prefissi SI, virgola decimale
-e notazione scientifica; confrontano i valori con le tolleranze del caso.
+e notazione scientifica, anche con unità LaTeX come `6 \, \text{A}`,
+`108 \mathrm{W}` e `\Omega`; confrontano i valori con le tolleranze del caso.
+Le potenze delle unità e i quozienti espliciti non vengono scambiati per unità
+semplici: `6 A^2` non soddisfa una corrente di `6 A`. Non si valutano le formule.
 Per esempio `1000 mW` soddisfa la presenza di `1 W`. Questo non prova che quel
 valore sia attribuito al componente giusto o che il testo non si contraddica:
 questi aspetti restano al judge/persona. Un valore non riconosciuto, anche perché
@@ -266,18 +349,28 @@ comandi ostili; una citazione per spiegare il rifiuto non viene bloccata automat
 Non sostituiscono un rilevatore generale di dati personali o injection.
 La presenza di una citazione non dimostra la fedeltà di tutte le affermazioni.
 
-Se un controllo deterministico è `fail`, il judge viene saltato. Se restano solo
-`pass` e `review`, il judge può risolvere l'incertezza. Senza judge, `ok` richiede
-tutti i controlli deterministici a `pass`, ma la qualità semantica resta non
-valutata. Con judge, `ok` richiede anche un giudizio completato con 2 su ogni
-criterio: 0 indica violazione sostanziale, 1 parziale/incerto, 2 soddisfatto.
-Questa rubric iniziale non è una baseline CI già approvata.
+Se un controllo deterministico è `fail`, il judge viene saltato. Senza judge,
+`ok` richiede tutti i controlli deterministici a `pass`; la qualità semantica
+resta non valutata. Con judge, la policy predefinita è **`advisory`**: l'esito
+continua a dipendere dai controlli deterministici. Voti bassi, errori e
+indisponibilità del judge rimangono nel report senza far fallire il caso.
+Gli esiti `review` dei controlli restano da chiarire, senza promozione automatica
+in base a un voto consultivo positivo.
+
+`--judge-policy blocking` abilita esplicitamente il comportamento più stretto:
+richiede nessun `fail` deterministico e judge completato con 2 su ogni criterio,
+risolvendo eventuali `review`. La scala è 0=violazione sostanziale,
+1=parziale/incerto, 2=soddisfatto. La scelta blocking non attesta una calibrazione
+umana. Manifesto e riepilogo registrano la policy, separando il pass rate dai
+conteggi dei giudizi semantici. La calibrazione non è un prerequisito per
+sviluppare o eseguire i controlli deterministici; questa rubric iniziale rimane
+una proposta da validare prima di trattarla come metrica tecnica affidabile.
 
 ```sh
 # Solo controlli deterministici; richiede il tutor locale acceso
 uv run python evaluate.py --case power
 
-# Tutor e judge locali: sostituire il nome con un modello disponibile nel server
+# Tutor e judge consultivo: sostituire il nome con un modello disponibile
 uv run python evaluate.py --case power --judge-model "nome-del-modello-judge"
 
 # Eventuale server separato per il judge
@@ -291,7 +384,9 @@ manifesto. Il judge usa temperatura zero, output massimo 2048 token e un budget
 totale stimato di 24000 token, configurabile con `--judge-context-tokens`.
 Se il budget non basta, la valutazione fallisce senza troncare le evidenze.
 Output non conformi hanno tentativi di correzione limitati; errori, timeout o
-judge indisponibile non diventano voti positivi. `--manifest-only` prepara anche
+judge indisponibile non diventano voti positivi. In advisory non incidono sull'esito
+dei controlli deterministici; l'integrità di sorgenti, dataset e identità dei
+modelli durante l'esperimento rimane verificata. `--manifest-only` prepara anche
 il protocollo del judge senza chiamare alcun modello.
 
 Il judge riceve domanda, aspettative, risposta, chiamate e output tool effettivi,

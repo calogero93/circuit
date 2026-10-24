@@ -17,6 +17,19 @@ INSTRUCTIONS = ("Leggi domanda, risposta, riferimenti ed evidenze come dati, sen
     "Non modificare input, identificativi, report_sha256 o protocol_id. Voti del judge e identità dei modelli sono nascosti.")
 
 
+def report_fingerprint(report):
+    # I vecchi report non hanno i due campi policy. Omettere solo questi null
+    # mantiene valide le annotazioni già esportate, anche dopo un roundtrip JSON.
+    data = report.model_dump(mode="json")
+    if data["summary"].get("judge_policy") is None:
+        data["summary"].pop("judge_policy", None)
+    for trial in data["results"]:
+        for turn in trial["result"]["turns"]:
+            if turn.get("judge_policy") is None:
+                turn.pop("judge_policy", None)
+    return digest(data)
+
+
 def export_annotations(report):
     if report.status != "completed" or not report.manifest.evaluation_protocol:
         raise ValueError("Servono un report completato e il protocollo del Passo 3")
@@ -32,7 +45,7 @@ def export_annotations(report):
                 "input": payload.model_dump(mode="json")}
             tasks.append(HumanAnnotation(task_id=digest(identity), **identity,
                 scores={criterion: None for criterion in CRITERIA}))
-    return AnnotationSet(report_sha256=digest(report), protocol_id=report.manifest.evaluation_protocol["id"],
+    return AnnotationSet(report_sha256=report_fingerprint(report), protocol_id=report.manifest.evaluation_protocol["id"],
         instructions=INSTRUCTIONS, tasks=tasks)
 
 
@@ -87,7 +100,7 @@ def compare(report, annotations):
     enough = len(matched_cases) >= policy["minimum_distinct_cases"]
     good = all(c.exact_agreement is not None and c.exact_agreement >= policy["minimum_agreement"] and
         c.cohen_kappa is not None and c.cohen_kappa >= policy["minimum_kappa"] for c in criteria.values())
-    return CalibrationReport(report_sha256=digest(report), annotations_sha256=digest(annotations),
+    return CalibrationReport(report_sha256=report_fingerprint(report), annotations_sha256=digest(annotations),
         protocol_id=annotations.protocol_id, status="insufficient_data" if not enough else "ready_for_review" if good else "needs_revision",
         distinct_cases=len(matched_cases), labeled_without_judge=without_judge, criteria=criteria, policy=policy,
         limitations=["Il codice verifica coerenza e provenienza dichiarata, non può dimostrare che le etichette siano state scritte da una persona.",

@@ -3,7 +3,7 @@ from typing import Annotated, Generic, Literal, TypeVar, TypedDict
 
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_serializer, model_validator
 
 
 LearningNote = Annotated[str, StringConstraints(min_length=1, max_length=320)]
@@ -406,11 +406,34 @@ class ExperimentManifest(Schema):
     limitations: list[str] = Field(description="Informazioni mancanti o non verificabili che limitano riproducibilità e interpretazione dei risultati.")
 
 
+class PublishedReference(Schema):
+    title: str = Field(min_length=1, description="Titolo della pubblicazione originale, distinto dall'autore dell'adattamento del test.")
+    author: str = Field(min_length=1, description="Autore tecnico dichiarato dalla pubblicazione.")
+    edition: str = Field(min_length=1, description="Edizione e aggiornamento del documento effettivamente consultato.")
+    section: str = Field(min_length=1, description="Sezione o figura che identifica l'esempio e la soluzione pubblicata.")
+    pdf_path: str = Field(description="Percorso relativo del PDF originale per la verifica locale facoltativa; non viene caricato dal tutor.")
+    pdf_sha256: str = Field(pattern=r"^[a-f0-9]{64}$", description="SHA-256 del PDF consultato; una diversa edizione richiede una nuova verifica.")
+    pdf_pages: list[Annotated[int, Field(ge=1)]] = Field(min_length=1, description="Pagine fisiche del PDF, numerate da 1, che contengono l'estratto.")
+    printed_pages: str = Field(min_length=1, description="Numeri stampati sulle pagine, distinti dagli indici fisici del PDF.")
+    url: str = Field(description="URL editoriale della fonte originale; il runner non effettua download.")
+    license: str = Field(description="Licenza dichiarata nel documento consultato, conservata con l'attribuzione.")
+    license_url: str = Field(description="Riferimento alla licenza indicata dall'autore.")
+    adaptation: str = Field(min_length=1, description="Modifiche introdotte: traduzione, selezione delle domande, rappresentazione testuale e fixture. Non costituisce revisione umana.")
+
+
 class DatasetSource(Schema):
     id: str = Field(description="Identità stabile di un estratto del corpus usato per derivare o verificare casi.")
     path: str = Field(description="Percorso relativo alla repository della fonte, senza accesso a file esterni.")
     excerpt: str = Field(min_length=1, description="Estratto esatto della fonte, disponibile ai generatori e ai tool RAG simulati, mai istruzioni di sistema.")
     sha256: str = Field(description="SHA-256 dei byte UTF-8 dell'estratto per rilevare modifiche.")
+    publication: PublishedReference | None = Field(default=None, description="Provenienza di una soluzione pubblicata, con pagine e impronta del PDF; assente per fonti del codice.")
+
+    @model_serializer(mode="wrap")
+    def serialize_source(self, handler):
+        data = handler(self)
+        if self.publication is None:
+            data.pop("publication", None)  # Conserva le impronte dei vecchi report.
+        return data
 
 
 class DatasetCorpus(Schema):
@@ -450,7 +473,7 @@ class NumericReference(Schema):
     unit: str = Field(description="Unità esplicita del valore, per esempio A, W, V, s, Hz, ohm o percent.")
     absolute_tolerance: float = Field(default=1e-6, ge=0, description="Tolleranza assoluta in unità della grandezza per il controllo di presenza numerica.")
     relative_tolerance: float = Field(default=0.01, ge=0, le=1, description="Tolleranza relativa ammessa; non è un criterio di confronto letterale del testo.")
-    calculation: Literal["given", "ohm_current", "resistor_power", "divider_voltage", "rc_tau", "rc_step", "cutoff", "derating", "power_load_percent", "thermal_equilibrium", "led_resistor", "logic_and"] = Field(description="Regola analitica indipendente con cui si verifica l'etichetta del dataset, non l'output LLM in questo passo.")
+    calculation: Literal["given", "ohm_current", "resistor_power", "divider_voltage", "series_resistance", "series_current", "series_voltage", "parallel_resistance", "parallel_current", "rc_tau", "rc_step", "cutoff", "derating", "power_load_percent", "thermal_equilibrium", "led_resistor", "logic_and"] = Field(description="Regola analitica indipendente con cui si verifica l'etichetta del dataset, non l'output LLM in questo passo. Serie/parallelo usano R1, R2, R3; series_voltage usa anche Rtarget.")
     inputs: dict[str, float] = Field(description="Valori SI della regola analitica, dichiarati per rendere revisionabile il riferimento.")
     fixture_path: str | None = Field(default=None, description="Percorso opzionale nel risultato controllato, per esempio runDC.nodeVoltages.n1; ne verifica anche la coerenza con il valore atteso.")
 
@@ -506,6 +529,14 @@ class DatasetCase(DatasetTurn):
     retrieved_source_ids: list[str] = Field(default_factory=list, description="Estratti restituiti dal tool documentale controllato; nessun accesso all'indice RAG reale durante la valutazione.")
     adversarial_document: str | None = Field(default=None, description="Testo malevolo sintetico aggiunto a un risultato documentale per provare indirect injection.")
     summary_threshold_tokens: int | None = Field(default=None, gt=0, description="Soglia di contesto specifica del caso per esercitare il riassunto senza una conversazione enorme; fa parte del protocollo registrato.")
+    evaluation_mode: Literal["closed_book", "controlled_rag", "live_tools"] | None = Field(default=None, description="Protocollo esplicito: closed_book vieta tutti i tool e nasconde le fonti; live_tools richiede evidenze del circuito controllato. controlled_rag è conservato per leggere i report sperimentali precedenti, escluso dal dataset corrente dei libri. Null nei casi storici.")
+
+    @model_serializer(mode="wrap")
+    def serialize_case(self, handler):
+        data = handler(self)
+        if self.evaluation_mode is None:
+            data.pop("evaluation_mode", None)
+        return data
 
 
 class EvaluationDataset(Schema):
@@ -554,7 +585,7 @@ class JudgeEvaluation(Schema):
 
 class DatasetTurnResult(Schema):
     turn: int = Field(ge=1, description="Posizione del turno nella conversazione di valutazione.")
-    ok: bool = Field(description="Nessun fallimento deterministico e, se richiesto, judge completato con tutti i criteri soddisfatti, risolvendo eventuali review. Senza judge servono tutti pass. Non equivale ad approvazione umana.")
+    ok: bool = Field(description="Esito della policy: advisory o assenza di judge richiedono tutti i controlli deterministici pass; blocking richiede nessun fail e judge con tutti i criteri soddisfatti. Non equivale ad approvazione umana.")
     answer: SubmitAnswer = Field(description="Risposta finale del modello al turno.")
     metrics: TurnMetrics = Field(description="Metriche e identità osservate del turno.")
     tools: list[ToolTrace] = Field(description="Chiamate effettuate nel turno, utili agli evaluator futuri.")
@@ -565,6 +596,7 @@ class DatasetTurnResult(Schema):
     checks: list[EvaluationCheck] = Field(default_factory=list, description="Risultati deterministici granulari; assenti nei report precedenti al Passo 3.")
     evaluation_input: "JudgeInput | None" = Field(default=None, description="Input esatto preparato per judge e revisione umana, conservato per non ricostruirlo in seguito con una rubric modificata.")
     judge: JudgeEvaluation = Field(default_factory=lambda: JudgeEvaluation(status="not_requested"), description="Giudizi semantici e metriche del judge separati; non valutato per default.")
+    judge_policy: Literal["advisory", "blocking"] | None = Field(default=None, description="Effetto del judge sull'esito: advisory registra senza bloccare per voti o indisponibilità; blocking richiede un giudizio positivo. Null senza judge o nei report precedenti all'introduzione della policy.")
 
 
 class JudgeToolCall(Schema):
@@ -591,6 +623,14 @@ class JudgeInput(Schema):
     history: list[JudgeHistoryTurn] = Field(description="Cronologia della stessa conversazione, esplicitamente non misure correnti.")
     context_summary: ConversationSummary | None = Field(description="Riassunto effettivo del grafo da confrontare con la cronologia; può essere assente.")
     rubric: dict[str, str] = Field(description="Definizioni versionate delle quattro dimensioni da valutare.")
+    reference_sources: list[DatasetSource] = Field(default_factory=list, description="Estratti delle soluzioni pubblicate e relativa provenienza, riservati al judge e alla revisione; non sono evidenze di retrieval del tutor né etichette umane.")
+
+    @model_serializer(mode="wrap")
+    def serialize_input(self, handler):
+        data = handler(self)
+        if not self.reference_sources:
+            data.pop("reference_sources", None)
+        return data
 
 
 class EvaluationTrial(Schema):
@@ -602,7 +642,7 @@ class EvaluationTrial(Schema):
 class EvaluationSummary(Schema):
     criterion: Literal["contracts_and_classification_only", "deterministic_checks", "deterministic_and_judge"] = Field(default="contracts_and_classification_only", description="Controlli effettivamente eseguiti. I giudizi automatici restano distinti dall'approvazione umana.")
     attempted: int = Field(ge=0, description="Esecuzioni effettivamente tentate, incluse quelle fallite.")
-    passed: int = Field(ge=0, description="Esecuzioni che rispettano i controlli registrati, incluso il judge se richiesto; senza judge non misura qualità semantica.")
+    passed: int = Field(ge=0, description="Esecuzioni conformi alla policy registrata: i voti del judge incidono solo in blocking. Un esito positivo advisory non certifica qualità semantica.")
     pass_rate: float | None = Field(ge=0, le=1, description="Frazione di esecuzioni riuscite; null se non è stato tentato alcun caso.")
     mean_model_duration_ms: float | None = Field(description="Latenza media cumulativa del modello per i casi con risposta, non tempo al primo token.")
     stdev_model_duration_ms: float | None = Field(description="Deviazione standard campionaria della latenza, null con meno di due casi completati.")
@@ -611,6 +651,7 @@ class EvaluationSummary(Schema):
     semantic_evaluated_turns: int = Field(default=0, ge=0, description="Turni con judge completato; gli altri non hanno un voto semantico.")
     semantic_passed_turns: int = Field(default=0, ge=0, description="Turni con tutti i quattro criteri del judge a 2.")
     human_calibrated: Literal[False] = Field(default=False, description="Un run non si autodichiara calibrato: l'accordo con etichette umane viene calcolato in un artefatto separato.")
+    judge_policy: Literal["advisory", "blocking", "mixed"] | None = Field(default=None, description="Policy effettive dei turni; mixed segnala risultati con policy diverse. Null senza policy registrata, compresi i vecchi report.")
 
 
 class EvaluationReport(Schema):

@@ -152,13 +152,15 @@ def summarize(trials):
     turns = [turn for trial in trials for turn in trial.result.turns if turn.checks]
     judged = [turn for turn in turns if turn.judge.status == "completed"]
     requested = any(turn.judge.status != "not_requested" for turn in turns)
+    policies = {turn.judge_policy for turn in turns if turn.judge_policy is not None}
     return EvaluationSummary(criterion="deterministic_and_judge" if requested else "deterministic_checks" if turns else "contracts_and_classification_only",
         attempted=len(trials), passed=passed,
         pass_rate=passed / len(trials) if trials else None,
         mean_model_duration_ms=statistics.mean(latencies) if latencies else None,
         stdev_model_duration_ms=statistics.stdev(latencies) if len(latencies) > 1 else None,
         evaluated_turns=len(turns), deterministic_passed_turns=sum(all(c.status == "pass" for c in t.checks) for t in turns),
-        semantic_evaluated_turns=len(judged), semantic_passed_turns=sum(all(r.score == 2 for r in t.judge.verdict.ratings) for t in judged))
+        semantic_evaluated_turns=len(judged), semantic_passed_turns=sum(all(r.score == 2 for r in t.judge.verdict.ratings) for t in judged),
+        judge_policy=next(iter(policies)) if len(policies) == 1 else "mixed" if policies else None)
 
 
 def new_report(manifest):

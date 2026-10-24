@@ -1,0 +1,185 @@
+{
+  "version": "1.0.0",
+  "sources": [
+    {
+      "id": "dc-power",
+      "path": "ai/evals/textbook/excerpts/dc-power.txt",
+      "excerpt": "2.4        Calculating electric power\nWe’ve seen the formula for determining the power in an electric circuit: by multiplying the\nvoltage in ”volts” by the current in ”amps” we arrive at an answer in ”watts.” Let’s apply this\nto a circuit example:\n\n                                             I = ???\n\n\n\n                                   +\n                       Battery                                      Lamp\n                      E = 18 V                                      R=3Ω\n                                   -\n\n\n\n\n                                             I = ???\n   In the above circuit, we know we have a battery voltage of 18 volts and a lamp resistance of\n3 Ω. Using Ohm’s Law to determine current, we get:\n           E          18 V\n      I=         =               = 6A\n           R          3Ω\n   Now that we know the current, we can take that value and multiply it by the voltage to\ndetermine power:\n      P = I E = (6 A)(18 V) = 108 W\n   Answer: the lamp is dissipating (releasing) 108 watts of power, most likely in the form of\nboth light and heat.\n2.4. CALCULATING ELECTRIC POWER                                                              45\n\n   Let’s try taking that same circuit and increasing the battery voltage to see what happens.\nIntuition should tell us that the circuit current will increase as the voltage increases and the\nlamp resistance stays the same. Likewise, the power will increase as well:\n\n                                                      I = ???\n\n\n\n                                           +\n                            Battery                               Lamp\n                           E = 36 V                               R=3Ω\n                                           -\n\n\n\n\n                                                      I = ???\n   Now, the battery voltage is 36 volts instead of 18 volts. The lamp is still providing 3 Ω of\nelectrical resistance to the flow of electrons. The current is now:\n          E                36 V\n    I=             =                  = 12 A\n          R                3Ω\n   This stands to reason: if I = E/R, and we double E while R stays the same, the current\nshould double. Indeed, it has: we now have 12 amps of current instead of 6. Now, what about\npower?\n    P = I E = (12 A)(36 V) = 432 W\n   Notice that the power has increased just as we might have suspected, but it increased quite\na bit more than the current. Why is this? Because power is a function of voltage multiplied\nby current, and both voltage and current doubled from their previous values, the power will\nincrease by a factor of 2 x 2, or 4. You can check this by dividing 432 watts by 108 watts and\nseeing that the ratio between them is indeed 4.",
+      "sha256": "cb007af1233b32865f07d9f57f962690271bdfdda9621fd9dbfa8d01dace61f9",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume I – DC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fifth Edition, last update November 06, 2021",
+        "section": "2.4 Calculating electric power",
+        "pdf_path": "docs/dataset/DC.pdf",
+        "pdf_sha256": "b49dc6038ef2e2988c30e8920451b076602f54c959c5f56949d7fad6f08bf3f0",
+        "pdf_pages": [
+          54,
+          55
+        ],
+        "printed_pages": "44–45",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "dc-series",
+      "path": "ai/evals/textbook/excerpts/dc-series.txt",
+      "excerpt": "5.2. SIMPLE SERIES CIRCUITS                                                                  135\n\n                             1\n\n                             +\n                                                               R 1 + R2 + R3 =\n                        9V\n                                                                   18 kΩ\n                             -\n\n                             4\n   Now we have all the necessary information to calculate circuit current, because we have\nthe voltage between points 1 and 4 (9 volts) and the resistance between points 1 and 4 (18 kΩ):\n               Etotal\n    Itotal =\n               Rtotal\n\n               9 volts\n    Itotal =           = 500 µA\n               18 kΩ\n   Knowing that current is equal through all components of a series circuit (and we just deter-\nmined the current through the battery), we can go back to our original circuit schematic and\nnote the current through each component:\n\n                                          R1 3 kΩ\n                                  1                                2\n\n                                  +      I = 500 µA\n\n                                                      I = 500 µA\n                                                                   R2\n                             9V\n                                                                   10 kΩ\n                                  -      I = 500 µA\n\n                                  4        R3 5 kΩ                 3\n\n   Now that we know the amount of current through each resistor, we can use Ohm’s Law to\ndetermine the voltage drop across each one (applying Ohm’s Law in its proper context):\n    ER1 = IR1 R1          ER2 = IR2 R2        ER3 = IR3 R3\n\n    ER1 = (500 µA)(3 kΩ) = 1.5 V\n\n    ER2 = (500 µA)(10 kΩ) = 5 V\n\n    ER3 = (500 µA)(5 kΩ) = 2.5 V\n    Notice the voltage drops across each resistor, and how the sum of the voltage drops (1.5 +\n5 + 2.5) is equal to the battery (supply) voltage: 9 volts. This is the third principle of series\ncircuits: that the supply voltage is equal to the sum of the individual voltage drops.",
+      "sha256": "973b8da50e9f0039977153bd3b8b56452abe0f28820d964e2a35ba58f7bcf55c",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume I – DC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fifth Edition, last update November 06, 2021",
+        "section": "5.2 Simple series circuits",
+        "pdf_path": "docs/dataset/DC.pdf",
+        "pdf_sha256": "b49dc6038ef2e2988c30e8920451b076602f54c959c5f56949d7fad6f08bf3f0",
+        "pdf_pages": [
+          145
+        ],
+        "printed_pages": "135",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "dc-parallel",
+      "path": "ai/evals/textbook/excerpts/dc-parallel.txt",
+      "excerpt": "5.3. SIMPLE PARALLEL CIRCUITS                                                                   141\n\n    This is the second principle of parallel circuits: the total circuit current is equal to the sum\nof the individual branch currents. Using this principle, we can fill in the IT spot on our table\nwith the sum of IR1 , IR2 , and IR3 :\n               R1             R2       R3          Total\n    E           9              9        9             9         Volts\n    I          0.9m          4.5m      9m          14.4m        Amps\n    R          10k            2k        1k                      Ohms\n\n                                        Rule of parallel\n                                             circuits\n                                        Itotal = I1 + I2 + I3\n    Finally, applying Ohm’s Law to the rightmost (”Total”) column, we can calculate the total\ncircuit resistance:\n               R1             R2       R3          Total\n    E           9              9        9             9         Volts\n    I          0.9m          4.5m      9m          14.4m        Amps\n    R          10k            2k        1k           625        Ohms\n\n\n                Etotal         9V                  Ohm’s\n    Rtotal =             =           = 625 Ω\n                Itotal       14.4 mA                Law\n    Please note something very important here. The total circuit resistance is only 625 Ω:\nless than any one of the individual resistors. In the series circuit, where the total resistance\nwas the sum of the individual resistances, the total was bound to be greater than any one of the\nresistors individually. Here in the parallel circuit, however, the opposite is true: we say that the\nindividual resistances diminish rather than add to make the total. This principle completes\nour triad of ”rules” for parallel circuits, just as series circuits were found to have three rules\nfor voltage, current, and resistance. Mathematically, the relationship between total resistance\nand individual resistances in a parallel circuit looks like this:\n                      1\n    Rtotal =\n                 1    1    1\n                    +    +\n                 R1   R2   R3\n   The same basic form of equation works for any number of resistors connected together in\nparallel, just add as many 1/R terms on the denominator of the fraction as needed to accom-\nmodate all parallel resistors in the circuit.",
+      "sha256": "b1ce3f431641874b0d5d8369802a4db48fe85f1919a8a81981fb91d9139bcf43",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume I – DC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fifth Edition, last update November 06, 2021",
+        "section": "5.3 Simple parallel circuits",
+        "pdf_path": "docs/dataset/DC.pdf",
+        "pdf_sha256": "b49dc6038ef2e2988c30e8920451b076602f54c959c5f56949d7fad6f08bf3f0",
+        "pdf_pages": [
+          151
+        ],
+        "printed_pages": "141",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "dc-divider",
+      "path": "ai/evals/textbook/excerpts/dc-divider.txt",
+      "excerpt": "Using this formula, we can re-analyze the example circuit’s voltage drops in fewer steps:\n\n                                                    R1\n                                                 5 kΩ\n                                    +\n                             45 V                        10 kΩ      R2\n                                    -\n                                                7.5 kΩ\n\n                                                    R3\n\n\n\n                     5 kΩ\n      ER1 = 45 V              = 10 V\n                   22.5 kΩ\n\n                    10 kΩ\n      ER2 =45 V               = 20 V\n                   22.5 kΩ\n\n                    7.5 kΩ\n      ER3 =45 V               = 15 V\n                   22.5 kΩ",
+      "sha256": "ab54e7f9a7181aed94cd1bec7edb8f866454a6699a1b7a97db08ce48e1cb6826",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume I – DC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fifth Edition, last update November 06, 2021",
+        "section": "6.1 Voltage divider circuits",
+        "pdf_path": "docs/dataset/DC.pdf",
+        "pdf_sha256": "b49dc6038ef2e2988c30e8920451b076602f54c959c5f56949d7fad6f08bf3f0",
+        "pdf_pages": [
+          184
+        ],
+        "printed_pages": "174",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "ac-rms",
+      "path": "ai/evals/textbook/excerpts/ac-rms.txt",
+      "excerpt": "In the two circuits above, we have the same amount of load resistance (2 Ω) dissipating the\nsame amount of power in the form of heat (50 watts), one powered by AC and the other by\nDC. Because the AC voltage source pictured above is equivalent (in terms of power delivered\nto a load) to a 10 volt DC battery, we would call this a “10 volt” AC source. More specifically,\nwe would denote its voltage value as being 10 volts RMS. The qualifier “RMS” stands for\nRoot Mean Square, the algorithm used to obtain the DC equivalent value from points on a\ngraph (essentially, the procedure consists of squaring all the positive and negative points on a\nwaveform graph, averaging those squared values, then taking the square root of that average\nto obtain the final answer). Sometimes the alternative terms equivalent or DC equivalent are\nused instead of “RMS,” but the quantity and principle are both the same.",
+      "sha256": "4bc0eefa1fe08dc3fba6c66497bc01ad74d3c41e7eb883ce0e3f72c13969fe3b",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume II – AC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Sixth Edition, last update November 06, 2021",
+        "section": "1.3 Measurements of AC magnitude, Figure 1.20",
+        "pdf_path": "docs/dataset/AC.pdf",
+        "pdf_sha256": "8db75ca8236796eeb329b12fb531b71c807bbdcb2435a8199a149f611c814437",
+        "pdf_pages": [
+          25
+        ],
+        "printed_pages": "16",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/AC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "ac-series",
+      "path": "ai/evals/textbook/excerpts/ac-series.txt",
+      "excerpt": "1.4        Simple AC circuit calculations\nOver the course of the next few chapters, you will learn that AC circuit measurements and cal-\nculations can get very complicated due to the complex nature of alternating current in circuits\nwith inductance and capacitance. However, with simple circuits (figure 1.23) involving nothing\nmore than an AC power source and resistance, the same laws and rules of DC apply simply\nand directly.\n\n                                                R1\n                                              100 Ω\n\n                            10 V                         R2      500 Ω\n\n                                                R3\n                                              400 Ω\n\n        Figure 1.23: AC circuit calculations for resistive circuits are the same as for DC.\n\n\n\n    Rtotal = R1 + R2 + R3\n\n    Rtotal = 1 kΩ\n\n\n                 Etotal                10 V\n      Itotal =              Itotal =            Itotal = 10 mA\n                 Rtotal                1 kΩ\n\n      ER1 = ItotalR1        ER2 = ItotalR2      ER3 = ItotalR3\n\n\n      ER1 = 1 V             ER2 = 5 V           ER3 = 4 V\n   Series resistances still add, parallel resistances still diminish, and the Laws of Kirchhoff\nand Ohm still hold true. Actually, as we will discover later on, these rules and laws always\nhold true, its just that we have to express the quantities of voltage, current, and opposition to\ncurrent in more advanced mathematical forms. With purely resistive circuits, however, these\ncomplexities of AC are of no practical consequence, and so we can treat the numbers as though\nwe were dealing with simple DC quantities.\n20                                                              CHAPTER 1. BASIC AC THEORY\n\n    Because all these mathematical relationships still hold true, we can make use of our famil-\niar “table” method of organizing circuit values just as with DC:\n               R1          R2          R3         Total\n      E        1           5            4           10       Volts\n      I       10m         10m          10m         10m       Amps\n      R       100         500         400           1k       Ohms\n   One major caveat needs to be given here: all measurements of AC voltage and current\nmust be expressed in the same terms (peak, peak-to-peak, average, or RMS). If the source\nvoltage is given in peak AC volts, then all currents and voltages subsequently calculated are\ncast in terms of peak units. If the source voltage is given in AC RMS volts, then all calculated\ncurrents and voltages are cast in AC RMS units as well. This holds true for any calculation\nbased on Ohm’s Laws, Kirchhoff ’s Laws, etc. Unless otherwise stated, all values of voltage and\ncurrent in AC circuits are generally assumed to be RMS rather than peak, average, or peak-to-\npeak. In some areas of electronics, peak measurements are assumed, but in most applications\n(especially industrial electronics) the assumption is RMS.\n\n     • REVIEW:\n\n     • All the old rules and laws of DC (Kirchhoff ’s Voltage and Current Laws, Ohm’s Law) still\n       hold true for AC. However, with more complex circuits, we may need to represent the AC\n       quantities in more complex form. More on this later, I promise!\n\n     • The “table” method of organizing circuit values is still a valid analysis tool for AC circuits.",
+      "sha256": "af58d5b1197c0d1aa58303f5d19e98df59e1cd1fef54b7ffea90945440fbcc0a",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume II – AC",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Sixth Edition, last update November 06, 2021",
+        "section": "1.4 Simple AC circuit calculations, Figure 1.23",
+        "pdf_path": "docs/dataset/AC.pdf",
+        "pdf_sha256": "8db75ca8236796eeb329b12fb531b71c807bbdcb2435a8199a149f611c814437",
+        "pdf_pages": [
+          28,
+          29
+        ],
+        "printed_pages": "19–20",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/AC/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "digital-and",
+      "path": "ai/evals/textbook/excerpts/digital-and.txt",
+      "excerpt": "3.4.1    The AND gate\n\n\nOne of the easiest multiple-input gates to understand is the AND gate, so-called because the\noutput of this gate will be ”high” (1) if and only if all inputs (first input and the second input\nand . . .) are ”high” (1). If any input(s) are ”low” (0), the output is guaranteed to be in a ”low”\nstate as well.\n\n\n\n                  2-input AND gate                         3-input AND gate\n                                                     InputA\n              InputA\n                                     Output          InputB                 Output\n              InputB                                 InputC\n\n   In case you might have been wondering, AND gates are made with more than three inputs,\nbut this is less common than the simple two-input variety.\n\n   A two-input AND gate’s truth table looks like this:\n50                                                                     CHAPTER 3. LOGIC GATES\n\n                                        2-input AND gate\n\n                                 InputA\n                                                              Output\n                                 InputB\n\n\n                                         A B Output\n                                         0 0   0\n                                         0 1   0\n                                         1 0   0\n                                         1 1   1",
+      "sha256": "1540e9a88e00b716159cc603d8975dc6b7676139b749ba4b90c191872c0d567c",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume IV – Digital",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fourth Edition, last update November 06, 2021",
+        "section": "3.4.1 The AND gate",
+        "pdf_path": "docs/dataset/DIGI.pdf",
+        "pdf_sha256": "4a75a1f85a2d1396e8ad0cb806474435661c7c01457f9852cb75df92412fd247",
+        "pdf_pages": [
+          58,
+          59
+        ],
+        "printed_pages": "49–50",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DIGI/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    },
+    {
+      "id": "digital-xor",
+      "path": "ai/evals/textbook/excerpts/digital-xor.txt",
+      "excerpt": "3.4.7    The Exclusive-OR gate\n\n\nThe last six gate types are all fairly direct variations on three basic functions: AND, OR, and\nNOT. The Exclusive-OR gate, however, is something quite different.\n\n   Exclusive-OR gates output a ”high” (1) logic level if the inputs are at different logic levels,\neither 0 and 1 or 1 and 0. Conversely, they output a ”low” (0) logic level if the inputs are at\nthe same logic levels. The Exclusive-OR (sometimes called XOR) gate has both a symbol and a\ntruth table pattern that is unique:\n58                                                               CHAPTER 3. LOGIC GATES\n\n                                      Exclusive-OR gate\n\n                                 InputA\n                                                       Output\n                                 InputB\n\n\n                                       A B Output\n                                       0 0   0\n                                       0 1   1\n                                       1 0   1\n                                       1 1   0",
+      "sha256": "a6406118bb5e8e812d6a05d3d2336c3105be11bd19dd00060f0246b43b709adf",
+      "publication": {
+        "title": "Lessons In Electric Circuits, Volume IV – Digital",
+        "author": "Tony R. Kuphaldt",
+        "edition": "Fourth Edition, last update November 06, 2021",
+        "section": "3.4.7 The Exclusive-OR gate",
+        "pdf_path": "docs/dataset/DIGI.pdf",
+        "pdf_sha256": "4a75a1f85a2d1396e8ad0cb806474435661c7c01457f9852cb75df92412fd247",
+        "pdf_pages": [
+          66,
+          67
+        ],
+        "printed_pages": "57–58",
+        "url": "https://www.ibiblio.org/kuphaldt/electricCircuits/DIGI/index.html",
+        "license": "Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "adaptation": "Estratto selezionato mediante pdftotext -layout e confrontato visivamente con le pagine originali. Domande tradotte/adattate in italiano da Codex; eventuali fixture sono modelli ideali aggiunti. Nessuna revisione umana dichiarata."
+      }
+    }
+  ]
+}

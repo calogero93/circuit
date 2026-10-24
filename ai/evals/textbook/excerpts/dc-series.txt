@@ -1,0 +1,59 @@
+Lessons In Electric Circuits, Volume I – DC
+Tony R. Kuphaldt
+Fifth Edition, last update November 06, 2021
+Section: 5.2 Simple series circuits
+Printed pages: 135; PDF pages: [145]
+Source: https://www.ibiblio.org/kuphaldt/electricCircuits/DC/index.html
+License: Creative Commons Attribution 4.0 International (CC BY 4.0), appendix A-3 of the consulted PDF
+https://creativecommons.org/licenses/by/4.0/
+Changes: selected layout-preserving text extraction; diagrams require the original PDF.
+
+5.2. SIMPLE SERIES CIRCUITS                                                                  135
+
+                             1
+
+                             +
+                                                               R 1 + R2 + R3 =
+                        9V
+                                                                   18 kΩ
+                             -
+
+                             4
+   Now we have all the necessary information to calculate circuit current, because we have
+the voltage between points 1 and 4 (9 volts) and the resistance between points 1 and 4 (18 kΩ):
+               Etotal
+    Itotal =
+               Rtotal
+
+               9 volts
+    Itotal =           = 500 µA
+               18 kΩ
+   Knowing that current is equal through all components of a series circuit (and we just deter-
+mined the current through the battery), we can go back to our original circuit schematic and
+note the current through each component:
+
+                                          R1 3 kΩ
+                                  1                                2
+
+                                  +      I = 500 µA
+
+                                                      I = 500 µA
+                                                                   R2
+                             9V
+                                                                   10 kΩ
+                                  -      I = 500 µA
+
+                                  4        R3 5 kΩ                 3
+
+   Now that we know the amount of current through each resistor, we can use Ohm’s Law to
+determine the voltage drop across each one (applying Ohm’s Law in its proper context):
+    ER1 = IR1 R1          ER2 = IR2 R2        ER3 = IR3 R3
+
+    ER1 = (500 µA)(3 kΩ) = 1.5 V
+
+    ER2 = (500 µA)(10 kΩ) = 5 V
+
+    ER3 = (500 µA)(5 kΩ) = 2.5 V
+    Notice the voltage drops across each resistor, and how the sum of the voltage drops (1.5 +
+5 + 2.5) is equal to the battery (supply) voltage: 9 volts. This is the third principle of series
+circuits: that the supply voltage is equal to the sum of the individual voltage drops.

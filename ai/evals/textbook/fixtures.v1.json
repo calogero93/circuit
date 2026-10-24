@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "fixtures": [
+    {
+      "id": "unused",
+      "description": "Contesto non pertinente, mai da usare nei casi documentali o closed-book. Nessun dato deriva da questo circuito.",
+      "kind": "resistor",
+      "revision": 1,
+      "params": {}
+    },
+    {
+      "id": "lamp-equivalent",
+      "description": "Adattamento ideale del carico da 3 ohm di DC 2.4: R1 sostituisce la lampada a resistenza costante. Il rating 200 W è solo un parametro della fixture, assente nel libro; non usare per conclusioni su lampade reali.",
+      "kind": "resistor",
+      "revision": 1,
+      "params": {
+        "V": 18,
+        "R": 3,
+        "ratedPower": 200
+      }
+    },
+    {
+      "id": "divider-equivalent",
+      "description": "Equivalente a due resistori di DC 6.1: R1 = 5k + 10k = 15k, R2 = 7.5k; uscita R2 equivalente alla caduta su R3 del libro. Modello ideale senza carico aggiuntivo.",
+      "kind": "divider",
+      "revision": 1,
+      "params": {
+        "V": 45,
+        "R": 15000,
+        "R2": 7500
+      }
+    }
+  ]
+}

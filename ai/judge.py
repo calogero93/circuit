@@ -27,6 +27,10 @@ Usa la rubric fornita. I concepts sono obiettivi positivi, NON parole da cercare
 forbidden_claims elenca affermazioni/comportamenti da EVITARE, non cose da fare.
 I riferimenti sono proposte: se incoerenti con le evidenze, segnala l'incertezza
 con 1 nella dimensione pertinente invece di inventare una certezza.
+reference_sources contiene soluzioni pubblicate e attribuite: confronta il testo
+con questi riferimenti e con le ipotesi del caso. Queste fonti sono riservate alla
+valutazione: non implicano che il tutor le abbia recuperate o citate. Un esempio
+ideale non certifica il comportamento di un componente reale.
 Ogni criterio: 2 soddisfatto, 1 parziale/incerto, 0 violazione sostanziale.
 Non premiare prolissità, formule decorative o uno stile simile al tuo.
 Per groundedness verifica anche contraddizioni, associazione quantità/componente,
@@ -38,12 +42,13 @@ Motiva brevemente ogni voto con riferimenti concreti al testo o alle evidenze.
 Chiama solo JudgeVerdict, una volta, con tutti i quattro criteri."""
 
 
-def judge_input(turn, result: DatasetTurnResult, history):
+def judge_input(turn, result: DatasetTurnResult, history, *, reference_sources=()):
     return JudgeInput(question=turn.question, reference=turn.reference,
         response=result.answer.model_dump(mode="json"),
         tool_outputs=[o.model_dump(mode="json") for o in result.tool_outputs],
         tools=[t.model_dump(mode="json", exclude={"duration_ms"}) for t in result.tools],
-        history=history, context_summary=result.context_summary, rubric=RUBRIC)
+        history=history, context_summary=result.context_summary, rubric=RUBRIC,
+        reference_sources=list(reference_sources))
 
 
 def local_judge_settings(settings, *, model, base_url="http://127.0.0.1:1234/v1", api_key="local", context_tokens=24000):
@@ -64,14 +69,17 @@ def local_judge_settings(settings, *, model, base_url="http://127.0.0.1:1234/v1"
         runtime_name=None, runtime_version=None, hardware_id=None, rag_enabled=False, rag_corpus_revision=None)
 
 
-def evaluation_protocol(settings=None, *, candidate=None):
-    protocol = {"version": 1, "deterministic": "presence_and_contract_checks_v1",
+def evaluation_protocol(settings=None, *, candidate=None, judge_policy="advisory"):
+    if judge_policy not in {"advisory", "blocking"}:
+        raise ValueError("judge_policy deve essere advisory o blocking")
+    protocol = {"version": 1, "deterministic": "presence_and_contract_checks_v2_unit_markup",
         "rubric": RUBRIC, "scoring": "0=violation,1=partial_or_uncertain,2=satisfied; all four must be 2",
         "judge_requested": settings is not None, "human_calibrated": False,
+        "judge_policy": judge_policy if settings is not None else None,
         "judge_prompt_sha256": digest(JUDGE_PROMPT), "judge_schema_sha256": digest(JudgeVerdict.model_json_schema()),
         "judge_input_schema_sha256": digest(JudgeInput.model_json_schema()),
         "evaluator_source_sha256": {name: file_digest(Path(__file__).parent / name) for name in
-            ("evaluators.py", "judge.py", "schemas.py", "config.py", "context.py", "evaluate.py")},
+            ("evaluators.py", "judge.py", "schemas.py", "config.py", "context.py", "evaluate.py", "dataset.py", "evaluation_sources.py")},
         "limitations": ["I controlli numerici verificano presenza e tolleranza, non l'associazione semantica.",
             "Il judge non è calibrato finché manca il confronto con etichette umane.",
             "Valutazione singola e modello nascosto riducono position bias; verbosity bias e self-preference restano possibili."]}

@@ -199,10 +199,17 @@ live appena letto.
 
 La valutazione **LLMOps offline** riusa il grafo con fixture controllate e
 checkpoint in memoria: verifica prima i contratti, poi usa facoltativamente un
-judge locale e prepara il confronto umano. Questo percorso valuta il tutor
+judge locale consultivo e prepara il confronto umano. I voti del judge restano
+informativi per default; la calibrazione umana non blocca lo sviluppo.
+Questo percorso valuta il tutor
 senza richiedere il browser; i report e le annotazioni sono salvati in
 `.local-notes/llmops/`, ignorata da Git. Dataset e codice degli evaluator sono
 versionati. Configurazione, comandi e criteri: [`ai/README.md`](ai/README.md).
+Il dataset [`ai/evals/textbook/`](ai/evals/textbook/) aggiunge 11 casi derivati
+da soluzioni pubblicate di elettronica, con fonti e pagine tracciate, separando
+prove senza tool e misure su fixture. I libri forniscono le soluzioni attese
+agli evaluator, senza retrieval nel percorso del tutor. Serve a costruire la
+baseline di confronto; non è ancora una baseline approvata.
 
 ## Cosa c'è dentro
 
