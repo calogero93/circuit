@@ -1,0 +1,97 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+3.4. MULTIPLE-INPUT GATES                                                                       51
+
+                                   Vcc
+                                                  Vcc
+                                         InputA
+                                                               Output
+                                         0                 0
+                                         1
+
+                                         InputB
+
+
+                                   InputA = 0
+                                   InputB = 1
+                                   Output = 0 (no light)
+
+
+
+
+                                   Vcc
+                                                  Vcc
+                                         InputA
+                                                               Output
+                                         1                 1
+                                         1
+
+                                         InputB
+
+
+                                   InputA = 1
+                                   InputB = 1
+                                   Output = 1 (light!)
+
+
+   It is only with all inputs raised to ”high” logic levels that the AND gate’s output goes ”high,”
+thus energizing the LED for only one out of the four input combination states.
+
+
+
+
+3.4.2    The NAND gate
+
+
+A variation on the idea of the AND gate is called the NAND gate. The word ”NAND” is a
+verbal contraction of the words NOT and AND. Essentially, a NAND gate behaves the same as
+an AND gate with a NOT (inverter) gate connected to the output terminal. To symbolize this
+output signal inversion, the NAND gate symbol has a bubble on the output line. The truth
+table for a NAND gate is as one might expect, exactly opposite as that of an AND gate:
+52                                                                  CHAPTER 3. LOGIC GATES
+
+                                         2-input NAND gate
+
+                                    InputA
+                                                           Output
+                                    InputB
+
+
+                                           A B Output
+                                           0 0   1
+                                           0 1   1
+                                           1 0   1
+                                           1 1   0
+
+
+
+                                        Equivalent gate circuit
+
+                               InputA
+                                                                Output
+                               InputB
+
+    As with AND gates, NAND gates are made with more than two inputs. In such cases, the
+same general principle applies: the output will be ”low” (0) if and only if all inputs are ”high”
+(1). If any input is ”low” (0), the output will go ”high” (1).
+
+
+
+
+3.4.3      The OR gate
+
+
+Our next gate to investigate is the OR gate, so-called because the output of this gate will be
+”high” (1) if any of the inputs (first input or the second input or . . .) are ”high” (1). The output
+of an OR gate goes ”low” (0) if and only if all inputs are ”low” (0).
+
+
+                     2-input OR gate                        3-input OR gate
+                                                       InputA
+                InputA
+                                        Output         InputB                 Output
+                InputB                                 InputC
+
+     A two-input OR gate’s truth table looks like this:

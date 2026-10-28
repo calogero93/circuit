@@ -1,0 +1,18 @@
+{
+  "version": "******\n** ngspice-45.2 : Circuit level simulation program\n** Compiled with KLU Direct Linear Solver\n** The U. C. Berkeley CAD Group\n** Copyright 1985-1994, Regents of the University of California.\n** Copyright 2001-2025, The ngspice team.\n** Please get your ngspice manual from https://ngspice.sourceforge.io/docs.html\n** Please file your bug-reports at http://ngspice.sourceforge.net/bugrep.html\n** Creation Date: Fri Sep 12 11:58:13 UTC 2025\n******\n",
+  "binary_sha256": "25b6a73fafd9b489b92347a6c55fe307db502c1638f53d7d0bf439b5f7c65e38",
+  "netlist_sha256": "0562d361a028b80cfa006e11c3335748c6844a787aea55deb56b8e99e1749a0b",
+  "log_sha256": "84c656a504e949a15675a41398aa021f182913beae9b929aa7452ecfcabb451c",
+  "measurements": {
+    "m_v": 0.72772718339216,
+    "m_i": 0.0072772718339216
+  },
+  "command": [
+    "ngspice",
+    "-n",
+    "-b",
+    "-o",
+    "spice-rlc-detuned.log",
+    "spice-rlc-detuned.cir"
+  ]
+}

@@ -16,6 +16,7 @@ from memory import PostgresMemory, recall, remember
 from schemas import (ChatResponse, ConversationSummary, ModelQuestion, Query,
                      StreamEvent, ToolResult, TurnMetrics)
 from tools import tool_schemas
+from answer_contracts import AnswerDraft
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,8 @@ def create_app(settings=None, graph_factory=create_graph, memory_factory=Postgre
     @app.get("/api/schemas")
     async def schemas():
         return {"request": Query.model_json_schema(), "response": ChatResponse.model_json_schema(),
-                "event": StreamEvent.model_json_schema(), "tools": tool_schemas()}
+                "event": StreamEvent.model_json_schema(), "tools": tool_schemas(),
+                "llm_answer_input": AnswerDraft.model_json_schema()}
 
     async def run_turn(body):
         async with asyncio.timeout(settings.request_timeout):

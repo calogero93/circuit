@@ -1,0 +1,17 @@
+Warning: can't find the initialization file spinit.
+
+Note: No compatibility mode selected!
+
+
+Circuit: spice-rl-fall
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+Operating point simulation skipped by 'uic',
+  now using transient initial conditions.
+
+No. of Data Rows : 1011
+measured_m_i        =  1.839395e-02
+m_i = 1.839395000000000e-02
+ngspice-45.2 done

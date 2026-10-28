@@ -21,3 +21,6 @@ ai/data/
 
 # Appunti di analisi locali
 /.local-notes/
+
+# Libri e dataset PDF locali
+/docs/dataset/

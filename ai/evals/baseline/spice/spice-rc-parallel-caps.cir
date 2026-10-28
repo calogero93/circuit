@@ -1,0 +1,16 @@
+spice-rc-parallel-caps
+V1 in 0 10
+R1 in out 2.2k
+C1 out 0 33u IC=0
+C2 out 0 22u IC=0
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+tran 10u 500m uic
+meas tran measured_m_v FIND v(out) AT=121m
+let m_v = measured_m_v
+print m_v
+quit
+.endc
+.end

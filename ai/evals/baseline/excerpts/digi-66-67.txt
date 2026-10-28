@@ -1,0 +1,87 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+3.4. MULTIPLE-INPUT GATES                                                                      57
+
+                                  2-input Negative-OR gate
+
+                                 InputA
+                                                        Output
+                                 InputB
+
+
+                                       A B Output
+                                       0 0   1
+                                       0 1   1
+                                       1 0   1
+                                       1 1   0
+
+
+                                   Equivalent gate circuits
+
+                             InputA
+                                                             Output
+                             InputB
+
+
+                                 InputA
+                                                          Output
+                                 InputB
+
+
+
+
+3.4.7    The Exclusive-OR gate
+
+
+The last six gate types are all fairly direct variations on three basic functions: AND, OR, and
+NOT. The Exclusive-OR gate, however, is something quite different.
+
+   Exclusive-OR gates output a ”high” (1) logic level if the inputs are at different logic levels,
+either 0 and 1 or 1 and 0. Conversely, they output a ”low” (0) logic level if the inputs are at
+the same logic levels. The Exclusive-OR (sometimes called XOR) gate has both a symbol and a
+truth table pattern that is unique:
+58                                                               CHAPTER 3. LOGIC GATES
+
+                                      Exclusive-OR gate
+
+                                 InputA
+                                                       Output
+                                 InputB
+
+
+                                       A B Output
+                                       0 0   0
+                                       0 1   1
+                                       1 0   1
+                                       1 1   0
+
+   There are equivalent circuits for an Exclusive-OR gate made up of AND, OR, and NOT
+gates, just as there were for NAND, NOR, and the negative-input gates. A rather direct ap-
+proach to simulating an Exclusive-OR gate is to start with a regular OR gate, then add addi-
+tional gates to inhibit the output from going ”high” (1) when both inputs are ”high” (1):
+
+
+                             Exclusive-OR equivalent circuit
+
+
+
+
+                           InputA                             Output
+                           InputB
+
+
+                                      A B Output
+                                      0 0   0
+                                      0 1   1
+                                      1 0   1
+                                      1 1   0
+
+   In this circuit, the final AND gate acts as a buffer for the output of the OR gate whenever
+the NAND gate’s output is high, which it is for the first three input state combinations (00, 01,
+and 10). However, when both inputs are ”high” (1), the NAND gate outputs a ”low” (0) logic
+level, which forces the final AND gate to produce a ”low” (0) output.
+   Another equivalent circuit for the Exclusive-OR gate uses a strategy of two AND gates with
+inverters, set up to generate ”high” (1) outputs for input conditions 01 and 10. A final OR gate
+then allows either of the AND gates’ ”high” outputs to create a final ”high” output:

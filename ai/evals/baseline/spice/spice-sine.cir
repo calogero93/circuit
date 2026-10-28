@@ -1,0 +1,17 @@
+spice-sine
+V1 in 0 SIN(0 8 400)
+RL in 0 1k
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+tran 1u 8m
+meas tran measured_m_v FIND v(in) AT=625u
+let m_v = measured_m_v
+print m_v
+meas tran measured_m_rms RMS v(in) FROM=2.5m TO=7.5m
+let m_rms = measured_m_rms
+print m_rms
+quit
+.endc
+.end

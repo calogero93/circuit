@@ -1,0 +1,53 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/SEMI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+18                                             CHAPTER 1. AMPLIFIERS AND ACTIVE DEVICES
+
+          dB = 10 log10 (PI / PO )
+
+Assuming that the load RI at PI is the same as the load resistor RO at PO (RI = RO ), the
+decibels may be derived from the voltage ratio (VI / VO ) or current ratio (II / IO ):
+
+          PO = V O IO = VO 2 / R = IO 2 R
+
+          PI = VI II = VI 2 / R = II 2 R
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (VI 2 / VO 2 ) = 20 log10 (VI /VO )
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (II 2 / IO 2 ) = 20 log10 (II /IO )
+
+     The two most often used forms of the decibel equation are:
+
+          dB = 10 log10 (PI / PO )       or       dB = 20 log10 (VI / VO )
+
+   We will use the latter form, since we need the voltage ratio. Once again, the voltage ratio
+form of equation is only applicable where the two corresponding resistors are equal. That is,
+the source and load resistance need to be equal.
+    Example: Power into an attenuator is 10 Watts, the power out is 1 Watt. Find the
+attenuation in dB.
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (10 /1) = 10 log10 (10) = 10 (1) = 10 dB
+
+     Example: Find the voltage attenuation ratio (K= (VI / VO )) for a 10 dB attenuator.
+
+          dB = 10= 20 log10 (VI / VO )
+
+          10/20 = log10 (VI / VO )
+
+          1010/20 = 10log10 (VI /VO )
+
+          3.16 = (VI / VO ) = AP (ratio)
+
+    Example: Power into an attenuator is 100 milliwatts, the power out is 1 milliwatt. Find
+the attenuation in dB.
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (100 /1) = 10 log10 (100) = 10 (2) = 20 dB
+
+     Example: Find the voltage attenuation ratio (K= (VI / VO )) for a 20 dB attenuator.
+
+          dB = 20= 20 log10 (VI / VO )
+
+          1020/20 = 10log10 (VI /VO )
+
+          10 = (VI / VO ) = K

@@ -26,14 +26,27 @@ from schemas import (ComponentInput, ConversationSummary, Evidence, ModelQuestio
 from tools import BROWSER_TOOLS, make_tools
 
 
-def answer(text, kind="theory", evidence=None, measured=False, notes=None):
+def answer(text, kind="theory", evidence=None, measured=False, notes=None, numbers=None):
+    # Le fixture emettono il contratto LLM corrente, senza metadati gestiti dal server.
+    from numeric_verification import mentions
+    found = mentions(text)
+    if numbers is None:
+        numbers = [(m.value, m.unit) for m in found]
+    for m in reversed(found):
+        text = text[:m.start] + "valore calcolato" + text[m.end:]
     return AIMessage(content="", tool_calls=[{"name": "SubmitAnswer", "id": "final-" + str(id(text)),
-        "args": {"response": text, "kind": kind, "evidence_ids": evidence or [],
-                 "uses_measurements": measured, "learning_notes": notes or []}}])
+        "args": {"explanation": text, "limitation": kind == "limitation", "learning_notes": notes or [],
+                 "numeric_results": [{"subject": "test-fixture", "quantity": "grandezza della fixture",
+                    "context": "turno corrente", "value": value, "unit": unit}
+                    for value, unit in numbers]}}])
 
 
 def call(name="getCircuitSnapshot", args=None, call_id="call-1"):
     return AIMessage(content="", tool_calls=[{"name": name, "args": args or {}, "id": call_id}])
+
+
+def last_tool(messages):
+    return next(m for m in reversed(messages) if isinstance(m, ToolMessage))
 
 
 class FakeModel:
@@ -48,6 +61,8 @@ class FakeModel:
 
     async def ainvoke(self, messages):
         self.calls.append(messages)
+        if not self.responses:
+            raise AssertionError("Fixture esaurita; ultimo messaggio: " + str(messages[-1]))
         response = self.responses.popleft()
         if isinstance(response, Exception):
             raise response
@@ -92,15 +107,15 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def test_live_tool_result_and_history_persist(self):
         async def snapshot():
             return {"revision": 7, "nodeVoltages": {"n1": 3.2}, "converged": True, "measurementsAvailable": True}
-        model = FakeModel([call(), answer("Il nodo è a 3.2 V.", "circuit", ["call-1"], True), answer("Sì, quel valore era storico.")])
+        model = FakeModel([call(), answer("Il nodo è a 3.2 V.", "circuit", ["call-1"], True, numbers=[(3.2,"V")]), answer("Sì, quel valore era storico.")])
         graph = create_graph(Settings(), model=model, tools=[custom_tool(snapshot)]).compile(checkpointer=InMemorySaver())
         config = {"configurable": {"thread_id": "test"}}
         first = await graph.ainvoke(input_state("Misura il circuito"), config)
         self.assertEqual(first["snapshot_revision"], 7)
         self.assertTrue(first["trace"][0]["ok"])
         self.assertTrue(first["evidence"][0]["measurement_valid"])
-        self.assertIsInstance(model.calls[1][-1], ToolMessage)
-        self.assertTrue(json.loads(model.calls[1][-1].content)["ok"])
+        self.assertIsInstance(last_tool(model.calls[1]), ToolMessage)
+        self.assertTrue(json.loads(last_tool(model.calls[1]).content)["ok"])
         await graph.ainvoke(input_state("Confermi?"), config)
         humans = [json.loads(m.content)["question"] for m in model.calls[2] if isinstance(m, HumanMessage)]
         self.assertEqual(humans, ["Misura il circuito", "Confermi?"])
@@ -111,14 +126,14 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         result = await create_graph(Settings(), model=model, tools=[custom_tool(unavailable)]).compile().ainvoke(input_state("Misura"))
         self.assertFalse(result["trace"][0]["ok"])
         self.assertEqual(result["evidence"], [])
-        self.assertEqual(model.calls[1][-1].status, "error")
+        self.assertEqual(last_tool(model.calls[1]).status, "error")
 
     async def test_revision_change_cannot_produce_a_circuit_conclusion(self):
         revisions = iter([4, 5])
         async def snapshot():
             return {"revision": next(revisions), "converged": True, "measurementsAvailable": True}
         model = FakeModel([call(call_id="a"), call(call_id="b"),
-                           answer("Tensione confermata", "circuit", ["a"], True),
+                           answer("Tensione confermata", "circuit", ["a"], True, numbers=[(2,"V")]),
                            answer("Il circuito è cambiato; ripeti la domanda.", "limitation")])
         result = await create_graph(Settings(), model=model, tools=[custom_tool(snapshot)]).compile().ainvoke(input_state("Misura"))
         self.assertEqual(result["snapshot_revision"], 4)
@@ -129,8 +144,8 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_invalid_evidence_and_nonconvergent_measurement_are_rejected(self):
         async def snapshot(): return {"revision": 2, "converged": False}
-        model = FakeModel([call(), answer("2 V", "circuit", ["missing"], True),
-                           answer("2 V", "circuit", ["call-1"], True),
+        model = FakeModel([call(), answer("Misura", "circuit", numbers=[(2,"V")]),
+                           answer("Misura", "circuit", numbers=[(2,"V")]),
                            answer("Non ci sono misure convergenti", "limitation")])
         result = await create_graph(Settings(), model=model, tools=[custom_tool(snapshot)]).compile().ainvoke(input_state("Misura"))
         self.assertEqual(result["answer"]["kind"], "limitation")
@@ -155,7 +170,7 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel([call(), answer("Serve una misura mirata", "limitation")])
         result = await create_graph(Settings(), model=model, tools=[custom_tool(snapshot)]).compile().ainvoke(input_state("Misura"))
         self.assertFalse(result["trace"][0]["ok"])
-        self.assertNotIn("x" * 100, model.calls[1][-1].content)
+        self.assertNotIn("x" * 100, last_tool(model.calls[1]).content)
 
     async def test_summary_preserves_recent_turn_and_complete_tool_protocol(self):
         model = FakeModel([call(), answer("Risposta " + "a" * 500, "circuit", ["call-1"]),
@@ -301,8 +316,7 @@ class ApiTests(unittest.TestCase):
                 requests.append(json.loads(self.rfile.read(int(self.headers["Content-Length"]))))
                 message = {"role": "assistant", "content": None, "tool_calls": [{
                     "id": "f", "type": "function", "function": {"name": "SubmitAnswer", "arguments": json.dumps({
-                        "response": "Una resistenza limita la corrente.", "kind": "theory", "evidence_ids": [],
-                        "uses_measurements": False, "learning_notes": []})}}]}
+                        "explanation": "Una resistenza limita la corrente.", "limitation": False, "learning_notes": [], "numeric_results": []})}}]}
                 data = json.dumps({"id": "reply", "object": "chat.completion", "created": 1, "model": "local-test",
                     "choices": [{"index": 0, "message": message, "finish_reason": "tool_calls"}],
                     "usage": {"prompt_tokens": 100, "completion_tokens": 30, "total_tokens": 130}}).encode()
@@ -345,8 +359,7 @@ class ApiTests(unittest.TestCase):
                     self.send_response(400)
                 else:
                     final = len(request["tools"]) == 1
-                    args = {"response": "R1 è presente nel circuito.", "kind": "circuit",
-                        "evidence_ids": ["observed"], "uses_measurements": False, "learning_notes": []} if final else {}
+                    args = {"explanation": "R1 è presente nel circuito.", "limitation": False, "learning_notes": [], "numeric_results": []} if final else {}
                     function = {"name": "SubmitAnswer" if final else "getCircuitSnapshot", "arguments": json.dumps(args)}
                     data = json.dumps({"id": "reply", "object": "chat.completion", "created": 1, "model": "local-test",
                         "choices": [{"index": 0, "message": {"role": "assistant", "content": None,

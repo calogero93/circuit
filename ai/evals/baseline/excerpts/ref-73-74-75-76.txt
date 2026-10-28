@@ -1,0 +1,192 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+7.3. FUNDAMENTALS OF SPICE PROGRAMMING                                                     65
+
+
+                              1                  1      R2
+                                                                 2
+                                                      3.3 kΩ
+                       15 V                 R1       2.2 kΩ       R3
+                                                                 150 Ω
+
+                              0                  0               0
+
+Example netlist
+v1 1 0 dc 15
+r1 1 0 2.2k
+r2 1 2 3.3k
+r3 2 0 150
+.end
+
+   Each line of the source file shown above is explained here:
+
+   • v1 represents the battery (voltage source 1), positive terminal numbered 1, negative ter-
+     minal numbered 0, with a DC voltage output of 15 volts.
+   • r1 represents resistor R1 in the diagram, connected between points 1 and 0, with a value
+     of 2.2 kΩ.
+   • r2 represents resistor R2 in the diagram, connected between points 1 and 2, with a value
+     of 3.3 kΩ.
+   • r3 represents resistor R3 in the diagram, connected between points 2 and 0, with a value
+     of 150 kΩ.
+
+   Electrically common points (or ”nodes”) in a SPICE circuit description share common num-
+bers, much in the same way that wires connecting common points in a large circuit typically
+share common wire labels.
+   To simulate this circuit, the user would type those six lines of text on a text editor and
+save them as a file with a unique name (such as example.cir). Once the netlist is composed
+and saved to a file, the user then processes that file with one of the command-line statements
+shown earlier (spice < example.cir), and will receive this text output on their computer’s
+screen:
+
+1*******10/10/99 ******** spice 2g.6 3/15/83 ********07:32:42*****
+0example netlist
+0****   input listing                 temperature =   27.000 deg c
+v1 1 0 dc 15
+r1 1 0 2.2k
+r2 1 2 3.3k
+r3 2 0 150
+.end
+66                   CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+*****10/10/99 ********* spice 2g.6 3/15/83 ******07:32:42******
+0example netlist
+0****   small signal bias solution    temperature =  27.000 deg c
+node   voltage      node  voltage
+( 1)    15.0000     ( 2)    0.6522
+voltage source currents
+name       current
+v1       -1.117E-02
+total power dissipation   1.67E-01 watts
+job concluded
+0         total job time           0.02
+1*******10/10/99 ******** spice 2g.6 3/15/83 ******07:32:42*****
+0****   input listing                temperature =  27.000 deg c
+
+    SPICE begins by printing the time, date, and version used at the top of the output. It then
+lists the input parameters (the lines of the source file), followed by a display of DC voltage
+readings from each node (reference number) to ground (always reference number 0). This is
+followed by a list of current readings through each voltage source (in this case there’s only one,
+v1). Finally, the total power dissipation and computation time in seconds is printed.
+    All output values provided by SPICE are displayed in scientific notation.
+    The SPICE output listing shown above is a little verbose for most peoples’ taste. For a final
+presentation, it might be nice to trim all the unnecessary text and leave only what matters.
+Here is a sample of that same output, redirected to a text file (spice < example.cir >
+example.txt), then trimmed down judiciously with a text editor for final presentation and
+printed:
+
+example netlist
+v1 1 0 dc 15
+r1 1 0 2.2k
+r2 1 2 3.3k
+r3 2 0 150
+.end
+
+node      voltage        node        voltage
+( 1)      15.0000        ( 2)        0.6522
+
+voltage source currents
+name       current
+v1       -1.117E-02
+
+total power dissipation            1.67E-01     watts
+
+   One of the very nice things about SPICE is that both input and output formats are plain-
+text, which is the most universal and easy-to-edit electronic format around. Practically any
+computer will be able to edit and display this format, even if the SPICE program itself is not
+resident on that computer. If the user desires, he or she is free to use the advanced capabilities
+of word processing programs to make the output look fancier. Comments can even be inserted
+between lines of the output for further clarity to the reader.
+7.4. THE COMMAND-LINE INTERFACE                                                                  67
+
+7.4      The command-line interface
+If you’ve used DOS or UNIX operating systems before in a command-line shell environment,
+you may wonder why we have to use the ”<” symbol between the word ”spice” and the name
+of the netlist file to be interpreted. Why not just enter the file name as the first argument
+to the command ”spice” as we do when we invoke the text editor? The answer is that SPICE
+has the option of an interactive mode, whereby each line of the netlist can be interpreted as
+it is entered through the computer’s Standard Input (stdin). If you simple type ”spice” at the
+prompt and press [Enter], SPICE will begin to interpret anything you type in to it (live).
+    For most applications, its nice to save your netlist work in a separate file and then let SPICE
+interpret that file when you’re ready. This is the way I encourage SPICE to be used, and so
+this is the way its presented in this lesson. In order to use SPICE this way in a command-line
+environment, we need to use the ”<” redirection symbol to direct the contents of your netlist
+file to Standard Input (stdin), which SPICE can then process.
+
+
+7.5      Circuit components
+Remember that this tutorial is not exhaustive by any means, and that all descriptions for
+elements in the SPICE language are documented here in condensed form. SPICE is a very
+capable piece of software with lots of options, and I’m only going to document a few of them.
+    All components in a SPICE source file are primarily identified by the first letter in each
+respective line. Characters following the identifying letter are used to distinguish one compo-
+nent of a certain type from another of the same type (r1, r2, r3, rload, rpullup, etc.), and need
+not follow any particular naming convention, so long as no more than eight characters are used
+in both the component identifying letter and the distinguishing name.
+    For example, suppose you were simulating a digital circuit with ”pullup” and ”pulldown”
+resistors. The name rpullup would be valid because it is seven characters long. The name
+rpulldown, however, is nine characters long. This may cause problems when SPICE inter-
+prets the netlist.
+    You can actually get away with component names in excess of eight total characters if there
+are no other similarly-named components in the source file. SPICE only pays attention to the
+first eight characters of the first field in each line, so rpulldown is actually interpreted as
+rpulldow with the ”n” at the end being ignored. Therefore, any other resistor having the
+first eight characters in its first field will be seen by SPICE as the same resistor, defined twice,
+which will cause an error (i.e. rpulldown1 and rpulldown2 would be interpreted as the same
+name, rpulldow).
+    It should also be noted that SPICE ignores character case, so r1 and R1 are interpreted by
+SPICE as one and the same.
+    SPICE allows the use of metric prefixes in specifying component values, which is a very
+handy feature. However, the prefix convention used by SPICE differs somewhat from stan-
+dard metric symbols, primarily due to the fact that netlists are restricted to standard ASCII
+characters (ruling out Greek letters such as µ for the prefix ”micro”) and that SPICE is case-
+insensitive, so ”m” (which is the standard symbol for ”milli”) and ”M” (which is the standard
+symbol for ”Mega”) are interpreted identically. Here are a few examples of prefixes used in
+SPICE netlists:
+68                    CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+     r1 1 0 2t (Resistor R1 , 2t = 2 Tera-ohms = 2 TΩ)
+     r2 1 0 4g (Resistor R2 , 4g = 4 Giga-ohms = 4 GΩ)
+     r3 1 0 47meg (Resistor R3 , 47meg = 47 Mega-ohms = 47 MΩ)
+     r4 1 0 3.3k (Resistor R4 , 3.3k = 3.3 kilo-ohms = 3.3 kΩ)
+     r5 1 0 55m (Resistor R5 , 55m = 55 milli-ohms = 55 mΩ)
+     r6 1 0 10u (Resistor R6 , 10u = 10 micro-ohms 10 µΩ)
+     r7 1 0 30n (Resistor R7 , 30n = 30 nano-ohms = 30 nΩ)
+     r8 1 0 5p (Resistor R8 , 5p = 5 pico-ohms = 5 pΩ)
+     r9 1 0 250f (Resistor R9 , 250f = 250 femto-ohms = 250 fΩ)
+
+     Scientific notation is also allowed in specifying component values. For example:
+
+     r10 1 0 4.7e3 (Resistor R10 , 4.7e3 = 4.7 x 103 ohms = 4.7 kilo-ohms = 4.7 kΩ)
+     r11 1 0 1e-12 (Resistor R11 , 1e-12 = 1 x 10−12 ohms = 1 pico-ohm = 1 pΩ)
+
+    The unit (ohms, volts, farads, henrys, etc.) is automatically determined by the type of
+component being specified. SPICE ”knows” that all of the above examples are ”ohms” because
+they are all resistors (r1, r2, r3, . . . ). If they were capacitors, the values would be interpreted
+as ”farads,” if inductors, then ”henrys,” etc.
+
+
+7.5.1      Passive components
+CAPACITORS
+
+General form:        c[name] [node1] [node2] [value] ic=[initial voltage]
+Example 1:           c1 12 33 10u
+Example 2:           c1 12 33 10u ic=3.5
+
+Comments: The ”initial condition” (ic=) variable is the capacitor’s voltage in units of volts at
+the start of DC analysis. It is an optional value, with the starting voltage assumed to be zero if
+unspecified. Starting current values for capacitors are interpreted by SPICE only if the .tran
+analysis option is invoked (with the ”uic” option).
+
+
+INDUCTORS
+
+General form:        l[name] [node1] [node2] [value] ic=[initial current]
+Example 1:           l1 12 33 133m
+Example 2:           l1 12 33 133m ic=12.7m
+
+Comments: The ”initial condition” (ic=) variable is the inductor’s current in units of amps at
+the start of DC analysis. It is an optional value, with the starting current assumed to be zero
+if unspecified. Starting current values for inductors are interpreted by SPICE only if the .tran
+analysis option is invoked.

@@ -13,7 +13,7 @@ from evaluate import evaluate
 from evaluation_fixtures import FixtureRuntime, build_fixture, transient
 from experiments import create_manifest, new_report, validate_run_identity
 from schemas import (DatasetCase, DCOutput, EvaluationDataset, FixtureScenario, SnapshotOutput, TransientOutput)
-from test_tutor import FakeModel, answer, call
+from test_tutor import FakeModel, answer, call, last_tool
 
 
 class DatasetTests(unittest.TestCase):
@@ -120,14 +120,16 @@ class RunnerDatasetTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_followup_changes_fixture_and_requires_fresh_evidence(self):
         case = next(c for c in load_dataset().dataset.cases if c.name == "memory-voltage")
-        model = FakeModel([call(call_id="a"), answer("0.1 A e 1 W", "circuit", ["a"], True),
-                           call(call_id="b"), answer("0.05 A e 0.25 W", "circuit", ["b"], True)])
-        result = await evaluate(case, Settings(), model=model)
+        model = FakeModel([call(call_id="a"), answer("0.1 A e 1 W", "circuit", ["a"], True, numbers=[(.1,"A"),(1,"W")]),
+                           call(call_id="b"), answer("0.05 A e 0.25 W", "circuit", ["b"], True, numbers=[(.05,"A"),(.25,"W")])])
+        # Qui si verifica la freschezza delle evidenze, non la compattazione
+        # dovuta al catalogo tool più grande (coperta nei test del grafo).
+        result = await evaluate(case, Settings(context_max_tokens=24000), model=model)
         self.assertTrue(result.ok, result.error)
         self.assertEqual(len(result.turns), 2)
         self.assertEqual(result.metrics.model_calls, 4)
-        first = json.loads(model.calls[1][-1].content)["data"]["components"]["R1"]["data"]["p"]
-        second = json.loads(model.calls[3][-1].content)["data"]["components"]["R1"]["data"]["p"]
+        first = json.loads(last_tool(model.calls[1]).content)["data"]["components"]["R1"]["data"]["p"]
+        second = json.loads(last_tool(model.calls[3]).content)["data"]["components"]["R1"]["data"]["p"]
         self.assertEqual((first, second), (1., .25))
 
     async def test_controlled_rag_does_not_open_real_vectorstore(self):
@@ -135,8 +137,8 @@ class RunnerDatasetTests(unittest.IsolatedAsyncioTestCase):
         model = FakeModel([call("search_info", {"query": "formula partitore"}), answer("Vout segue R2/(R1+R2), fonte src/lessons/data.ts")])
         result = await evaluate(case, replace(Settings(), rag_enabled=True), model=model)
         self.assertTrue(result.ok, result.error)
-        self.assertIn("src/lessons/data.ts", model.calls[1][-1].content)
-        self.assertIn("R2/(R1+R2)", model.calls[1][-1].content)
+        self.assertIn("src/lessons/data.ts", last_tool(model.calls[1]).content)
+        self.assertIn("R2/(R1+R2)", last_tool(model.calls[1]).content)
 
     async def test_fixture_id_and_net_arguments_are_not_silently_ignored(self):
         bundle = load_dataset()
@@ -194,15 +196,15 @@ class SummaryDatasetTests(unittest.IsolatedAsyncioTestCase):
     async def test_summary_case_preserves_conversation_but_updates_live_evidence(self):
         from langchain_core.messages import AIMessage
         case = next(c for c in load_dataset().dataset.cases if c.name == "memory-summary")
-        model = FakeModel([call(call_id="a"), answer("La potenza è 1 W, con profilo didattico.", "circuit", ["a"], True),
+        model = FakeModel([call(call_id="a"), answer("La potenza è 1 W, con profilo didattico.", "circuit", ["a"], True, numbers=[(1,"W")]),
             AIMessage(content="", tool_calls=[{"name": "ConversationSummary", "id": "summary", "args": {
                 "summary": "Si è discusso di 1 W su R1: valore storico, non misura corrente.", "learning_notes": []}}]),
-            call(call_id="b"), answer("Ora dissipa 0.25 W.", "circuit", ["b"], True)])
+            call(call_id="b"), answer("Ora dissipa 0.25 W.", "circuit", ["b"], True, numbers=[(.25,"W")])])
         result = await evaluate(case, Settings(), model=model)
         self.assertTrue(result.ok, result.error)
         self.assertEqual(len(result.turns), 2)
         self.assertEqual(result.turns[1].metrics.summaries, 1)
-        self.assertIn('"p":0.25', model.calls[-1][-1].content)
+        self.assertIn('"p":0.25', last_tool(model.calls[-1]).content)
 
 
 if __name__ == "__main__": unittest.main()

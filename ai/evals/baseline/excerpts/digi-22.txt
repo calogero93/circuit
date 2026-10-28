@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.6. CONVERSION FROM DECIMAL NUMERATION                                                     13
+
+    The technique for converting hexadecimal notation to decimal is the same, except that each
+successive place-weight changes by a factor of sixteen. Simply denote each digit’s weight,
+multiply each hexadecimal digit value by its respective weight (in decimal form), then add up
+all the decimal values to get a total. For example, the hexadecimal number 30F.A916 can be
+converted like this:
+
+hexadecimal
+digits =           3   0   F   .   A   9
+.                  -   -   -   -   -   -
+weight =           2   1   1       1   1
+(in decimal        5   6           /   /
+notation)          6               1   2
+.                                  6   5
+.                                      6
+
+(3 x 25610 ) + (0 x 1610 ) + (15 x 110 )              +   (10 x 0.062510 )     +
+(9 x 0.0039062510 ) = 783.6601562510
+
+   These basic techniques may be used to convert a numerical notation of any base into decimal
+form, if you know the value of that numeration system’s base.
+
+
+1.6     Conversion from decimal numeration
+Because octal and hexadecimal numeration systems have bases that are multiples of binary
+(base 2), conversion back and forth between either hexadecimal or octal and binary is very
+easy. Also, because we are so familiar with the decimal system, converting binary, octal, or
+hexadecimal to decimal form is relatively easy (simply add up the products of cipher values
+and place-weights). However, conversion from decimal to any of these ”strange” numeration
+systems is a different matter.
+   The method which will probably make the most sense is the ”trial-and-fit” method, where
+you try to ”fit” the binary, octal, or hexadecimal notation to the desired value as represented
+in decimal form. For example, let’s say that I wanted to represent the decimal value of 87 in
+binary form. Let’s start by drawing a binary number field, complete with place-weight values:
+
+.
+.                  -   -   -   -   -   -   -   -
+weight =           1   6   3   1   8   4   2   1
+(in decimal        2   4   2   6
+notation)          8
+
+   Well, we know that we won’t have a ”1” bit in the 128’s place, because that would immedi-
+ately give us a value greater than 87. However, since the next weight to the right (64) is less
+than 87, we know that we must have a ”1” there.
+
+.                  1

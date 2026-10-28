@@ -1,0 +1,16 @@
+Warning: can't find the initialization file spinit.
+
+Note: No compatibility mode selected!
+
+
+Circuit: spice-series
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+No. of Data Rows : 1
+m_i = 1.846153846153846e-02
+m_v2 = 4.061538461538460e+00
+m_v3 = 6.092307692307693e+00
+ngspice-45.2 done

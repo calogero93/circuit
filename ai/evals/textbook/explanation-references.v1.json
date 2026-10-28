@@ -1,0 +1,249 @@
+{
+  "format_version": 1,
+  "version": "0.1.0",
+  "dataset_bundle_sha256": "ddd6f95e6cbd39917d1228ed4afc311fc4b5a421146a876c9db2ae056d177155",
+  "author": "Codex: parafrasi assistite delle soluzioni attribuite a Tony R. Kuphaldt e delle fixture documentate; non etichette umane.",
+  "review_status": "proposed",
+  "cases": {
+    "book-dc-power-closed": [
+      {
+        "statement": "Nel modello ideale a resistenza costante, la lampada da 3 ohm alimentata a 18 V è attraversata da 6 A e dissipa 108 W: I = V/R e P = VI = V²/R.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Una lampada reale può cambiare resistenza con la temperatura; il modello didattico a resistenza costante non ne garantisce il comportamento reale.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-dc-series-closed": [
+      {
+        "statement": "In serie la resistenza equivalente è la somma delle resistenze e la corrente è uguale in tutti i resistori. Per 3 kohm, 10 kohm e 5 kohm alimentati a 9 V, R_tot = 18 kohm e I = 500 µA.",
+        "source_ids": [
+          "dc-series"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Nella serie descritta, la caduta su R1 è 1.5 V, quella su R2 è 5 V e quella su R3 è 2.5 V. Ogni caduta è la corrente comune moltiplicata per la resistenza corrispondente.",
+        "source_ids": [
+          "dc-series"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "La somma delle tre cadute è 9 V; la tensione della batteria è applicata alla serie completa, non a ciascun resistore.",
+        "source_ids": [
+          "dc-series"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-dc-parallel-closed": [
+      {
+        "statement": "Nel parallelo descritto, ciascun resistore ha 9 V ai capi: R1 da 10 kohm conduce 0.9 mA, R2 da 2 kohm conduce 4.5 mA e R3 da 1 kohm conduce 9 mA.",
+        "source_ids": [
+          "dc-parallel"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "La corrente totale è la somma delle correnti di ramo, pari a 14.4 mA. La resistenza equivalente è 625 ohm, inferiore alla più piccola resistenza di ramo.",
+        "source_ids": [
+          "dc-parallel"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-dc-divider-closed": [
+      {
+        "statement": "Per il partitore ideale non caricato di 5 kohm, 10 kohm e 7.5 kohm in serie, la resistenza totale è 22.5 kohm e V_Rn = V_tot × Rn/R_tot.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Con alimentazione di 45 V, la caduta su R1 è 10 V, quella su R2 è 20 V e quella su R3 è 15 V. Le cadute sono proporzionali alle rispettive resistenze e sommano a 45 V.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-ac-rms-closed": [
+      {
+        "statement": "Il valore RMS di tensione o corrente produce lo stesso effetto termico del corrispondente valore continuo sulla stessa resistenza ideale.",
+        "source_ids": [
+          "ac-rms"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Il valore RMS di una tensione non è né il suo valore di picco né la sua media aritmetica: si calcola come radice della media dei quadrati.",
+        "source_ids": [
+          "ac-rms"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Per un resistore ideale da 2 ohm alimentato a 10 V RMS, la corrente RMS è 5 A e la potenza media è 50 W. Con 10 V continui, corrente e potenza sono rispettivamente 5 A e 50 W.",
+        "source_ids": [
+          "ac-rms"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "I 50 W dell’esempio sono potenza media, non potenza RMS. La potenza istantanea in alternata può variare.",
+        "source_ids": [
+          "ac-rms"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-ac-series-closed": [
+      {
+        "statement": "Nel circuito puramente resistivo in serie da 100 ohm, 500 ohm e 400 ohm, la resistenza totale è 1000 ohm. Con 10 V RMS la corrente comune è 10 mA RMS.",
+        "source_ids": [
+          "ac-series"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Le cadute RMS sono 1 V su R1, 5 V su R2 e 4 V su R3; sommano a 10 V. Le leggi di Ohm e Kirchhoff si applicano usando coerentemente i valori RMS.",
+        "source_ids": [
+          "ac-series"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-digital-and-closed": [
+      {
+        "statement": "La porta AND ideale a due ingressi ha tabella 00 → 0; 01 → 0; 10 → 0; 11 → 1. L’uscita è 1 soltanto quando entrambi gli ingressi sono 1.",
+        "source_ids": [
+          "digital-and"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "I valori 0 e 1 della tabella AND sono livelli logici astratti; la tabella non specifica soglie analogiche di tensione.",
+        "source_ids": [
+          "digital-and"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-digital-xor-closed": [
+      {
+        "statement": "La porta XOR ideale a due ingressi ha tabella 00 → 0; 01 → 1; 10 → 1; 11 → 0. L’uscita è 1 quando gli ingressi sono diversi e 0 quando sono uguali.",
+        "source_ids": [
+          "digital-xor"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "Per gli ingressi 11, la XOR a due ingressi dà 0 e la OR inclusiva dà 1.",
+        "source_ids": [
+          "digital-xor"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-dc-power-doubled": [
+      {
+        "statement": "Assumendo una lampada modellata da una resistenza costante di 3 ohm: a 18 V corrente e potenza sono 6 A e 108 W; a 36 V sono 12 A e 432 W.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [],
+        "required": true
+      },
+      {
+        "statement": "A resistenza costante, raddoppiare la tensione raddoppia la corrente e quadruplica la potenza, perché I = V/R e P = V²/R. L’ipotesi non è una garanzia del comportamento termico di una lampada reale.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [],
+        "required": true
+      }
+    ],
+    "book-dc-power-live": [
+      {
+        "statement": "Nello snapshot corrente convergente, il resistore R1 da 3 ohm ha 18 V ai capi, conduce 6 A e dissipa 108 W, coerentemente con I = V/R e P = VI.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [
+          "snapshot-1"
+        ],
+        "required": true
+      },
+      {
+        "statement": "R1 della fixture è un sostituto ideale a resistenza costante della lampada del libro. Una lampada reale può cambiare resistenza con la temperatura.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [
+          "snapshot-1"
+        ],
+        "required": true
+      },
+      {
+        "statement": "Il rating aggiunto alla fixture non è una specifica della lampada commerciale e non certifica che la lampada reale non possa bruciarsi.",
+        "source_ids": [
+          "dc-power"
+        ],
+        "evidence_ids": [
+          "snapshot-1"
+        ],
+        "required": true
+      }
+    ],
+    "book-dc-divider-live": [
+      {
+        "statement": "Nello snapshot corrente del partitore ideale non caricato: la sorgente è 45 V, R1 è 15 kohm e R2 è 7.5 kohm. Su R2 si misurano 15 V e 2 mA.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "evidence_ids": [
+          "snapshot-1"
+        ],
+        "required": true
+      },
+      {
+        "statement": "R1 della fixture raggruppa i primi due resistori del libro da 5 kohm e 10 kohm. R2 della fixture corrisponde a R3 del libro, non a R2 del libro.",
+        "source_ids": [
+          "dc-divider"
+        ],
+        "evidence_ids": [
+          "snapshot-1"
+        ],
+        "required": true
+      }
+    ]
+  }
+}

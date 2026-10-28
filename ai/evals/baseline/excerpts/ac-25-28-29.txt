@@ -1,0 +1,144 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/AC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+16                                                           CHAPTER 1. BASIC AC THEORY
+
+Might this comparison be used to assign a “bandsaw equivalent” blade speed to the jigsaw’s
+back-and-forth blade motion; to relate the wood-cutting effectiveness of one to the other? This
+is the general idea used to assign a “DC equivalent” measurement to any AC voltage or cur-
+rent: whatever magnitude of DC voltage or current would produce the same amount of heat
+energy dissipation through an equal resistance:Figure 1.20
+
+                           5A RMS                                5A
+
+
+                 10 V             2Ω           10 V               2Ω
+                 RMS
+
+                            5A RMS           50 W                5A      50 W
+                                             power                       power
+                                           dissipated                  dissipated
+                                Equal power dissipated through
+                                   equal resistance loads
+
+
+     Figure 1.20: An RMS voltage produces the same heating effect as a the same DC voltage
+
+    In the two circuits above, we have the same amount of load resistance (2 Ω) dissipating the
+same amount of power in the form of heat (50 watts), one powered by AC and the other by
+DC. Because the AC voltage source pictured above is equivalent (in terms of power delivered
+to a load) to a 10 volt DC battery, we would call this a “10 volt” AC source. More specifically,
+we would denote its voltage value as being 10 volts RMS. The qualifier “RMS” stands for
+Root Mean Square, the algorithm used to obtain the DC equivalent value from points on a
+graph (essentially, the procedure consists of squaring all the positive and negative points on a
+waveform graph, averaging those squared values, then taking the square root of that average
+to obtain the final answer). Sometimes the alternative terms equivalent or DC equivalent are
+used instead of “RMS,” but the quantity and principle are both the same.
+    RMS amplitude measurement is the best way to relate AC quantities to DC quantities, or
+other AC quantities of differing waveform shapes, when dealing with measurements of elec-
+tric power. For other considerations, peak or peak-to-peak measurements may be the best to
+employ. For instance, when determining the proper size of wire (ampacity) to conduct electric
+power from a source to a load, RMS current measurement is the best to use, because the prin-
+cipal concern with current is overheating of the wire, which is a function of power dissipation
+caused by current through the resistance of the wire. However, when rating insulators for
+service in high-voltage AC applications, peak voltage measurements are the most appropriate,
+because the principal concern here is insulator “flashover” caused by brief spikes of voltage,
+irrespective of time.
+    Peak and peak-to-peak measurements are best performed with an oscilloscope, which can
+capture the crests of the waveform with a high degree of accuracy due to the fast action of
+the cathode-ray-tube in response to changes in voltage. For RMS measurements, analog meter
+movements (D’Arsonval, Weston, iron vane, electrodynamometer) will work so long as they
+have been calibrated in RMS figures. Because the mechanical inertia and dampening effects
+of an electromechanical meter movement makes the deflection of the needle naturally pro-
+portional to the average value of the AC, not the true RMS value, analog meters must be
+specifically calibrated (or mis-calibrated, depending on how you look at it) to indicate voltage
+1.4. SIMPLE AC CIRCUIT CALCULATIONS                                                           19
+
+       must be “skewed” accordingly. This means that the accuracy of an electromechanical
+       meter’s RMS indication is dependent on the purity of the waveform: whether it is the
+       exact same waveshape as the waveform used in calibrating.
+
+
+1.4        Simple AC circuit calculations
+Over the course of the next few chapters, you will learn that AC circuit measurements and cal-
+culations can get very complicated due to the complex nature of alternating current in circuits
+with inductance and capacitance. However, with simple circuits (figure 1.23) involving nothing
+more than an AC power source and resistance, the same laws and rules of DC apply simply
+and directly.
+
+                                                R1
+                                              100 Ω
+
+                            10 V                         R2      500 Ω
+
+                                                R3
+                                              400 Ω
+
+        Figure 1.23: AC circuit calculations for resistive circuits are the same as for DC.
+
+
+
+    Rtotal = R1 + R2 + R3
+
+    Rtotal = 1 kΩ
+
+
+                 Etotal                10 V
+      Itotal =              Itotal =            Itotal = 10 mA
+                 Rtotal                1 kΩ
+
+      ER1 = ItotalR1        ER2 = ItotalR2      ER3 = ItotalR3
+
+
+      ER1 = 1 V             ER2 = 5 V           ER3 = 4 V
+   Series resistances still add, parallel resistances still diminish, and the Laws of Kirchhoff
+and Ohm still hold true. Actually, as we will discover later on, these rules and laws always
+hold true, its just that we have to express the quantities of voltage, current, and opposition to
+current in more advanced mathematical forms. With purely resistive circuits, however, these
+complexities of AC are of no practical consequence, and so we can treat the numbers as though
+we were dealing with simple DC quantities.
+20                                                              CHAPTER 1. BASIC AC THEORY
+
+    Because all these mathematical relationships still hold true, we can make use of our famil-
+iar “table” method of organizing circuit values just as with DC:
+               R1          R2          R3         Total
+      E        1           5            4           10       Volts
+      I       10m         10m          10m         10m       Amps
+      R       100         500         400           1k       Ohms
+   One major caveat needs to be given here: all measurements of AC voltage and current
+must be expressed in the same terms (peak, peak-to-peak, average, or RMS). If the source
+voltage is given in peak AC volts, then all currents and voltages subsequently calculated are
+cast in terms of peak units. If the source voltage is given in AC RMS volts, then all calculated
+currents and voltages are cast in AC RMS units as well. This holds true for any calculation
+based on Ohm’s Laws, Kirchhoff ’s Laws, etc. Unless otherwise stated, all values of voltage and
+current in AC circuits are generally assumed to be RMS rather than peak, average, or peak-to-
+peak. In some areas of electronics, peak measurements are assumed, but in most applications
+(especially industrial electronics) the assumption is RMS.
+
+     • REVIEW:
+
+     • All the old rules and laws of DC (Kirchhoff ’s Voltage and Current Laws, Ohm’s Law) still
+       hold true for AC. However, with more complex circuits, we may need to represent the AC
+       quantities in more complex form. More on this later, I promise!
+
+     • The “table” method of organizing circuit values is still a valid analysis tool for AC circuits.
+
+
+1.5       AC phase
+Things start to get complicated when we need to relate two or more AC voltages or currents
+that are out of step with each other. By “out of step,” I mean that the two waveforms are not
+synchronized: that their peaks and zero points do not match up at the same points in time.
+The graph in figure 1.24 illustrates an example of this.
+
+                          A B                             A B
+
+                                                                                A B
+                    A B
+
+                                         A B                            A B
+
+                                Figure 1.24: Out of phase waveforms
+
+   The two waves shown above (A versus B) are of the same amplitude and frequency, but
+they are out of step with each other. In technical terms, this is called a phase shift. Earlier

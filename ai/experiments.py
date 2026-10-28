@@ -17,7 +17,7 @@ from config import Settings
 from graph import SYSTEM_PROMPT
 from schemas import (ConversationSummary, EvaluationReport, EvaluationSummary,
     ExperimentConfiguration, ExperimentGeneration, ExperimentManifest,
-    ExperimentModel, ExperimentPolicy, ModelContext, ModelQuestion, SubmitAnswer)
+    ExperimentModel, ExperimentPolicy, ModelContext, ModelQuestion, SubmitAnswer, submit_answer_tool)
 from tools import make_tools, tool_schemas
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -114,7 +114,7 @@ def create_manifest(settings: Settings, cases, repetitions=1, *, root=ROOT, mode
         keep_recent_turns=settings.keep_recent_turns, rag_enabled=settings.rag_enabled,
         rag_corpus_revision=settings.rag_corpus_revision)
     contracts = {"browser": tool_schemas(),
-        "agent_tools": [convert_to_openai_tool(tool) for tool in [*make_tools(settings), SubmitAnswer]],
+        "agent_tools": [convert_to_openai_tool(tool) for tool in [*make_tools(settings), submit_answer_tool()]],
         "context": ModelContext.model_json_schema(), "question": ModelQuestion.model_json_schema(),
         "summary": ConversationSummary.model_json_schema()}
     configuration = ExperimentConfiguration(model=public_model, generation=generation, policy=policy,

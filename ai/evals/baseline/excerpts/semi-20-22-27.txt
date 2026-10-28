@@ -1,0 +1,143 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/SEMI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.5. DECIBELS                                                                                 11
+
+logarithmic in nature, such as the bel (decibel) and Richter scales.
+   When converting a power gain from units of bels or decibels to a unitless ratio, the mathe-
+matical inverse function of common logarithms is used: powers of 10, or the antilog.
+    If:
+      AP(Bel) = log AP(ratio)
+
+    Then:
+      AP(ratio) = 10AP(Bel)
+   Converting decibels into unitless ratios for power gain is much the same, only a division
+factor of 10 is included in the exponent term:
+    If:
+      AP(dB) = 10 log AP(ratio)
+
+    Then:            AP(dB)
+
+      AP(ratio) = 10 10
+    Example: Power into an amplifier is 1 Watt, the power out is 10 Watts. Find the power
+gain in dB.
+
+          AP (dB) = 10 log10 (PO / PI ) = 10 log10 (10 /1) = 10 log10 (10) = 10 (1) = 10 dB
+
+Example: Find the power gain ratio AP (ratio) = (PO / PI ) for a 20 dB Power gain.
+
+          AP (dB) = 20 = 10 log10 AP (ratio)
+
+
+          20/10 = log10 AP (ratio)
+
+
+          1020/10 = 10log10 (AP (ratio) )
+
+          100 = AP (ratio) = (PO / PI )
+
+    Because the bel is fundamentally a unit of power gain or loss in a system, voltage or current
+gains and losses don’t convert to bels or dB in quite the same way. When using bels or decibels
+to express a gain other than power, be it voltage or current, we must perform the calculation
+in terms of how much power gain there would be for that amount of voltage or current gain.
+For a constant load impedance, a voltage or current gain of 2 equates to a power gain of 4 (22 );
+a voltage or current gain of 3 equates to a power gain of 9 (32 ). If we multiply either voltage
+or current by a given factor, then the power gain incurred by that multiplication will be the
+square of that factor. This relates back to the forms of Joule’s Law where power was calculated
+from either voltage or current, and resistance:
+1.5. DECIBELS                                                                                  13
+
+    If:
+      AV(Bel) = 2 log AV(ratio)              AI(Bel) = 2 log AI(ratio)
+
+    Then:             AV(Bel)                                AI(Bel)
+
+      AV(ratio) = 10    2
+                                             AI(ratio) = 10 2
+   Here are the equations used for converting voltage or current gains in decibels into unitless
+ratios:
+    If:
+      AV(dB) = 20 log AV(ratio)              AI(dB) = 20 log AI(ratio)
+
+    Then:             AV(dB)                                 AI(dB)
+                       20
+      AV(ratio) = 10                         AI(ratio) = 10 20
+    While the bel is a unit naturally scaled for power, another logarithmic unit has been in-
+vented to directly express voltage or current gains/losses, and it is based on the natural loga-
+rithm rather than the common logarithm as bels and decibels are. Called the neper, its unit
+symbol is “Np ; though, lower-case “n” may be encountered.
+                  Voutput                                 Ioutput
+    AV(ratio) =                             AI(ratio) =
+                  Vinput                                  Iinput
+    AV(neper) = ln AV(ratio)                AI(neper) = ln AI(ratio)
+    For better or for worse, neither the neper nor its attenuated cousin, the decineper, is popu-
+larly used as a unit in American engineering applications.
+    Example: The voltage into a 600 Ω audio line amplifier is 10 mV, the voltage across a 600
+Ω load is 1 V. Find the power gain in dB.
+
+          A(dB) = 20 log10 (VO / VI ) = 20 log10 (1 /0.01) = 20 log10 (100) = 20 (2) = 40 dB
+
+    Example: Find the voltage gain ratio AV (ratio) = (VO / VI ) for a 20 dB gain amplifier
+having a 50 Ω input and out impedance.
+
+          AV (dB) = 20 log10 AV (ratio)
+
+          20 = 20 log10 AV (ratio)
+
+          20/20 = log10 AP (ratio)
+
+          1020/20 = 10log10 (AV (ratio) )
+
+          10 = AV (ratio) = (VO / VI )
+
+   • REVIEW:
+18                                             CHAPTER 1. AMPLIFIERS AND ACTIVE DEVICES
+
+          dB = 10 log10 (PI / PO )
+
+Assuming that the load RI at PI is the same as the load resistor RO at PO (RI = RO ), the
+decibels may be derived from the voltage ratio (VI / VO ) or current ratio (II / IO ):
+
+          PO = V O IO = VO 2 / R = IO 2 R
+
+          PI = VI II = VI 2 / R = II 2 R
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (VI 2 / VO 2 ) = 20 log10 (VI /VO )
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (II 2 / IO 2 ) = 20 log10 (II /IO )
+
+     The two most often used forms of the decibel equation are:
+
+          dB = 10 log10 (PI / PO )       or       dB = 20 log10 (VI / VO )
+
+   We will use the latter form, since we need the voltage ratio. Once again, the voltage ratio
+form of equation is only applicable where the two corresponding resistors are equal. That is,
+the source and load resistance need to be equal.
+    Example: Power into an attenuator is 10 Watts, the power out is 1 Watt. Find the
+attenuation in dB.
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (10 /1) = 10 log10 (10) = 10 (1) = 10 dB
+
+     Example: Find the voltage attenuation ratio (K= (VI / VO )) for a 10 dB attenuator.
+
+          dB = 10= 20 log10 (VI / VO )
+
+          10/20 = log10 (VI / VO )
+
+          1010/20 = 10log10 (VI /VO )
+
+          3.16 = (VI / VO ) = AP (ratio)
+
+    Example: Power into an attenuator is 100 milliwatts, the power out is 1 milliwatt. Find
+the attenuation in dB.
+
+          dB = 10 log10 (PI / PO ) = 10 log10 (100 /1) = 10 log10 (100) = 10 (2) = 20 dB
+
+     Example: Find the voltage attenuation ratio (K= (VI / VO )) for a 20 dB attenuator.
+
+          dB = 20= 20 log10 (VI / VO )
+
+          1020/20 = 10log10 (VI /VO )
+
+          10 = (VI / VO ) = K

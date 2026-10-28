@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+46                                                                  CHAPTER 2. OHM’S LAW
+
+      If,      E= I R      and         P=IE
+
+
+
+                                              2
+      Then,     P = I(I R )       or    P= I R
+   A historical note: it was James Prescott Joule, not Georg Simon Ohm, who first discovered
+the mathematical relationship between power dissipation and current through a resistance.
+This discovery, published in 1841, followed the form of the last equation (P = I2 R), and is
+properly known as Joule’s Law. However, these power equations are so commonly associated
+with the Ohm’s Law equations relating voltage, current, and resistance (E=IR ; I=E/R ; and
+R=E/I) that they are frequently credited to Ohm.
+               Power equations
+
+                         E2
+      P = IE       P=              P = I2R
+                         R
+
+     • REVIEW:
+
+     • Power measured in watts, symbolized by the letter ”W”.
+
+     • Joule’s Law: P = I2 R ; P = IE ; P = E2 /R
+
+
+
+2.5         Resistors
+Because the relationship between voltage, current, and resistance in any circuit is so regular,
+we can reliably control any variable in a circuit simply by controlling the other two. Perhaps
+the easiest variable in any circuit to control is its resistance. This can be done by changing the
+material, size, and shape of its conductive components (remember how the thin metal filament
+of a lamp created more electrical resistance than a thick wire?).
+    Special components called resistors are made for the express purpose of creating a precise
+quantity of resistance for insertion into a circuit. They are typically constructed of metal wire
+or carbon, and engineered to maintain a stable resistance value over a wide range of environ-
+mental conditions. Unlike lamps, they do not produce light, but they do produce heat as electric
+power is dissipated by them in a working circuit. Typically, though, the purpose of a resistor is
+not to produce usable heat, but simply to provide a precise quantity of electrical resistance.
+    The most common schematic symbol for a resistor is a zig-zag line:
+
+
+
+    Resistor values in ohms are usually shown as an adjacent number, and if several resistors
+are present in a circuit, they will be labeled with a unique identifier number such as R1 , R2 ,
+R3 , etc. As you can see, resistor symbols can be shown either horizontally or vertically:

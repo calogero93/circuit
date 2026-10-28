@@ -1,0 +1,994 @@
+{
+  "version": "1.0.0",
+  "author": "Codex: varianti curate dai modelli/circuiti SPICE di Tony R. Kuphaldt; risultati da eseguire con ngspice, non calcolati dal modello.",
+  "scenarios": [
+    {
+      "id": "spice-ohm",
+      "group_id": "pub-power",
+      "split": "development",
+      "circuit": "V1 in 0 5\nR1 in 0 220",
+      "commands": [
+        "op",
+        "let m_i = -i(v1)\nprint m_i",
+        "let m_p = v(in)*(-i(v1))\nprint m_p"
+      ],
+      "measures": [
+        {
+          "name": "m_i",
+          "label": "Corrente R1",
+          "unit": "A"
+        },
+        {
+          "name": "m_p",
+          "label": "Potenza R1",
+          "unit": "W"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 5\nR1 in 0 220\nAnalisi richiesta: op. Determina Corrente R1 [A]; Potenza R1 [W]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-series",
+      "group_id": "pub-series",
+      "split": "development",
+      "circuit": "V1 in 0 12\nR1 in n1 100\nR2 n1 n2 220\nR3 n2 0 330",
+      "commands": [
+        "op",
+        "let m_i = -i(v1)\nprint m_i",
+        "let m_v2 = v(n1)-v(n2)\nprint m_v2",
+        "let m_v3 = v(n2)\nprint m_v3"
+      ],
+      "measures": [
+        {
+          "name": "m_i",
+          "label": "Corrente comune",
+          "unit": "A"
+        },
+        {
+          "name": "m_v2",
+          "label": "Caduta R2",
+          "unit": "V"
+        },
+        {
+          "name": "m_v3",
+          "label": "Caduta R3",
+          "unit": "V"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 12\nR1 in n1 100\nR2 n1 n2 220\nR3 n2 0 330\nAnalisi richiesta: op. Determina Corrente comune [A]; Caduta R2 [V]; Caduta R3 [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-parallel",
+      "group_id": "pub-parallel",
+      "split": "development",
+      "circuit": "V1 in 0 6\nR1 in 0 1000\nR2 in 0 2200\nR3 in 0 4700",
+      "commands": [
+        "op",
+        "let m_i = -i(v1)\nprint m_i",
+        "let m_eq = v(in)/(-i(v1))\nprint m_eq"
+      ],
+      "measures": [
+        {
+          "name": "m_i",
+          "label": "Corrente totale",
+          "unit": "A"
+        },
+        {
+          "name": "m_eq",
+          "label": "Resistenza equivalente",
+          "unit": "ohm"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 6\nR1 in 0 1000\nR2 in 0 2200\nR3 in 0 4700\nAnalisi richiesta: op. Determina Corrente totale [A]; Resistenza equivalente [ohm]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-loaded-divider",
+      "group_id": "pub-divider",
+      "split": "development",
+      "circuit": "V1 in 0 9\nR1 in out 1000\nR2 out 0 2200\nRL out 0 1000",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = v(out)/1000\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione uscita caricata",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente del carico RL",
+          "unit": "A"
+        }
+      ],
+      "principle": "Il carico è in parallelo alla resistenza inferiore: la formula del partitore non caricato non si applica con R2 invariata.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 9\nR1 in out 1000\nR2 out 0 2200\nRL out 0 1000\nAnalisi richiesta: op. Determina Tensione uscita caricata [V]; Corrente del carico RL [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-bridge",
+      "group_id": "spice-unbalanced-bridge",
+      "split": "development",
+      "circuit": "V1 in 0 10\nR1 in left 1000\nR2 left 0 2000\nR3 in right 1500\nR4 right 0 2200\nR5 left right 470",
+      "commands": [
+        "op",
+        "let m_v = v(left)-v(right)\nprint m_v",
+        "let m_i = (v(left)-v(right))/470\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione left meno right",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente R5 da left a right",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 10\nR1 in left 1000\nR2 left 0 2000\nR3 in right 1500\nR4 right 0 2200\nR5 left right 470\nAnalisi richiesta: op. Determina Tensione left meno right [V]; Corrente R5 da left a right [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-current-source",
+      "group_id": "spice-current-source",
+      "split": "development",
+      "circuit": "I1 0 out DC 0.01\nR1 out 0 1000\nR2 out 0 2000",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = v(out)/1000\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione out",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente R1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nI1 0 out DC 0.01\nR1 out 0 1000\nR2 out 0 2000\nAnalisi richiesta: op. Determina Tensione out [V]; Corrente R1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-internal-resistance",
+      "group_id": "spice-internal-resistance",
+      "split": "development",
+      "circuit": "V1 src 0 12\nRS src out 100\nRL out 0 500",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_loss = (v(src)-v(out))^2/100\nprint m_loss"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione carico RL",
+          "unit": "V"
+        },
+        {
+          "name": "m_loss",
+          "label": "Potenza resistenza interna RS",
+          "unit": "W"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 src 0 12\nRS src out 100\nRL out 0 500\nAnalisi richiesta: op. Determina Tensione carico RL [V]; Potenza resistenza interna RS [W]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-vcvs",
+      "group_id": "spice-controlled-sources",
+      "split": "development",
+      "circuit": "V1 in 0 2\nE1 out 0 in 0 4\nRL out 0 1000",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = v(out)/1000\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione out",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente carico RL",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 2\nE1 out 0 in 0 4\nRL out 0 1000\nAnalisi richiesta: op. Determina Tensione out [V]; Corrente carico RL [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-cccs",
+      "group_id": "spice-controlled-sources",
+      "split": "development",
+      "circuit": "V1 in 0 1\nR1 in sense 1000\nVS sense 0 0\nF1 out 0 VS 5\nRL out 0 2000",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = i(vs)\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione out con segno",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente di controllo VS",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 1\nR1 in sense 1000\nVS sense 0 0\nF1 out 0 VS 5\nRL out 0 2000\nAnalisi richiesta: op. Determina Tensione out con segno [V]; Corrente di controllo VS [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-diode",
+      "group_id": "spice-diode-model",
+      "split": "development",
+      "circuit": "V1 in 0 5\nR1 in out 1000\nD1 out 0 DM\n.model DM D(IS=1e-12 N=1)",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = (v(in)-v(out))/1000\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione diodo D1",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente diodo D1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 5\nR1 in out 1000\nD1 out 0 DM\n.model DM D(IS=1e-12 N=1)\nAnalisi richiesta: op. Determina Tensione diodo D1 [V]; Corrente diodo D1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-zener",
+      "group_id": "spice-zener-model",
+      "split": "development",
+      "circuit": "V1 in 0 12\nR1 in out 1000\nD1 0 out ZM\n.model ZM D(IS=1e-14 BV=5.1 IBV=1m)",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = (v(in)-v(out))/1000\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione uscita zener",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente serie R1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 12\nR1 in out 1000\nD1 0 out ZM\n.model ZM D(IS=1e-14 BV=5.1 IBV=1m)\nAnalisi richiesta: op. Determina Tensione uscita zener [V]; Corrente serie R1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-led-model",
+      "group_id": "spice-led-model",
+      "split": "development",
+      "circuit": "V1 in 0 5\nR1 in out 330\nD1 out 0 LEDM\n.model LEDM D(IS=1e-20 N=2)",
+      "commands": [
+        "op",
+        "let m_v = v(out)\nprint m_v",
+        "let m_i = (v(in)-v(out))/330\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione del modello LED",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente modello LED",
+          "unit": "A"
+        }
+      ],
+      "principle": "È un modello di diodo dichiarato per l’esercizio: non rappresenta automaticamente un LED commerciale e non certifica il suo rating.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 5\nR1 in out 330\nD1 out 0 LEDM\n.model LEDM D(IS=1e-20 N=2)\nAnalisi richiesta: op. Determina Tensione del modello LED [V]; Corrente modello LED [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-bjt",
+      "group_id": "spice-bjt-model",
+      "split": "development",
+      "circuit": "VCC vcc 0 12\nRB vcc b 220k\nRC vcc c 1k\nQ1 c b 0 QM\n.model QM NPN(IS=1e-15 BF=100 VAF=100)",
+      "commands": [
+        "op",
+        "let m_v = v(c)\nprint m_v",
+        "let m_ic = @q1[ic]\nprint m_ic",
+        "let m_ib = @q1[ib]\nprint m_ib"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione collettore c",
+          "unit": "V"
+        },
+        {
+          "name": "m_ic",
+          "label": "Corrente collettore Q1",
+          "unit": "A"
+        },
+        {
+          "name": "m_ib",
+          "label": "Corrente base Q1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nVCC vcc 0 12\nRB vcc b 220k\nRC vcc c 1k\nQ1 c b 0 QM\n.model QM NPN(IS=1e-15 BF=100 VAF=100)\nAnalisi richiesta: op. Determina Tensione collettore c [V]; Corrente collettore Q1 [A]; Corrente base Q1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-mos",
+      "group_id": "spice-mos-model",
+      "split": "development",
+      "circuit": "VDD vdd 0 5\nVG g 0 2.5\nRD vdd d 1k\nM1 d g 0 0 NM W=20u L=10u\n.model NM NMOS(LEVEL=1 VTO=1 KP=2m)",
+      "commands": [
+        "op",
+        "let m_v = v(d)\nprint m_v",
+        "let m_i = @m1[id]\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione drain d",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Corrente drain M1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nVDD vdd 0 5\nVG g 0 2.5\nRD vdd d 1k\nM1 d g 0 0 NM W=20u L=10u\n.model NM NMOS(LEVEL=1 VTO=1 KP=2m)\nAnalisi richiesta: op. Determina Tensione drain d [V]; Corrente drain M1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rl-low",
+      "group_id": "spice-rl-filters",
+      "split": "development",
+      "circuit": "V1 in 0 AC 1\nL1 in out 10m\nR1 out 0 100",
+      "commands": [
+        "ac lin 1 1591.5494309189535 1591.5494309189535",
+        "let m_v = mag(v(out))\nprint m_v",
+        "let m_phase = 180*ph(v(out))/3.141592653589793\nprint m_phase"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo uscita su R1",
+          "unit": "V"
+        },
+        {
+          "name": "m_phase",
+          "label": "Fase uscita",
+          "unit": "deg"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 1\nL1 in out 10m\nR1 out 0 100\nAnalisi richiesta: ac lin 1 1591.5494309189535 1591.5494309189535. Determina Modulo uscita su R1 [V]; Fase uscita [deg]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rl-high",
+      "group_id": "spice-rl-filters",
+      "split": "development",
+      "circuit": "V1 in 0 AC 1\nR1 in out 100\nL1 out 0 10m",
+      "commands": [
+        "ac lin 1 1591.5494309189535 1591.5494309189535",
+        "let m_v = mag(v(out))\nprint m_v",
+        "let m_phase = 180*ph(v(out))/3.141592653589793\nprint m_phase"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo uscita su L1",
+          "unit": "V"
+        },
+        {
+          "name": "m_phase",
+          "label": "Fase uscita",
+          "unit": "deg"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 1\nR1 in out 100\nL1 out 0 10m\nAnalisi richiesta: ac lin 1 1591.5494309189535 1591.5494309189535. Determina Modulo uscita su L1 [V]; Fase uscita [deg]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rlc-resonance",
+      "group_id": "spice-series-rlc",
+      "split": "development",
+      "circuit": "V1 in 0 AC 1\nR1 in nr 100\nL1 nr nc 10m\nC1 nc 0 2.533029591u",
+      "commands": [
+        "ac lin 1 1000 1000",
+        "let m_v = mag(v(in)-v(nr))\nprint m_v",
+        "let m_i = mag((v(in)-v(nr))/100)\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo tensione su R1",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Modulo corrente serie",
+          "unit": "A"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 1\nR1 in nr 100\nL1 nr nc 10m\nC1 nc 0 2.533029591u\nAnalisi richiesta: ac lin 1 1000 1000. Determina Modulo tensione su R1 [V]; Modulo corrente serie [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rlc-detuned",
+      "group_id": "spice-series-rlc",
+      "split": "development",
+      "circuit": "V1 in 0 AC 1\nR1 in nr 100\nL1 nr nc 10m\nC1 nc 0 2.533029591u",
+      "commands": [
+        "ac lin 1 2000 2000",
+        "let m_v = mag(v(in)-v(nr))\nprint m_v",
+        "let m_i = mag((v(in)-v(nr))/100)\nprint m_i"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo tensione su R1",
+          "unit": "V"
+        },
+        {
+          "name": "m_i",
+          "label": "Modulo corrente serie",
+          "unit": "A"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 1\nR1 in nr 100\nL1 nr nc 10m\nC1 nc 0 2.533029591u\nAnalisi richiesta: ac lin 1 2000 2000. Determina Modulo tensione su R1 [V]; Modulo corrente serie [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-parallel-rlc",
+      "group_id": "spice-parallel-rlc",
+      "split": "development",
+      "circuit": "I1 0 out AC 1\nR1 out 0 100\nL1 out 0 10m\nC1 out 0 2.533029591u",
+      "commands": [
+        "ac lin 1 1000 1000",
+        "let m_v = mag(v(out))\nprint m_v",
+        "let m_ir = mag(v(out)/100)\nprint m_ir"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo tensione out",
+          "unit": "V"
+        },
+        {
+          "name": "m_ir",
+          "label": "Modulo corrente R1",
+          "unit": "A"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nI1 0 out AC 1\nR1 out 0 100\nL1 out 0 10m\nC1 out 0 2.533029591u\nAnalisi richiesta: ac lin 1 1000 1000. Determina Modulo tensione out [V]; Modulo corrente R1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rc-cascade",
+      "group_id": "spice-rc-cascade",
+      "split": "development",
+      "circuit": "V1 in 0 AC 1\nR1 in n1 1k\nC1 n1 0 100n\nR2 n1 out 1k\nC2 out 0 100n",
+      "commands": [
+        "ac lin 1 1000 1000",
+        "let m_v = mag(v(out))\nprint m_v",
+        "let m_phase = 180*ph(v(out))/3.141592653589793\nprint m_phase"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo uscita due stadi caricati",
+          "unit": "V"
+        },
+        {
+          "name": "m_phase",
+          "label": "Fase uscita",
+          "unit": "deg"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        73,
+        74,
+        75,
+        76
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 1\nR1 in n1 1k\nC1 n1 0 100n\nR2 n1 out 1k\nC2 out 0 100n\nAnalisi richiesta: ac lin 1 1000 1000. Determina Modulo uscita due stadi caricati [V]; Fase uscita [deg]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rl-rise",
+      "group_id": "spice-rl-transient",
+      "split": "development",
+      "circuit": "V1 in 0 PULSE(0 5 0 1n 1n 10m 20m)\nR1 in out 100\nL1 out 0 10m IC=0",
+      "commands": [
+        "tran 1u 1m uic",
+        "meas tran m_i FIND i(L1) AT=100u",
+        "meas tran m_v FIND v(out) AT=100u"
+      ],
+      "measures": [
+        {
+          "name": "m_i",
+          "label": "Corrente L1 a 100 us",
+          "unit": "A"
+        },
+        {
+          "name": "m_v",
+          "label": "Tensione L1 a 100 us",
+          "unit": "V"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        82,
+        83
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 PULSE(0 5 0 1n 1n 10m 20m)\nR1 in out 100\nL1 out 0 10m IC=0\nAnalisi richiesta: tran 1u 1m uic. Determina Corrente L1 a 100 us [A]; Tensione L1 a 100 us [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rl-fall",
+      "group_id": "spice-rl-transient",
+      "split": "development",
+      "circuit": "V1 in 0 0\nR1 in out 100\nL1 out 0 10m IC=50m",
+      "commands": [
+        "tran 1u 1m uic",
+        "meas tran m_i FIND i(L1) AT=100u"
+      ],
+      "measures": [
+        {
+          "name": "m_i",
+          "label": "Corrente L1 a 100 us",
+          "unit": "A"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        82,
+        83
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 0\nR1 in out 100\nL1 out 0 10m IC=50m\nAnalisi richiesta: tran 1u 1m uic. Determina Corrente L1 a 100 us [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-half-wave",
+      "group_id": "spice-rectifiers",
+      "split": "development",
+      "circuit": "V1 in 0 SIN(0 5 1k)\nD1 in out DM\nRL out 0 1k\n.model DM D(IS=1e-14 N=1)",
+      "commands": [
+        "tran 2u 5m",
+        "meas tran m_peak MAX v(out) FROM=3m TO=5m",
+        "meas tran m_avg AVG v(out) FROM=3m TO=5m"
+      ],
+      "measures": [
+        {
+          "name": "m_peak",
+          "label": "Picco uscita da 3 a 5 ms",
+          "unit": "V"
+        },
+        {
+          "name": "m_avg",
+          "label": "Media uscita da 3 a 5 ms",
+          "unit": "V"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        82,
+        83
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 SIN(0 5 1k)\nD1 in out DM\nRL out 0 1k\n.model DM D(IS=1e-14 N=1)\nAnalisi richiesta: tran 2u 5m. Determina Picco uscita da 3 a 5 ms [V]; Media uscita da 3 a 5 ms [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-full-bridge",
+      "group_id": "spice-rectifiers",
+      "split": "development",
+      "circuit": "V1 ac 0 SIN(0 12 1k)\nD1 ac pos DM\nD2 0 pos DM\nD3 neg ac DM\nD4 neg 0 DM\nRL pos neg 1k\n.model DM D(IS=1e-14 N=1)",
+      "commands": [
+        "tran 2u 5m",
+        "let v_bridge = v(pos)-v(neg)",
+        "meas tran m_peak MAX v_bridge FROM=3m TO=5m",
+        "meas tran m_avg AVG v_bridge FROM=3m TO=5m"
+      ],
+      "measures": [
+        {
+          "name": "m_peak",
+          "label": "Picco tensione pos meno neg",
+          "unit": "V"
+        },
+        {
+          "name": "m_avg",
+          "label": "Media tensione pos meno neg",
+          "unit": "V"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        82,
+        83
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 ac 0 SIN(0 12 1k)\nD1 ac pos DM\nD2 0 pos DM\nD3 neg ac DM\nD4 neg 0 DM\nRL pos neg 1k\n.model DM D(IS=1e-14 N=1)\nAnalisi richiesta: tran 2u 5m. Determina Picco tensione pos meno neg [V]; Media tensione pos meno neg [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-multi-source",
+      "group_id": "pub-multi-source",
+      "split": "validation",
+      "circuit": "V1 n1 0 20\nV2 n3 0 7\nR1 n1 n2 10k\nR2 n2 n3 8.1k\nR3 n2 0 4.7k",
+      "commands": [
+        "op",
+        "let m_v = v(n2)\nprint m_v",
+        "let m_i1 = -i(v1)\nprint m_i1"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione nodo n2",
+          "unit": "V"
+        },
+        {
+          "name": "m_i1",
+          "label": "Corrente erogata V1",
+          "unit": "A"
+        }
+      ],
+      "principle": "I risultati valgono per il modello e per i versi dichiarati nella netlist.",
+      "book": "REF",
+      "pages": [
+        94,
+        95
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "op",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 n1 0 20\nV2 n3 0 7\nR1 n1 n2 10k\nR2 n2 n3 8.1k\nR3 n2 0 4.7k\nAnalisi richiesta: op. Determina Tensione nodo n2 [V]; Corrente erogata V1 [A]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rc-parallel-caps",
+      "group_id": "pub-rc-parallel-caps",
+      "split": "validation",
+      "circuit": "V1 in 0 10\nR1 in out 2.2k\nC1 out 0 33u IC=0\nC2 out 0 22u IC=0",
+      "commands": [
+        "tran 10u 500m uic",
+        "meas tran m_v FIND v(out) AT=121m"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione condensatori a 121 ms",
+          "unit": "V"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        96
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 10\nR1 in out 2.2k\nC1 out 0 33u IC=0\nC2 out 0 22u IC=0\nAnalisi richiesta: tran 10u 500m uic. Determina Tensione condensatori a 121 ms [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-sine",
+      "group_id": "pub-sine-samples",
+      "split": "validation",
+      "circuit": "V1 in 0 SIN(0 8 400)\nRL in 0 1k",
+      "commands": [
+        "tran 1u 8m",
+        "meas tran m_v FIND v(in) AT=625u",
+        "meas tran m_rms RMS v(in) FROM=2.5m TO=7.5m"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Tensione istantanea a 625 us",
+          "unit": "V"
+        },
+        {
+          "name": "m_rms",
+          "label": "Tensione RMS da 2.5 a 7.5 ms",
+          "unit": "V"
+        }
+      ],
+      "principle": "Le misure si riferiscono soltanto agli istanti o agli intervalli indicati e alle condizioni iniziali dichiarate.",
+      "book": "REF",
+      "pages": [
+        97,
+        98
+      ],
+      "section": "7 Using SPICE: transient analysis",
+      "kind": "tran",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 SIN(0 8 400)\nRL in 0 1k\nAnalisi richiesta: tran 1u 8m. Determina Tensione istantanea a 625 us [V]; Tensione RMS da 2.5 a 7.5 ms [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-rc-ac",
+      "group_id": "pub-rc-ac",
+      "split": "validation",
+      "circuit": "V1 in 0 AC 6\nR1 in out 47\nC1 out 0 47u",
+      "commands": [
+        "ac lin 1 200 200",
+        "let m_vr = mag(v(in)-v(out))\nprint m_vr",
+        "let m_vc = mag(v(out))\nprint m_vc"
+      ],
+      "measures": [
+        {
+          "name": "m_vr",
+          "label": "Modulo tensione R1",
+          "unit": "V"
+        },
+        {
+          "name": "m_vc",
+          "label": "Modulo tensione C1",
+          "unit": "V"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        99
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 6\nR1 in out 47\nC1 out 0 47u\nAnalisi richiesta: ac lin 1 200 200. Determina Modulo tensione R1 [V]; Modulo tensione C1 [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-lc-filter",
+      "group_id": "pub-lc-filter",
+      "split": "validation",
+      "circuit": "V1 n2 n1 AC 2\nV2 n1 0 DC 12\nL1 n2 n3 100m\nL2 n3 out 250m\nC1 n3 0 100u\nRL out 0 1k",
+      "commands": [
+        "ac lin 1 1000 1000",
+        "let m_v = mag(v(out))\nprint m_v"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo AC tensione uscita",
+          "unit": "V"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        99,
+        100,
+        101
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 n2 n1 AC 2\nV2 n1 0 DC 12\nL1 n2 n3 100m\nL2 n3 out 250m\nC1 n3 0 100u\nRL out 0 1k\nAnalisi richiesta: ac lin 1 1000 1000. Determina Modulo AC tensione uscita [V]. Distingui valori DC, moduli AC e misure transitorie."
+    },
+    {
+      "id": "spice-transformer",
+      "group_id": "pub-transformer",
+      "split": "validation",
+      "circuit": "V1 in 0 AC 24\nRS in p 1m\nLP p 0 25\nLS s ret 1\nK1 LP LS .998\nRL s ret 2k\nRG ret 0 1e10",
+      "commands": [
+        "ac lin 1 1000 1000",
+        "let m_v = mag(v(s)-v(ret))\nprint m_v"
+      ],
+      "measures": [
+        {
+          "name": "m_v",
+          "label": "Modulo tensione secondario",
+          "unit": "V"
+        }
+      ],
+      "principle": "Questi risultati sono moduli e fasi della risposta AC lineare alla frequenza dichiarata; non sono un transitorio né temperature.",
+      "book": "REF",
+      "pages": [
+        104,
+        105
+      ],
+      "section": "7 Using the SPICE circuit simulation program",
+      "kind": "ac",
+      "question": "Variante circuitale curata; i valori e i modelli seguenti definiscono completamente l’esercizio. Netlist SPICE:\nV1 in 0 AC 24\nRS in p 1m\nLP p 0 25\nLS s ret 1\nK1 LP LS .998\nRL s ret 2k\nRG ret 0 1e10\nAnalisi richiesta: ac lin 1 1000 1000. Determina Modulo tensione secondario [V]. Distingui valori DC, moduli AC e misure transitorie."
+    }
+  ]
+}

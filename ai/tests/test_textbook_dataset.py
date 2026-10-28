@@ -15,7 +15,7 @@ from evaluation_sources import verify_publications
 from experiments import ROOT, create_manifest, new_report, validate_run_identity
 from judge import local_judge_settings
 from schemas import JudgeInput
-from test_evaluators import judge_reply
+from test_evaluators import CalculatorJudgeFake, judge_reply
 from test_tutor import FakeModel, answer, call
 
 
@@ -140,11 +140,14 @@ class TextbookRunnerTests(unittest.IsolatedAsyncioTestCase):
         return next(c for c in self.bundle.dataset.cases if c.name == name)
 
     async def test_closed_book_hides_solution_from_tutor_but_preserves_it_for_judge(self):
-        model = FakeModel([answer("I = 18 V / 3 ohm = 6 A; P = 18 V * 6 A = 108 W, modello a resistenza costante.")])
-        judge = FakeModel([judge_reply()])
+        model = FakeModel([answer("Si applica Ohm, poi P = V·I, nel modello a resistenza costante.")])
+        judge = CalculatorJudgeFake([judge_reply()])
         result = await evaluate(self.case("book-dc-power-closed"), Settings(), bundle=self.bundle, model=model,
             judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=judge)
-        self.assertTrue(result.ok, result.error)
+        self.assertIsNone(result.error)
+        # Il protocollo storico vieta tutti i tool: senza calcoli non certifica
+        # più una risposta numerica. Rimane valido come test di isolamento.
+        self.assertFalse(result.ok)
         source = self.bundle.corpus["dc-power"]
         self.assertNotIn(source.excerpt, str(model.calls))
         self.assertNotIn("Tony R. Kuphaldt", str(model.calls))
@@ -155,22 +158,24 @@ class TextbookRunnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(JudgeInput.model_validate(payload).reference_sources[0], source)
 
     async def test_closed_book_rejects_browser_use_even_with_correct_numbers(self):
-        model = FakeModel([call(), answer("6 A, 108 W", "circuit", ["call-1"], True)])
+        model = FakeModel([call(), answer("6 A, 108 W", "circuit", ["call-1"], True, numbers=[(6,"A"),(108,"W")])])
         result = await evaluate(self.case("book-dc-power-closed"), Settings(), bundle=self.bundle, model=model)
         self.assertFalse(result.ok)
         self.assertTrue(any(c.id == "tool_policy" and c.status == "fail" for c in result.turns[0].checks))
 
     async def test_book_baseline_does_not_enable_retrieval(self):
-        model = FakeModel([answer("I = 6 A; P = 108 W.")])
+        model = FakeModel([answer("Si applicano la legge di Ohm e la potenza resistiva.")])
         result = await evaluate(self.case("book-dc-power-closed"), Settings(), bundle=self.bundle, model=model)
-        self.assertTrue(result.ok, result.error)
-        offered = [tool.name if hasattr(tool, "name") else tool.__name__ for tool in model.bindings[0][0]]
+        self.assertIsNone(result.error)
+        self.assertFalse(result.ok)  # Nessun risultato: non promuovere il vecchio caso numerico.
+        offered = [tool['function']['name'] if isinstance(tool, dict) else tool.name if hasattr(tool, "name") else tool.__name__ for tool in model.bindings[0][0]]
         self.assertNotIn("search_info", offered)
 
     async def test_live_adaptations_require_current_valid_measurements(self):
         for name, response in [("book-dc-power-live", "R1: corrente 6 A e potenza 108 W, modello ideale."),
                 ("book-dc-divider-live", "R2 della fixture: 15 V e 2 mA; corrisponde a R3 nel libro.")]:
-            model = FakeModel([call(), answer(response, "circuit", ["call-1"], True)])
+            numbers = [(6,"A"),(108,"W")] if name == "book-dc-power-live" else [(15,"V"),(2,"mA")]
+            model = FakeModel([call(), answer(response, "circuit", ["call-1"], True, numbers=numbers)])
             result = await evaluate(self.case(name), Settings(), bundle=self.bundle, model=model)
             self.assertTrue(result.ok, result.error)
             self.assertTrue(result.turns[0].evidence[0].measurement_valid)

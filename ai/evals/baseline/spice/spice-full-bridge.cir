@@ -1,0 +1,23 @@
+spice-full-bridge
+V1 ac 0 SIN(0 12 1k)
+D1 ac pos DM
+D2 0 pos DM
+D3 neg ac DM
+D4 neg 0 DM
+RL pos neg 1k
+.model DM D(IS=1e-14 N=1)
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+tran 2u 5m
+let v_bridge = v(pos)-v(neg)
+meas tran measured_m_peak MAX v_bridge FROM=3m TO=5m
+let m_peak = measured_m_peak
+print m_peak
+meas tran measured_m_avg AVG v_bridge FROM=3m TO=5m
+let m_avg = measured_m_avg
+print m_avg
+quit
+.endc
+.end

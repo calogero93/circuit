@@ -1,0 +1,81 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/AC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+Chapter 3
+
+REACTANCE AND IMPEDANCE
+– INDUCTIVE
+
+Contents
+        3.1   AC resistor circuits . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 57
+        3.2   AC inductor circuits . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 59
+        3.3   Series resistor-inductor circuits . . . . . . . . . . . . . . . . . . . . . . . . . 64
+        3.4   Parallel resistor-inductor circuits . . . . . . . . . . . . . . . . . . . . . . . . 71
+        3.5   Inductor quirks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 74
+        3.6   More on the “skin effect” . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 77
+        3.7   Contributors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 79
+
+
+
+
+3.1     AC resistor circuits
+
+
+                             ET     I
+                                              ER        R
+                                               IR               0°     IR   ET
+
+                                  E T = ER     I = IR
+
+       Figure 3.1: Pure resistive AC circuit: resistor voltage and current are in phase.
+
+   If we were to plot the current and voltage for a very simple AC circuit consisting of a source
+and a resistor (Figure 3.1), it would look something like this: (Figure 3.2)
+
+                                                     57
+58                             CHAPTER 3. REACTANCE AND IMPEDANCE – INDUCTIVE
+
+                                           e=
+                                           i=
+                       +
+
+                                                               Time
+
+                       -
+
+
+                Figure 3.2: Voltage and current “in phase” for resistive circuit.
+
+
+    Because the resistor simply and directly resists the flow of electrons at all periods of time,
+the waveform for the voltage drop across the resistor is exactly in phase with the waveform for
+the current through it. We can look at any point in time along the horizontal axis of the plot
+and compare those values of current and voltage with each other (any “snapshot” look at the
+values of a wave are referred to as instantaneous values, meaning the values at that instant in
+time). When the instantaneous value for current is zero, the instantaneous voltage across the
+resistor is also zero. Likewise, at the moment in time where the current through the resistor
+is at its positive peak, the voltage across the resistor is also at its positive peak, and so on. At
+any given point in time along the waves, Ohm’s Law holds true for the instantaneous values of
+voltage and current.
+    We can also calculate the power dissipated by this resistor, and plot those values on the
+same graph: (Figure 3.3)
+
+                                          e=
+                                          i=
+                                          p=
+                       +
+
+                                                               Time
+
+                       -
+
+
+      Figure 3.3: Instantaneous AC power in a pure resistive circuit is always positive.
+
+    Note that the power is never a negative value. When the current is positive (above the
+line), the voltage is also positive, resulting in a power (p=ie) of a positive value. Conversely,
+when the current is negative (below the line), the voltage is also negative, which results in a
+positive value for power (a negative number multiplied by a negative number equals a positive
+number). This consistent “polarity” of power tells us that the resistor is always dissipating
+power, taking it from the source and releasing it in the form of heat energy. Whether the

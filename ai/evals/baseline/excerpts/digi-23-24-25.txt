@@ -1,0 +1,149 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+14                                                      CHAPTER 1. NUMERATION SYSTEMS
+
+.                    -   -   -    -    -   -   -      Decimal value so far = 6410
+weight =             6   3   1    8    4   2   1
+(in decimal          4   2   6
+notation)
+
+    If we were to make the next place to the right a ”1” as well, our total value would be 6410
++ 3210 , or 9610 . This is greater than 8710 , so we know that this bit must be a ”0”. If we make
+the next (16’s) place bit equal to ”1,” this brings our total value to 6410 + 1610 , or 8010 , which is
+closer to our desired value (8710 ) without exceeding it:
+
+.                    1   0   1
+.                    -   -   -    -    -   -   -      Decimal value so far = 8010
+weight =             6   3   1    8    4   2   1
+(in decimal          4   2   6
+notation)
+
+   By continuing in this progression, setting each lesser-weight bit as we need to come up to
+our desired total value without exceeding it, we will eventually arrive at the correct figure:
+
+.                    1   0   1    0    1   1   1
+.                    -   -   -    -    -   -   -      Decimal value so far = 8710
+weight =             6   3   1    8    4   2   1
+(in decimal          4   2   6
+notation)
+
+   This trial-and-fit strategy will work with octal and hexadecimal conversions, too. Let’s take
+the same decimal figure, 8710 , and convert it to octal numeration:
+
+.
+.                    -   -   -
+weight =             6   8   1
+(in decimal          4
+notation)
+
+   If we put a cipher of ”1” in the 64’s place, we would have a total value of 6410 (less than
+8710 ). If we put a cipher of ”2” in the 64’s place, we would have a total value of 12810 (greater
+than 8710 ). This tells us that our octal numeration must start with a ”1” in the 64’s place:
+
+.                    1
+.                    -   -   -        Decimal value so far = 6410
+weight =             6   8   1
+(in decimal          4
+notation)
+
+   Now, we need to experiment with cipher values in the 8’s place to try and get a total (deci-
+mal) value as close to 87 as possible without exceeding it. Trying the first few cipher options,
+we get:
+1.6. CONVERSION FROM DECIMAL NUMERATION                                                            15
+
+"1" = 6410 + 810 = 7210
+"2" = 6410 + 1610 = 8010
+"3" = 6410 + 2410 = 8810
+
+    A cipher value of ”3” in the 8’s place would put us over the desired total of 8710 , so ”2” it is!
+
+.                    1   2
+.                    -   -    -      Decimal value so far = 8010
+weight =             6   8    1
+(in decimal          4
+notation)
+
+    Now, all we need to make a total of 87 is a cipher of ”7” in the 1’s place:
+
+.                    1   2    7
+.                    -   -    -      Decimal value so far = 8710
+weight =             6   8    1
+(in decimal          4
+notation)
+
+   Of course, if you were paying attention during the last section on octal/binary conversions,
+you will realize that we can take the binary representation of (decimal) 8710 , which we previ-
+ously determined to be 10101112 , and easily convert from that to octal to check our work:
+
+.          Implied zeros
+.               ||
+.               001 010 111               Binary
+.               --- --- ---
+.                  1 2   7                Octal
+.
+Answer: 10101112 = 1278
+
+    Can we do decimal-to-hexadecimal conversion the same way? Sure, but who would want
+to? This method is simple to understand, but laborious to carry out. There is another way to do
+these conversions, which is essentially the same (mathematically), but easier to accomplish.
+    This other method uses repeated cycles of division (using decimal notation) to break the
+decimal numeration down into multiples of binary, octal, or hexadecimal place-weight values.
+In the first cycle of division, we take the original decimal number and divide it by the base of
+the numeration system that we’re converting to (binary=2 octal=8, hex=16). Then, we take the
+whole-number portion of division result (quotient) and divide it by the base value again, and
+so on, until we end up with a quotient of less than 1. The binary, octal, or hexadecimal digits
+are determined by the ”remainders” left over by each division step. Let’s see how this works
+for binary, with the decimal example of 8710 :
+
+.    87                       Divide 87 by 2, to get a quotient of 43.5
+.   --- = 43.5                Division "remainder" = 1, or the < 1 portion
+16                                                 CHAPTER 1. NUMERATION SYSTEMS
+
+.    2                     of the quotient times the divisor (0.5 x 2)
+.
+.     43                   Take the whole-number portion of 43.5 (43)
+.    --- = 21.5            and divide it by 2 to get 21.5, or 21 with
+.     2                    a remainder of 1
+.
+.     21                   And so on . . . remainder = 1 (0.5 x 2)
+.    --- = 10.5
+.     2
+.
+.     10                   And so on . . . remainder = 0
+.    --- = 5.0
+.     2
+.
+.     5                    And so on . . . remainder = 1 (0.5 x 2)
+.    --- = 2.5
+.     2
+.
+.     2                    And so on . . . remainder = 0
+.    --- = 1.0
+.     2
+.
+.     1                    . . . until we get a quotient of less than 1
+.    --- = 0.5             remainder = 1 (0.5 x 2)
+.     2
+
+    The binary bits are assembled from the remainders of the successive division steps, begin-
+ning with the LSB and proceeding to the MSB. In this case, we arrive at a binary notation of
+10101112 . When we divide by 2, we will always get a quotient ending with either ”.0” or ”.5”,
+i.e. a remainder of either 0 or 1. As was said before, this repeat-division technique for con-
+version will work for numeration systems other than binary. If we were to perform successive
+divisions using a different number, such as 8 for conversion to octal, we will necessarily get
+remainders between 0 and 7. Let’s try this with the same decimal number, 8710 :
+
+.     87                   Divide 87 by 8, to get a quotient of 10.875
+.    --- = 10.875          Division "remainder" = 7, or the < 1 portion
+.     8                    of the quotient times the divisor (.875 x 8)
+.
+.     10
+.    --- = 1.25            Remainder = 2
+.     8
+.
+.     1
+.    --- = 0.125           Quotient is less than 1, so we’ll stop here.
+.     8                    Remainder = 1
+.

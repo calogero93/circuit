@@ -1,0 +1,98 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+3.4. MULTIPLE-INPUT GATES                                                                       49
+
+this chapter, a two input gate has four possibilities (00, 01, 10, and 11). A three-input gate has
+eight possibilities (000, 001, 010, 011, 100, 101, 110, and 111) for input states. The number of
+possible input states is equal to two to the power of the number of inputs:
+
+    Number of possible input states = 2n
+        Where,
+          n = Number of inputs
+
+   This increase in the number of possible input states obviously allows for more complex gate
+behavior. Now, instead of merely inverting or amplifying (buffering) a single ”high” or ”low”
+logic level, the output of the gate will be determined by whatever combination of 1’s and 0’s is
+present at the input terminals.
+
+    Since so many combinations are possible with just a few input terminals, there are many
+different types of multiple-input gates, unlike single-input gates which can only be inverters
+or buffers. Each basic gate type will be presented in this section, showing its standard symbol,
+truth table, and practical operation. The actual TTL circuitry of these different gates will be
+explored in subsequent sections.
+
+
+
+
+3.4.1    The AND gate
+
+
+One of the easiest multiple-input gates to understand is the AND gate, so-called because the
+output of this gate will be ”high” (1) if and only if all inputs (first input and the second input
+and . . .) are ”high” (1). If any input(s) are ”low” (0), the output is guaranteed to be in a ”low”
+state as well.
+
+
+
+                  2-input AND gate                         3-input AND gate
+                                                     InputA
+              InputA
+                                     Output          InputB                 Output
+              InputB                                 InputC
+
+   In case you might have been wondering, AND gates are made with more than three inputs,
+but this is less common than the simple two-input variety.
+
+   A two-input AND gate’s truth table looks like this:
+50                                                                     CHAPTER 3. LOGIC GATES
+
+                                        2-input AND gate
+
+                                 InputA
+                                                              Output
+                                 InputB
+
+
+                                         A B Output
+                                         0 0   0
+                                         0 1   0
+                                         1 0   0
+                                         1 1   1
+
+   What this truth table means in practical terms is shown in the following sequence of illus-
+trations, with the 2-input AND gate subjected to all possibilities of input logic levels. An LED
+(Light-Emitting Diode) provides visual indication of the output logic level:
+
+
+                                  Vcc
+                                                  Vcc
+                                         InputA
+                                                              Output
+                                         0                0
+                                         0
+
+                                         InputB
+
+
+                                  InputA = 0
+                                  InputB = 0
+                                  Output = 0 (no light)
+
+
+
+
+                                  Vcc
+                                                  Vcc
+                                         InputA
+                                                              Output
+                                         1                0
+                                         0
+
+                                         InputB
+
+
+                                  InputA = 1
+                                  InputB = 0
+                                  Output = 0 (no light)

@@ -1,0 +1,26 @@
+Warning: can't find the initialization file spinit.
+
+Note: No compatibility mode selected!
+
+
+Circuit: spice-sine
+
+Doing analysis at TEMP = 27.000000 and TNOM = 27.000000
+
+Using SPARSE 1.3 as Direct Linear Solver
+
+Initial Transient Solution
+--------------------------
+
+Node                                   Voltage
+----                                   -------
+in                                           0
+v1#branch                                    0
+
+
+No. of Data Rows : 8008
+measured_m_v        =  7.999995e+00
+m_v = 7.999995000000000e+00
+measured_m_rms      =  5.65685e+00 from=  2.50000e-03 to=  7.50000e-03
+m_rms = 5.656854000000000e+00
+ngspice-45.2 done

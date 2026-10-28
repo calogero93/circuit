@@ -1,0 +1,16 @@
+spice-internal-resistance
+V1 src 0 12
+RS src out 100
+RL out 0 500
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+op
+let m_v = v(out)
+print m_v
+let m_loss = (v(src)-v(out))^2/100
+print m_loss
+quit
+.endc
+.end

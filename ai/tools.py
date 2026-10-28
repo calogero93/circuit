@@ -6,6 +6,8 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
 
 from config import Settings
+from calculation_tools import calculation_tools, TOOLS
+from calculation_schemas import ArithmeticInput, CalculationOutput
 from modules.circuit_topology import describe_topology
 from modules.tool_bridge import ToolBridge
 from schemas import (NoInput, ComponentInput, NodeInput, TransientInput, SearchInput,
@@ -30,8 +32,11 @@ def output_description(schema):
 
 
 def tool_schemas():
-    return {name: {"input": args.model_json_schema(), "output": output.model_json_schema()}
+    catalog = {name: {"input": args.model_json_schema(), "output": output.model_json_schema()}
             for name, _, args, output in BROWSER_TOOLS}
+    catalog.update({name: {"input": schema.model_json_schema(), "output": CalculationOutput.model_json_schema()}
+                    for name, schema in {**TOOLS, "calculate": ArithmeticInput}.items()})
+    return catalog
 
 
 def make_tools(settings: Settings, bridge_factory=ToolBridge, *, search_provider=None):
@@ -50,7 +55,7 @@ def make_tools(settings: Settings, bridge_factory=ToolBridge, *, search_provider
         return StructuredTool.from_function(coroutine=call, name=name,
                     description=description + output_description(output), args_schema=schema)
 
-    tools = [browser_tool(*definition) for definition in BROWSER_TOOLS]
+    tools = [browser_tool(*definition) for definition in BROWSER_TOOLS] + calculation_tools()
     if settings.rag_enabled:
         store = None
         search_lock = threading.Lock()

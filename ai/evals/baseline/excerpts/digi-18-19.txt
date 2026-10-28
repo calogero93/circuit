@@ -1,0 +1,98 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.3. DECIMAL VERSUS BINARY NUMERATION                                                           9
+
+Eleven        /|||/ /|||/ |                     XI            11             1011
+Twelve        /|||/ /|||/ ||                   XII           12             1100
+Thirteen      /|||/ /|||/ |||                 XIII          13             1101
+Fourteen      /|||/ /|||/ ||||               XIV           14             1110
+Fifteen       /|||/ /|||/ /|||/               XV            15             1111
+Sixteen       /|||/ /|||/ /|||/ |            XVI           16             10000
+Seventeen     /|||/ /|||/ /|||/ ||          XVII          17             10001
+Eighteen      /|||/ /|||/ /|||/ |||        XVIII         18             10010
+Nineteen      /|||/ /|||/ /|||/ ||||      XIX           19             10011
+Twenty        /|||/ /|||/ /|||/ /|||/      XX            20             10100
+
+   Neither hash marks nor the Roman system are very practical for symbolizing large num-
+bers. Obviously, place-weighted systems such as decimal and binary are more efficient for the
+task. Notice, though, how much shorter decimal notation is over binary notation, for the same
+number of quantities. What takes five bits in binary notation only takes two digits in decimal
+notation.
+   This raises an interesting question regarding different numeration systems: how large of
+a number can be represented with a limited number of cipher positions, or places? With the
+crude hash-mark system, the number of places IS the largest number that can be represented,
+since one hash mark ”place” is required for every integer step. For place-weighted systems of
+numeration, however, the answer is found by taking base of the numeration system (10 for
+decimal, 2 for binary) and raising it to the power of the number of places. For example, 5 digits
+in a decimal numeration system can represent 100,000 different integer number values, from
+0 to 99,999 (10 to the 5th power = 100,000). 8 bits in a binary numeration system can repre-
+sent 256 different integer number values, from 0 to 11111111 (binary), or 0 to 255 (decimal),
+because 2 to the 8th power equals 256. With each additional place position to the number field,
+the capacity for representing numbers increases by a factor of the base (10 for decimal, 2 for
+binary).
+   An interesting footnote for this topic is the one of the first electronic digital computers,
+the Eniac. The designers of the Eniac chose to represent numbers in decimal form, digitally,
+using a series of circuits called ”ring counters” instead of just going with the binary numeration
+system, in an effort to minimize the number of circuits required to represent and calculate very
+large numbers. This approach turned out to be counter-productive, and virtually all digital
+computers since then have been purely binary in design.
+   To convert a number in binary numeration to its equivalent in decimal form, all you have to
+do is calculate the sum of all the products of bits with their respective place-weight constants.
+To illustrate:
+
+Convert 110011012        to decimal form:
+bits =         1        1 0 0 1 1 0 1
+.              -        - - - - - - -
+weight =       1        6 3 1 8 4 2 1
+(in decimal    2        4 2 6
+notation)      8
+10                                                      CHAPTER 1. NUMERATION SYSTEMS
+
+   The bit on the far right side is called the Least Significant Bit (LSB), because it stands in
+the place of the lowest weight (the one’s place). The bit on the far left side is called the Most
+Significant Bit (MSB), because it stands in the place of the highest weight (the one hundred
+twenty-eight’s place). Remember, a bit value of ”1” means that the respective place weight gets
+added to the total value, and a bit value of ”0” means that the respective place weight does not
+get added to the total value. With the above example, we have:
+
+12810     + 6410   + 810     + 410   + 110    = 20510
+
+   If we encounter a binary number with a dot (.), called a ”binary point” instead of a decimal
+point, we follow the same procedure, realizing that each place weight to the right of the point is
+one-half the value of the one to the left of it (just as each place weight to the right of a decimal
+point is one-tenth the weight of the one to the left of it). For example:
+
+Convert 101.0112        to decimal form:
+.
+bits =         1        0    1   .    0   1   1
+.              -        -    -   -    -   -   -
+weight =       4        2    1        1   1   1
+(in decimal                           /   /   /
+notation)                             2   4   8
+
+410     + 110   + 0.2510     + 0.12510    = 5.37510
+
+
+
+1.4       Octal and hexadecimal numeration
+Because binary numeration requires so many bits to represent relatively small numbers com-
+pared to the economy of the decimal system, analyzing the numerical states inside of digital
+electronic circuitry can be a tedious task. Computer programmers who design sequences of
+number codes instructing a computer what to do would have a very difficult task if they were
+forced to work with nothing but long strings of 1’s and 0’s, the ”native language” of any digital
+circuit. To make it easier for human engineers, technicians, and programmers to ”speak” this
+language of the digital world, other systems of place-weighted numeration have been made
+which are very easy to convert to and from binary.
+    One of those numeration systems is called octal, because it is a place-weighted system with
+a base of eight. Valid ciphers include the symbols 0, 1, 2, 3, 4, 5, 6, and 7. Each place weight
+differs from the one next to it by a factor of eight.
+    Another system is called hexadecimal, because it is a place-weighted system with a base of
+sixteen. Valid ciphers include the normal decimal symbols 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9, plus
+six alphabetical characters A, B, C, D, E, and F, to make a total of sixteen. As you might have
+guessed already, each place weight differs from the one before it by a factor of sixteen.
+    Let’s count again from zero to twenty using decimal, binary, octal, and hexadecimal to
+contrast these systems of numeration:
+
+Number             Decimal           Binary             Octal         Hexadecimal

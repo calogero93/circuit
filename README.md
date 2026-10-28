@@ -64,12 +64,14 @@ flowchart TB
         API["FastAPI — porta 8080"]
         Graph["LangGraph: prepare, agent, tools"]
         Tools["Tool Python e validazione Pydantic"]
+        Calculations["Calcoli fisici locali con unità validate"]
         Bridge["ToolBridge Python: client RPC"]
         Relay["Relay WebSocket Node — porta 8787"]
         Memory[("PostgreSQL: checkpoint, sintesi e note")]
         RAG["RAG opzionale: embedding e Qdrant locale"]
         API <--> Graph
         Graph <--> Tools
+        Tools <--> Calculations
         Tools <--> Bridge <--> Relay
         Graph <-->|"checkpoint"| Memory
         API <-->|"sintesi e note per utente"| Memory
@@ -85,14 +87,20 @@ flowchart TB
 Il diagramma mostra i collegamenti logici. In sviluppo **Vite** inoltra `/api`
 a FastAPI e `/tool-bridge` al relay; in produzione questi inoltri spettano al
 reverse proxy. Il relay Node instrada richieste e risposte verso la scheda
-browser indicata da `session_id`. I calcoli elettrici sono eseguiti dai motori
-nel browser; l'LLM interpreta i risultati e costruisce la spiegazione.
+browser indicata da `session_id`. I motori nel browser simulano il circuito live;
+i tool Python eseguono calcoli didattici sui parametri espliciti. L'LLM sceglie
+gli strumenti e spiega il metodo; il server formatta i risultati strutturati.
 
 Il provider predefinito è locale, con protocollo compatibile OpenAI su
 `LLM_BASE_URL`. I provider cloud richiedono configurazione esplicita sul server.
 Il RAG, quando abilitato, cerca documenti; PostgreSQL conserva il contesto delle
 conversazioni e le note didattiche. Memoria e ricerca documentale hanno quindi
 compiti distinti.
+
+La verifica offline del tutor separa risultati numerici strutturati e spiegazioni:
+confronti numerici nel codice e classificatore NLI locale su CPU, con esiti incerti
+espliciti. È una diagnostica in corso di validazione, esterna al percorso live;
+avvio e limiti sono in [`ai/README.md`](ai/README.md#verifica-con-output-strutturato-e-nli-locale).
 
 | Area | Codice | Responsabilità |
 | --- | --- | --- |
@@ -165,9 +173,13 @@ flowchart TD
 - **`agent`** sceglie gli strumenti oppure conclude con `SubmitAnswer`. Anche
   una spiegazione teorica usa questo schema finale, senza richiedere tool del
   browser.
-- **`tools`** esegue le chiamate: letture e calcoli passano dal bridge al browser;
+- **`tools`** esegue le chiamate: letture e simulazioni live passano dal bridge al browser;
+  i tool fisici (Ohm, potenza DC/RMS, serie, partitore caricato e sinusoide)
+  calcolano in Python con parametri e unità validati;
   `search_info`, se abilitato, consulta i documenti. Per `SubmitAnswer` controlla
-  schema, evidenze citate e coerenza delle revisioni prima di terminare il grafo.
+  lo schema e la coerenza delle revisioni, costruisce i metadati dalle chiamate
+  del turno e aggiunge al testo i valori di `numeric_results`. Il modello scrive
+  la spiegazione senza duplicare i numeri.
 
 Gli output del browser sono validati con Pydantic prima di diventare evidenze.
 Le misure dichiarate nella risposta richiedono un'evidenza convergente acquisita
@@ -210,6 +222,20 @@ da soluzioni pubblicate di elettronica, con fonti e pagine tracciate, separando
 prove senza tool e misure su fixture. I libri forniscono le soluzioni attese
 agli evaluator, senza retrieval nel percorso del tutor. Serve a costruire la
 baseline di confronto; non è ancora una baseline approvata.
+Il nuovo [`dataset da 100 record`](ai/evals/baseline/dataset.v1.json) amplia
+questa prova con 30 esercizi svolti, 30 circuiti realmente eseguiti con ngspice,
+20 domande teoriche e 20 casi alterati, ambigui o difficili. Sono 90 domande per
+il tutor e 10 controlli negativi del verificatore, con fonti e famiglie tracciate.
+Il runner [`run_baseline.py`](ai/run_baseline.py) usa il grafo con tool offline
+di calcolo e simulazione; NLI specializzato gira su CPU/RAM, direttamente o
+su localhost, mentre Gemma resta in LM Studio. Nessun retrieval è richiesto.
+Comandi e limiti: [`dataset e ngspice`](ai/README.md#dataset-da-100-record-e-ngspice).
+[`ai/verify_judge.py`](ai/verify_judge.py) verifica il judge con risposte corrette
+brevi e spiegate e varianti con errori controllati, mantenendo aspettative e
+mutazioni nascoste al modello. Questa verifica rimane distinta dalla calibrazione
+umana e dall'approvazione della baseline.
+Per i controlli numerici il judge usa un calcolatore locale con aritmetica
+decimale e verifica delle unità, conservando nel report chiamate e risultati.
 
 ## Cosa c'è dentro
 

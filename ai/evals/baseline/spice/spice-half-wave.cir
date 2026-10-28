@@ -1,0 +1,19 @@
+spice-half-wave
+V1 in 0 SIN(0 5 1k)
+D1 in out DM
+RL out 0 1k
+.model DM D(IS=1e-14 N=1)
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+tran 2u 5m
+meas tran measured_m_peak MAX v(out) FROM=3m TO=5m
+let m_peak = measured_m_peak
+print m_peak
+meas tran measured_m_avg AVG v(out) FROM=3m TO=5m
+let m_avg = measured_m_avg
+print m_avg
+quit
+.endc
+.end

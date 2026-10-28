@@ -4,6 +4,7 @@ from typing import Annotated, Generic, Literal, TypeVar, TypedDict
 from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, StringConstraints, model_serializer, model_validator
+from answer_contracts import NumericAnswer
 
 
 LearningNote = Annotated[str, StringConstraints(min_length=1, max_length=320)]
@@ -218,9 +219,10 @@ class SubmitAnswer(Schema):
     """Conclude il turno con una risposta strutturata; chiamare da solo, dopo gli eventuali tool."""
     response: str = Field(min_length=1, max_length=16000, description="Spiegazione finale nella lingua dello studente, con unità, formule e limiti dei dati. Non inserire ragionamento interno.")
     kind: Literal["theory", "circuit", "limitation"] = Field(description="theory per concetti generali; circuit per fatti sul circuito corrente; limitation quando non si possono ricavare dati affidabili.")
-    evidence_ids: list[str] = Field(description="ID delle chiamate tool di QUESTO turno che sostengono la risposta; obbligatori per kind=circuit. Non citare chiamate storiche.")
+    evidence_ids: list[str] = Field(description="ID delle chiamate riuscite consultate in QUESTO turno, assegnati dal server; obbligatori per kind=circuit. È provenienza del contesto, non prova semantica di ogni affermazione. Mai chiamate storiche.")
     uses_measurements: bool = Field(description="True se la risposta afferma tensioni, correnti, potenze o temperature del circuito corrente; richiede almeno un'evidenza di misura valida.")
     learning_notes: list[LearningNote] = Field(max_length=5, description="Solo preferenze esplicite, obiettivi o concetti studiati riutilizzabili in altre conversazioni. Mai misure live, diagnosi del circuito o inferenze personali. Lista vuota se nulla da ricordare.")
+    numeric_results: list[NumericAnswer] = Field(default_factory=list, max_length=80, description="Risultati numerici effettivamente affermati nella risposta, separati dal testo e associati a oggetto, grandezza e contesto. Le citazioni originali sono ricavate dal codice, non riscritte dal modello. Non inserire dati di ingresso o errori citati per confutarli. [] per risposte prive di risultati numerici. La validità dello schema non certifica il calcolo.")
 
     @model_validator(mode="after")
     def coherent(self):
@@ -228,7 +230,25 @@ class SubmitAnswer(Schema):
             raise ValueError("Una risposta sul circuito richiede evidenze correnti")
         if self.uses_measurements and self.kind != "circuit":
             raise ValueError("Le misure correnti richiedono kind=circuit")
+        from numeric_verification import validate_numeric_results
+        validate_numeric_results(self.response, self.numeric_results)
         return self
+
+    @model_serializer(mode="wrap")
+    def serialize_answer(self, handler):
+        data = handler(self)
+        if "numeric_results" not in self.model_fields_set:
+            data.pop("numeric_results", None)  # Compatibilità degli hash dei report storici.
+        return data
+
+
+def submit_answer_tool():
+    """Input LLM ridotto; SubmitAnswer resta il contratto pubblico e storico."""
+    from answer_contracts import AnswerDraft
+    from langchain_core.utils.function_calling import convert_to_openai_tool
+    tool = convert_to_openai_tool(AnswerDraft)
+    tool["function"]["name"] = "SubmitAnswer"
+    return tool
 
 
 class ConversationSummary(Schema):
@@ -576,11 +596,60 @@ class JudgeVerdict(Schema):
         return self
 
 
+CalculationUnit = Literal["1", "V", "mV", "kV", "A", "mA", "uA", "µA", "ohm", "Ω", "kohm", "kΩ", "Mohm", "W", "mW", "kW", "s", "ms", "us", "Hz", "kHz", "MHz", "F", "mF", "uF", "nF", "pF", "H", "mH", "uH"]
+
+
+class CalculationQuantity(Schema):
+    value: float = Field(description="Valore finito della quantità nell'unità dichiarata, prima della conversione in SI.")
+    unit: CalculationUnit = Field(description="Una sola unità fra i valori dell'enumerazione. 1 significa adimensionale.")
+
+
+class CalculationVariable(CalculationQuantity):
+    name: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,31}$", description="Nome univoco della variabile nell'espressione, per esempio v, i oppure r1.")
+
+
+class CalculatorInput(Schema):
+    expression: str = Field(min_length=1, max_length=256, description="Espressione aritmetica su variabili: +, -, *, /, ** con esponente intero da -8 a 8; funzioni sqrt, abs, mean, rms. Per potenza usare v*i con v in V e i in A. Non è codice Python eseguibile.")
+    variables: list[CalculationVariable] = Field(max_length=16, description="Array di oggetti con campi name, value e unit, ricavati esclusivamente dai dati da valutare. Usare gli stessi nomi nell'espressione, rispettando maiuscole e minuscole. Mai numeri privi di unità. Usare [] se non servono variabili.")
+    response_quote: str = Field(min_length=1, max_length=2000, description="Citazione esatta della risposta che si sta verificando. Deve essere realmente presente nel testo del tutor, non copiata dal riferimento al suo posto.")
+    claimed_value: float | None = Field(default=None, description="Valore numerico affermato nella citazione, da confrontare con il calcolo; null per ricavare soltanto un valore di controllo. Se presente richiede claimed_unit.")
+    claimed_unit: CalculationUnit | None = Field(default=None, description="Unità del valore affermato nella citazione, da specificare insieme a claimed_value. Entrambi null se non si richiede il confronto.")
+
+    @model_validator(mode="after")
+    def paired_claim(self):
+        if (self.claimed_value is None) != (self.claimed_unit is None):
+            raise ValueError("Specificare insieme claimed_value e claimed_unit, oppure lasciare entrambi null")
+        return self
+
+
+class CalculatorOutput(Schema):
+    value: float = Field(description="Risultato numerico in unità SI; non è una misura del circuito.")
+    decimal_value: str = Field(description="Rappresentazione decimale del risultato calcolato con precisione 50 cifre, prima della conversione a float per JSON.")
+    unit: str = Field(description="Unità SI derivata dalle dimensioni degli operandi, per esempio A, V, W o ohm.")
+    claimed_matches: bool | None = Field(description="Confronto con il risultato dichiarato, con tolleranza relativa 1e-6 e assoluta zero; null se non fornito. Non verifica che formula e dati scelti dal judge siano pertinenti.")
+    limitation: str = Field(description="Limiti del calcolo: la correttezza dell'operazione non certifica associazioni, ipotesi o affermazioni non numeriche.")
+
+
+class JudgeCalculation(Schema):
+    call_id: str = Field(description="Identificativo della chiamata calculator effettuata dal judge.")
+    input: dict[str, JsonValue] = Field(description="Argomenti effettivamente inviati, conservati anche quando lo schema o l'espressione non sono validi.")
+    result: ToolResult[CalculatorOutput] = Field(description="Esito validato del calcolatore o errore esplicito, senza risultati inventati.")
+    duration_ms: float = Field(ge=0, description="Tempo locale di esecuzione del calcolatore, distinto dalla latenza LLM.")
+
+
 class JudgeEvaluation(Schema):
     status: Literal["not_requested", "skipped", "completed", "unavailable", "invalid"] = Field(description="Completed significa giudizio prodotto, non judge calibrato né risposta approvata da una persona.")
     verdict: JudgeVerdict | None = Field(default=None, description="Giudizi strutturati; null se il judge non è stato eseguito correttamente.")
     metrics: TurnMetrics = Field(default_factory=TurnMetrics, description="Costo e identità del judge, separati dalle metriche del tutor.")
     error: str | None = Field(default=None, description="Motivo della mancata valutazione; mai convertito in un voto positivo.")
+    calculations: list[JudgeCalculation] = Field(default_factory=list, description="Chiamate effettive al calcolatore locale del judge, con input, unità, esiti e tempi; nessun accesso al browser.")
+
+    @model_serializer(mode="wrap")
+    def serialize_judge_evaluation(self, handler):
+        data = handler(self)
+        if not self.calculations:
+            data.pop("calculations", None)  # Mantiene valide le impronte dei vecchi report.
+        return data
 
 
 class DatasetTurnResult(Schema):

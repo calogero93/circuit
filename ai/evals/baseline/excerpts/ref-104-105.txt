@@ -1,0 +1,97 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+96                   CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+7.8.9    Transformer circuit
+
+                                                         2
+                               Rbogus0          L2        R1
+                           1                    1H
+                                     L1                            4
+                      V1                                 3
+                                 100 H          L3
+                           0                              R2
+                                                25 H
+                                                               5
+                                                     Rbogus1       Rbogus2
+                                                               0   0
+
+SPICE understands transformers as a set of mutually coupled inductors. Thus, to simulate
+a transformer in SPICE, you must specify the primary and secondary windings as separate
+inductors, then instruct SPICE to link them together with a ”k” card specifying the coupling
+constant. For ideal transformer simulation, the coupling constant would be unity (1). However,
+SPICE can’t handle this value, so we use something like 0.999 as the coupling factor.
+    Note that all winding inductor pairs must be coupled with their own k cards in order for
+the simulation to work properly. For a two-winding transformer, a single k card will suffice.
+For a three-winding transformer, three k cards must be specified (to link L1 with L2 , L2 with
+L3 , and L1 with L3 ).
+    The L1 /L2 inductance ratio of 100:1 provides a 10:1 step-down voltage transformation ratio.
+With 120 volts in we should see 12 volts out of the L2 winding. The L1 /L3 inductance ratio
+of 100:25 (4:1) provides a 2:1 step-down voltage transformation ratio, which should give us 60
+volts out of the L3 winding with 120 volts in.
+
+  Netlist:
+transformer
+v1 1 0 ac 120 sin
+rbogus0 1 6 1e-3
+l1 6 0 100
+l2 2 4 1
+l3 3 5 25
+k1 l1 l2 0.999
+k2 l2 l3 0.999
+k3 l1 l3 0.999
+r1 2 4 1000
+r2 3 5 1000
+rbogus1 5 0 1e10
+rbogus2 4 0 1e10
+.ac lin 1 60 60
+.print ac v(1,0) v(2,0) v(3,0)
+.end
+7.8. EXAMPLE CIRCUITS AND NETLISTS                                                             97
+
+    Output:
+freq                 v(1)            v(2)           v(3)
+6.000E+01            1.200E+02       1.199E+01      5.993E+01
+    In this example, Rbogus0 is a very low-value resistor, serving to break up the source/inductor
+loop of V1 /L1 . Rbogus1 and Rbogus2 are very high-value resistors necessary to provide DC paths
+to ground on each of the isolated circuits. Note as well that one side of the primary circuit is
+directly grounded. Without these ground references, SPICE will produce errors!
+
+
+7.8.10     Full-wave bridge rectifier
+
+                                1                            1
+                                                    D1              D3
+                                                          Rload
+                           V1        15 V       2        +      -        3
+                                    60 Hz                10 kΩ
+                                                    D2              D4
+
+                                0                            0
+Diodes, like all semiconductor components in SPICE, must be modeled so that SPICE knows
+all the nitty-gritty details of how they’re supposed to work. Fortunately, SPICE comes with
+a few generic models, and the diode is the most basic. Notice the .model card which simply
+specifies ”d” as the generic diode model for mod1. Again, since we’re plotting the waveforms
+here, we need to specify all parameters of the AC source in a single card and print/plot all
+values using the .tran option.
+
+  Netlist:
+fullwave bridge rectifier
+v1 1 0 sin(0 15 60 0 0)
+rload 1 0 10k
+d1 1 2 mod1
+d2 0 2 mod1
+d3 3 1 mod1
+d4 3 0 mod1
+.model mod1 d
+.tran .5m 25m
+.plot tran v(1,0) v(2,3)
+.end
+
+  Output:
+legend:
+*: v(1)
++: v(2,3)
+time      v(1)

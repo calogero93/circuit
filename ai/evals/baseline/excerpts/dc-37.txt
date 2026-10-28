@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.6. VOLTAGE AND CURRENT IN A PRACTICAL CIRCUIT                                                    27
+
+is called a closed switch. Conversely, a switch that is breaking continuity (example: a knife
+switch with the blade not touching the stationary contact point) won’t allow electrons to pass
+through and is called an open switch. This terminology is often confusing to the new student
+of electronics, because the words ”open” and ”closed” are commonly understood in the context
+of a door, where ”open” is equated with free passage and ”closed” with blockage. With electrical
+switches, these terms have opposite meaning: ”open” means no flow while ”closed” means free
+passage of electrons.
+
+
+   • REVIEW:
+
+
+   • Resistance is the measure of opposition to electric current.
+
+
+   • A short circuit is an electric circuit offering little or no resistance to the flow of electrons.
+     Short circuits are dangerous with high voltage power sources because the high currents
+     encountered can cause large amounts of heat energy to be released.
+
+
+   • An open circuit is one where the continuity has been broken by an interruption in the
+     path for electrons to flow.
+
+
+   • A closed circuit is one that is complete, with good continuity throughout.
+
+
+   • A device designed to open or close a circuit under controlled conditions is called a switch.
+
+
+   • The terms ”open” and ”closed” refer to switches as well as entire circuits. An open switch
+     is one without continuity: electrons cannot flow through it. A closed switch is one that
+     provides a direct (low resistance) path for electrons to flow through.
+
+
+
+
+1.6     Voltage and current in a practical circuit
+
+Because it takes energy to force electrons to flow against the opposition of a resistance, there
+will be voltage manifested (or ”dropped”) between any points in a circuit with resistance be-
+tween them. It is important to note that although the amount of current (the quantity of
+electrons moving past a given point every second) is uniform in a simple circuit, the amount
+of voltage (potential energy per unit charge) between different sets of points in a single circuit
+may vary considerably:

@@ -1,0 +1,19 @@
+spice-bridge
+V1 in 0 10
+R1 in left 1000
+R2 left 0 2000
+R3 in right 1500
+R4 right 0 2200
+R5 left right 470
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+op
+let m_v = v(left)-v(right)
+print m_v
+let m_i = (v(left)-v(right))/470
+print m_i
+quit
+.endc
+.end

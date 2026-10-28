@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+88                    CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+v1               v(1)             v(2)             v(3)             v(1,2)         v(2,3)
+2.400E+01        2.400E+01        9.747E+00        1.500E+01        1.425E+01     -5.253E+00
+
+
+7.8.3    RC time-constant circuit
+
+                              1                    1                1
+
+
+                         V1       10 V        C1               C2
+                                                       47 µF        22 µF
+                                         R1
+                              0                    2                2
+                                     3.3 kΩ
+For DC analysis, the initial conditions of any reactive component (C or L) must be specified
+(voltage for capacitors, current for inductors). This is provided by the last data field of each
+capacitor card (ic=0). To perform a DC analysis, the .tran (”transient”) analysis option must
+be specified, with the first data field specifying time increment in seconds, the second specifying
+total analysis timespan in seconds, and the ”uic” telling it to ”use initial conditions” when
+analyzing.
+
+  Netlist:
+RC time delay circuit
+v1 1 0 dc 10
+c1 1 2 47u ic=0
+c2 1 2 22u ic=0
+r1 2 0 3.3k
+.tran .05 1 uic
+.print tran v(1,2)
+.end
+
+  Output:
+time               v(1,2)
+0.000E+00          7.701E-06
+5.000E-02          1.967E+00
+1.000E-01          3.551E+00
+1.500E-01          4.824E+00
+2.000E-01          5.844E+00
+2.500E-01          6.664E+00
+3.000E-01          7.322E+00
+3.500E-01          7.851E+00
+4.000E-01          8.274E+00
+4.500E-01          8.615E+00
+5.000E-01          8.888E+00
+5.500E-01          9.107E+00

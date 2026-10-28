@@ -39,11 +39,48 @@ prima che diventino evidenze. Gli errori sono restituiti al modello come
 `ToolResult(ok=false, error=...)`.
 
 Il modello riceve domanda e contesto serializzati da Pydantic; decide fra i tool
-operativi e `SubmitAnswer`. Quest'ultimo è il contratto della risposta finale,
-anche per la teoria: testo libero fuori schema non è accettato. Le risposte sul
-circuito devono citare chiamate riuscite del turno. Le affermazioni numeriche
-richiedono almeno un'evidenza di misura convergente. Questa verifica controlla
-metadati ed evidenze, non dimostra semanticamente ogni frase del modello.
+operativi e `SubmitAnswer`. L'input finale del modello è `AnswerDraft`, in
+`answer_contracts.py`: `explanation`, `numeric_results`, `learning_notes` e
+`limitation`. La spiegazione contiene metodo, formule simboliche e ipotesi;
+i risultati numerici compaiono solo nei dati strutturati. I dati di ingresso
+possono essere citati se valore e unità sono presenti nella domanda o negli
+ingressi tipizzati di un tool riuscito (anche quando la formula ha unità implicite),
+o nei parametri nominali comuni letti dal circuito nel turno attuale. Per
+sorgenti e passivi, le unità note seguono la libreria; nessuna unità viene
+inventata per parametri sconosciuti. Le misure non sono trattate come ingressi
+nominali. `answer_rendering.py`
+li formatta nel testo a 12 cifre significative senza modificare il valore
+strutturato né usare il ground truth. Quantità numeriche duplicate nella
+spiegazione vengono rifiutate. Sono ammessi ID come R1, esponenti simbolici
+ed elenchi numerati. La corrispondenza di un ingresso con la domanda non
+certifica da sola il suo ruolo nella formula.
+
+Il server costruisce `kind`, `evidence_ids` e `uses_measurements` dalle chiamate
+riuscite del turno. `evidence_ids` elenca le fonti consultate: non è una prova
+di corrispondenza fra ogni affermazione e una specifica uscita. Una simulazione
+offline o un calcolo locale non diventa una misura live. Risultati calcolati
+richiedono almeno un calcolo riuscito o misure convergenti correnti. È consentita
+anche la lettura diretta di parametri nominali comuni con valore e unità presenti
+nella configurazione del turno: non viene spacciata per una misura. Una lettura
+della sola topologia non giustifica altri risultati numerici. Schema, presenza di tool e provenienza non provano
+da soli la scelta dei parametri, la formula del calcolatore generico o la
+correttezza di ogni frase. `SubmitAnswer` rimane il contratto pubblico HTTP e
+il reader dei report storici, con gli stessi campi di prima.
+
+`calculation_schemas.py` descrive tutti gli argomenti fisici con Pydantic;
+`calculation_tools.py` implementa sei strumenti con formule fisse nel software:
+Ohm (`resistor_current`), potenza da tensione o corrente DC/RMS
+(`power_from_voltage`, `power_from_current`), serie (`series_voltage_drop`),
+partitore caricato (`loaded_divider_voltage`) e sinusoide con fase iniziale e
+offset nulli (`sine_voltage`). Il modello sceglie tool, dati e condizioni;
+questi strumenti non ricostruiscono la topologia di circuiti arbitrari.
+Per altri casi rimane `calculate`, con controlli dimensionali e dominio
+limitato: usa `**` per le potenze e rifiuta variabili dichiarate ma inutilizzate.
+Questi calcoli Python non richiedono il browser; le misure sul circuito aperto
+continuano a passare dal bridge. Tutor e benchmark usano gli stessi strumenti.
+Dopo i risultati dei tool, il grafo richiama vicino alla decisione finale i soli
+campi ammessi e la separazione dei numeri, conservando la possibilità di
+chiamare altri strumenti quando l’analisi non è completa.
 
 La prima revisione osservata viene mantenuta. Un cambiamento fra letture rende
 il turno incoerente: si deve concludere dichiarando il limite e ripetere l'analisi.
@@ -171,6 +208,97 @@ cancello `pre-push` appartengono al Passo 4: nessun hook viene ancora installato
 
 ## LLMOps — Passo 2: dataset e riferimenti
 
+### Dataset da 100 record e ngspice
+
+[`evals/baseline/dataset.v1.json`](evals/baseline/dataset.v1.json), versione
+`2.0.1`, contiene il nuovo insieme di valutazione. Lo stato è `proposed`:
+provenienza e controlli tecnici non equivalgono a una revisione umana.
+
+| Categoria | Record | Riferimento |
+| --- | ---: | --- |
+| Esercizi svolti | 30 | Soluzioni pubblicate nei libri di Kuphaldt, con pagina, estratto e passaggio del risultato |
+| Simulazioni | 30 | Varianti curate di circuiti e modelli SPICE dei libri; risultati prodotti da esecuzioni reali di ngspice |
+| Teoria | 20 | Domande e parafrasi attribuite a pagine dei libri |
+| Stress | 20 | 10 risposte alterate, 5 domande ambigue, 5 esercizi difficili |
+
+Sono **90 domande per il tutor e 10 controlli negativi del verificatore**: le
+risposte alterate non sono risposte da insegnare al tutor. I record appartengono
+a 39 famiglie; varianti e conversioni correlate non sono osservazioni indipendenti.
+Gli split sono 80 development e 20 validation, senza dividere una famiglia o
+una stessa pagina pubblicata fra i due. Una validazione già osservata non va
+poi riutilizzata come campione indipendente per ottimizzare il prompt.
+
+`catalog.v1.json` contiene i 70 record curati; `spice/scenarios.v1.json` descrive
+i 30 circuiti. Ogni simulazione conserva `.cir`, `.log` e `.json` con misure,
+versione del motore e hash del binario, della netlist e del log. Le soluzioni
+numeriche SPICE non sono generate dal modello. La versione usata per questi
+artefatti è ngspice 45.2; i modelli di diodi e transistor sono quelli dichiarati
+nelle netlist, senza garanzie sui componenti reali. Le tolleranze sono definite
+prima delle prove; le tabelle pubblicate a passo grosso non vengono trattate
+come soluzioni a precisione arbitraria.
+
+Da `ai/`:
+
+```bash
+# Struttura, composizione, fonti, split e integrità degli artefatti
+uv run --no-sync python baseline_dataset.py
+# Verifica anche PDF originali e pagine dichiarate; richiede pdftotext
+uv run --no-sync python baseline_dataset.py --verify-pdfs
+# Rigenera i dati e riesegue tutte le simulazioni: cambia l'identità del dataset
+uv run --no-sync python build_baseline.py --ngspice-bin /percorso/ngspice
+# Include la riesecuzione reale dei 30 circuiti nella suite software
+AI_TEST_NGSPICE_BIN=/percorso/ngspice \
+  uv run --no-sync python -m unittest discover -s tests -q
+```
+
+Nel workspace corrente il binario locale è
+`../.local-notes/tools/ngspice/root/usr/bin/ngspice`, estratto dal pacchetto
+Ubuntu `ngspice_45.2+ds-1_amd64.deb`. Si può usare un'installazione propria
+passando il relativo percorso; il runner non installa software automaticamente.
+I log hanno metadati di esecuzione: rigenerarli richiede un nuovo esperimento,
+anche a parità di risultati numerici. I PDF originali, i pesi e i report sono
+ignorati da Git; catalogo, estratti attribuiti e artefatti SPICE sono versionati.
+
+La valutazione usa lo stesso grafo e gli stessi tool fisici del tutor, più
+`calculate` per i casi non coperti e `simulateCircuit`, che riesegue il circuito
+del caso con ngspice. Non sono
+misure live del browser. I casi numerici richiedono un tool riuscito e risultati
+strutturati; i riferimenti e le soluzioni restano fuori dal prompt del tutor.
+Non viene eseguito retrieval RAG.
+
+Il calcolatore usa Decimal a 50 cifre; seno e coseno usano float64 con angoli
+in radianti e dominio limitato. `pi` è una costante disponibile. I contratti
+sono separati dall'implementazione in `calculation_schemas.py`, `baseline_schemas.py` e
+`verification_schemas.py`, con descrizioni Pydantic per tutti i campi.
+I quesiti includono fase iniziale e netlist quando servono, senza richiedere
+tabelle o figure assenti dal prompt. Le soluzioni pubblicate restano riservate
+al verificatore.
+
+Avvia prima il servizio NLI descritto nella sezione dedicata a NLI, poi:
+
+```bash
+# Verificatore sulle 90 risposte curate corrette e sulle 10 alterate
+uv run --no-sync python run_baseline.py --mode references --split all
+# Nuove risposte di Gemma per le 90 domande, più 10 controlli negativi fissi
+uv run --no-sync python run_baseline.py --mode tutor --split all \
+  --ngspice-bin ../.local-notes/tools/ngspice/root/usr/bin/ngspice
+# Diagnostica mirata; --case è ripetibile
+uv run --no-sync python run_baseline.py --mode references --case worked-power-18
+```
+
+I default sono Gemma `google/gemma-4-e4b` su `http://127.0.0.1:1235/v1` e NLI su
+`http://127.0.0.1:8091`; si possono configurare con `--llm-base-url`,
+`--llm-model` e `--nli-url`. I report separano generazione, inventario numerico,
+confronti, NLI, errori operativi e controlli negativi. `references` misura il
+verificatore, `tutor` misura anche la generazione: non confondere i due esiti.
+Il codice di uscita è zero soltanto quando tutte le positive sono `pass` e
+tutte le alterate sono `fail`; `review` impedisce il successo. Il protocollo,
+i sorgenti, i dati e le identità osservate vengono registrati e controllati.
+Le prove restano diagnostiche: nessun hook pre-push è installato e non viene
+dichiarata automaticamente approvata una baseline o calibrato il classificatore.
+
+### Dataset operativo dell’applicazione
+
 `evals/dataset.v1.json` definisce 51 casi: 30 di sviluppo e 21 di validazione.
 `evals/fixtures.v1.json` contiene 13 contesti analitici o guasti controllati;
 `evals/corpus.v1.json` contiene cinque estratti con fonti e hash verificabili.
@@ -225,6 +353,10 @@ persona che ha effettuato la revisione, incrementando la versione del dataset.
 Un dataset provvisorio non è una baseline già approvata per bloccare i rilasci.
 
 ### Esercizi con soluzioni pubblicate
+
+Il dataset corrente per il prossimo confronto è il
+[`baseline` da 100 record](#dataset-da-100-record-e-ngspice). Il dataset da 11 casi
+descritto qui rimane disponibile per riprodurre gli esperimenti precedenti.
 
 `evals/textbook/` aggiunge un dataset separato, `circuit-tutor-textbook` 1.0.1,
 ricavato dai PDF di Tony R. Kuphaldt in `docs/dataset/`. I 51 casi operativi
@@ -405,6 +537,250 @@ osservate del judge rimangono separati da quelli del tutor. Un cambio di identit
 riportata dal server di uno dei due invalida l'esperimento. I conteggi di turni
 con controlli passati, judge completato e judge soddisfatto restano distinti.
 Un run non si autodichiara calibrato.
+
+### Verifica con output strutturato e NLI locale
+
+Le nuove chiamate `SubmitAnswer` usano `AnswerDraft`, descritto sopra:
+`numeric_results` è obbligatorio, anche quando vuoto. Oggetto, grandezza,
+condizioni, valore e unità vengono formattati dal codice nella risposta pubblica.
+Il verificatore legge questa risposta e conserva citazioni e offset originali;
+non chiede al modello di ricopiare i valori. Il reader dei report storici continua
+ad accettare l'assenza del campo, mantenendone la serializzazione precedente.
+Il nuovo rendering e i nuovi tool non modificano NLI: soglie, segmentazione e
+limite del contesto del verificatore vanno valutati in una fase distinta.
+
+`verify_answers.py` prova insieme due verificatori indipendenti sulle risposte
+curate dei libri, senza browser, RAG o nuova generazione delle risposte del tutor:
+
+- `numeric_verification.py` legge tutte le quantità supportate dal testo originale
+  e conserva offset e unità SI. Il modello locale restituisce soltanto le
+  associazioni Pydantic `ResponseInventory`, senza ricevere i valori attesi.
+  Omissioni e duplicati sono rifiutati; i numeri non possono essere riscritti.
+  Il codice confronta risultati e riferimenti indipendenti con le tolleranze
+  del dataset. Dati non dimostrati, associazioni incerte, confutazioni e risultati
+  aggiuntivi non coperti restano `review`, senza diventare successi impliciti.
+  Un'associazione incompatibile per unità o componente esplicito è un difetto
+  dell'inventario: viene rifiutata e ritentata, non attribuita alla risposta.
+  I tentativi originali e i motivi del rifiuto sono conservati nel report.
+- `nli_verifier.py` confronta le singole frasi con riferimenti fattuali e verifica
+  nella direzione inversa i concetti richiesti. La premessa conserva insieme
+  i fatti del caso; non si confrontano frasi isolate con fatti di altri argomenti.
+  `explanation-references.v1.json`
+  contiene parafrasi **proposte**, con fonti e ID delle evidenze: gli obiettivi
+  della rubric e le domande dell'utente non vengono trattati come fatti.
+  Il risultato NLI conserva entailment/contradiction/neutral. Le soglie iniziali
+  sono 0.8 di confidenza e 0.15 di margine, non ancora calibrate. Evidenze
+  discordanti, neutralità, coppie troppo lunghe ed errori producono `review`.
+
+Numeri, spiegazioni e completezza hanno esiti separati. L'aggregazione è
+`fail > review > pass`: non usa medie compensative. Il parser non è un interprete
+generale della matematica e NLI non certifica la verità fisica; componenti impliciti,
+ipotesi e affermazioni non coperte richiedono ancora revisione. Il verificatore
+non sostituisce i controlli di pertinenza, lingua, sicurezza e policy dei tool.
+
+```mermaid
+flowchart LR
+    A["Risposta originale + numeric_results"] --> B["Occorrenze numeriche con offset"]
+    B --> C["Inventario Pydantic: sole associazioni"]
+    C --> D["Confronto numerico nel codice"]
+    A --> E["Frasi e contesto della spiegazione"]
+    F["Riferimenti fattuali con fonti"] --> N["NLI ONNX locale"]
+    E --> N
+    N --> G["Correttezza e completezza separate"]
+    D --> R["fail / review / pass"]
+    G --> R
+```
+
+Da `ai/`, installazione opzionale e download **esplicito una tantum**:
+
+```bash
+uv sync --extra nli --extra dev
+uv run --no-sync python prepare_nli.py \
+  --model minilm \
+  --output ../.local-notes/models/multilingual-MiniLMv2-L6-mnli-xnli-0a71e92
+```
+
+Il modello iniziale è [multilingual-MiniLMv2-L6-mnli-xnli](https://huggingface.co/MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli),
+revisione `0a71e92a985b6e1ad1828cf67ce9c459639c1dca`, in formato ONNX su CPU.
+Il supporto multilingue dichiarato non dimostra affidabilità sull'elettronica
+italiana. Il comando registra provenienza e hash; se i file sono già presenti e
+verificati non li riscarica. La verifica successiva carica solo file locali,
+disabilita la telemetria ONNX e non scarica pesi né chiama API cloud.
+
+È disponibile anche il download esplicito di
+[mDeBERTa-v3-base-mnli-xnli](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-mnli-xnli),
+revisione `8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c` (ONNX circa 1.1 GB):
+
+```bash
+uv run --no-sync python prepare_nli.py --model mdeberta \
+  --output ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
+```
+
+Il verificatore sceglie il modello tramite `--nli-model-dir`; il parser legge
+l'ordine delle etichette dal relativo `config.json`. Entrambi i modelli sono
+sperimentali: le prove iniziali hanno mostrato falsi allarmi sulle spiegazioni
+italiane. Un modello più grande non abilita automaticamente l'uso in CI.
+
+Per il nuovo dataset il modello specializzato mDeBERTa viene esposto via
+localhost, senza caricare un secondo LLM generativo in LM Studio:
+
+```bash
+uv run --no-sync python nli_server.py \
+  --model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042 \
+  --port 8091
+```
+
+`nli_server.py` carica i pesi una volta tramite ONNX Runtime con
+`CPUExecutionProvider`: usa CPU/RAM e lascia la VRAM a Gemma. `GET /healthz`
+riporta lo stato, `GET /v1/model` l'identità e `POST /v1/nli` accetta
+`{"premise":"fatto di riferimento","hypothesis":"affermazione da verificare"}`.
+La risposta contiene le tre probabilità effettive del classificatore, l'ID del
+modello e l'eventuale errore. `nli_http.py` accetta soltanto endpoint loopback.
+`LocalNLI` può anche essere chiamato direttamente da Python, come fa il runner
+storico `verify_answers.py`: i pesi e la classificazione sono gli stessi.
+Il file `source.json` accanto ai pesi registra repository, revisione e hash;
+il comando `prepare_nli.py --model mdeberta` è il solo download esplicito.
+Le valutazioni successive sono offline e riutilizzano i file locali.
+
+```bash
+# Estrattore sul server locale 1235; NLI eseguito separatamente sulla CPU
+AI_REQUEST_TIMEOUT=300 uv run --no-sync python verify_answers.py \
+  --nli-model-dir ../.local-notes/models/multilingual-MiniLMv2-L6-mnli-xnli-0a71e92 \
+  --split development
+```
+
+Report e pesi sono in `.local-notes/`, ignorata da Git. Il report conserva i due
+output strutturati, i confronti effettivi, i riferimenti, gli hash e gli errori;
+non sovrascrive i report precedenti. Tre prove consecutive con errori operativi
+fermano il batch. È una diagnostica separata dal vecchio judge e dal percorso
+live: non installa hook, non approva una baseline e non aggiunge NLI alle richieste
+degli studenti. Prima di usarlo come cancello servono valutazione e calibrazione.
+
+### Calcolatore del judge
+
+Il judge dispone del tool locale `calculator`, implementato in
+`judge_calculator.py`. I contratti `CalculatorInput`, `CalculatorOutput` e
+`JudgeCalculation` sono definiti in `schemas.py`, con descrizioni di tutti i
+campi. Nei casi con `reference.numbers` deve ottenere almeno un calcolo riuscito
+prima del verdetto; nei casi puramente concettuali il tool rimane disponibile.
+Gli errori di schema e di calcolo possono essere corretti entro limiti espliciti:
+4 round del calcolatore e al massimo 8 operazioni per valutazione.
+
+Ogni richiesta specifica espressione, variabili con unità, una citazione esatta
+della risposta e un eventuale risultato affermato da confrontare. Per la frase
+`18 V × 6 A = 18 W`, il judge può chiedere `v*i`, con `v=18 V`, `i=6 A` e
+risultato affermato `18 W`: il tool restituisce `108 W` e
+`claimed_matches=false`. Citazioni inventate o risultati dichiarati assenti
+dalla citazione producono un errore, senza valori di ripiego.
+Le variabili sono un array di oggetti `name/value/unit`, le unità appartengono
+a un'enumerazione e i riferimenti dello schema sono espansi prima dell'invio
+al server locale. Non si deducono unità mancanti e non si correggono in silenzio
+nomi di variabili diversi da quelli dichiarati.
+
+Il motore usa `Decimal` con precisione 50 cifre e arrotondamento half-even,
+converte i prefissi SI e controlla le dimensioni. Supporta operazioni
+aritmetiche, potenze intere limitate, radice, valore assoluto, media e RMS di
+campioni con la stessa unità. Il confronto usa tolleranza relativa `1e-6` e
+assoluta zero. Non usa `eval`, non esegue codice, non apre file o rete e non
+richiede il browser. Espressioni non supportate, valori fuori dominio,
+divisioni per zero e unità incompatibili restano errori espliciti.
+
+Le chiamate, gli argomenti, i risultati e i tempi sono conservati in
+`JudgeEvaluation.calculations`. Le metriche LLM comprendono anche i round del
+tool; il protocollo registra schema, sorgente, limiti e tolleranze del calcolatore.
+I vecchi report senza calcoli restano leggibili senza cambiare le loro impronte.
+Il tool non verifica da solo la scelta della formula e dei dati, le associazioni
+ai componenti o la copertura di tutte le affermazioni: un solo calcolo riuscito
+non certifica la risposta. I confronti su prove già usate sono diagnostici;
+dopo gli interventi sul judge serve un nuovo campione indipendente.
+
+Il registro locale delle problematiche e delle risoluzioni è
+`.local-notes/LLMOPS-JUDGE-ISSUES.md`, escluso da Git. Quando presente, aggiornarlo
+per ogni correzione con stato, evidenza iniziale, intervento, prove e limiti
+residui, conservando anche i tentativi non riusciti.
+
+### Verificare il judge con risposte controllate
+
+`verify_judge.py` usa `evals/textbook/judge-probes.v1.json`: risposte predefinite
+costruite sulle soluzioni dei libri, senza chiamare il tutor né abilitare RAG.
+Il dataset delle domande e i suoi riferimenti rimangono invariati. La suite è
+legata all'impronta del dataset: dopo modifiche ai riferimenti occorre revisionare
+anche le risposte proposte, incrementare la versione e aggiornare il legame.
+
+Ogni esercizio ha tre varianti:
+
+- `correct_concise`: risposta breve proposta come completa e corretta;
+- `correct_explained`: stessi requisiti, con passaggi e spiegazioni espliciti;
+- `controlled_error`: sostituzione locale nella risposta spiegata che introduce
+  un errore documentato, conservando il resto del testo.
+
+La suite copre 11 esercizi in 8 famiglie. Le 33 varianti diventano **45 prove**
+con le impostazioni predefinite: una ripetizione di base e due sui quattro casi
+critici. Sono 30 risposte positive e 15 con errore, non 45 esercizi indipendenti.
+Il seed `--order-seed` mescola l'ordine delle chiamate; non è il seed del modello.
+Development e validation mantengono gli split e le famiglie del dataset originale.
+Il comando usa development per default; `--split all` include anche validation.
+Usare questi risultati per adattare il judge richiede poi un nuovo campione
+indipendente per verificarlo, senza riutilizzare validation come prova imparziale.
+
+Le alterazioni comprendono calcoli sbagliati, prefissi delle unità, valori
+scambiati fra componenti, righe AND/XOR errate, confusione RMS/media e affermazioni
+non sostenute. Il caricatore controlla che la sostituzione avvenga una volta,
+che i valori originali corrispondano ai riferimenti, che quelli errati siano
+effettivamente diversi e che le tabelle positive e negative rispettino gli
+operatori dichiarati. Le mutazioni concettuali rimangono costruzioni assistite
+da revisionare con le fonti: questi controlli non dimostrano automaticamente
+la correttezza di qualsiasi affermazione in linguaggio naturale.
+
+Il judge riceve soltanto `JudgeInput`: domanda, risposta, criteri, fonti pubblicate
+e, per i due casi live, evidenze generate dalle fixture controllate. Non riceve
+tipo della variante, mutazione, risultato atteso o voti attesi. Le risposte
+positive devono ottenere 2 sui quattro criteri. Per il controllo negativo il
+criterio bersaglio, attualmente groundedness, deve ottenere al massimo 1; gli
+altri voti non sono imposti. Un errore numerico non viene escluso prima del
+judge: in questa suite è proprio il contenuto da fargli riconoscere.
+
+Da `ai/`:
+
+```sh
+# Prepara tutte le 45 prove, senza rete né modello
+uv run python verify_judge.py --split all --prepare-only
+
+# Raccolta iniziale completa; le prove riusate dopo modifiche sono diagnostiche
+LLM_REASONING_EFFORT=none AI_REQUEST_TIMEOUT=300 \
+uv run python verify_judge.py --split all \
+  --judge-model google/gemma-4-e4b \
+  --judge-base-url http://127.0.0.1:1235/v1 --context-tokens 12000
+
+# Una sola famiglia di risposte per controllare il percorso prima del batch
+uv run python verify_judge.py --case book-dc-power-closed \
+  --judge-base-url http://127.0.0.1:1235/v1
+```
+
+Gli schemi Pydantic sono in `judge_probe_schemas.py`, con descrizioni dei campi.
+Il runner usa lo stesso `judge_answer`, prompt e output `JudgeVerdict` della
+valutazione del tutor. Il limite di output predefinito è 1024 token, configurabile
+con `--max-output-tokens`; il budget totale con `--context-tokens`. Il timeout
+`AI_REQUEST_TIMEOUT` limita anche l'intera prova, comprese eventuali correzioni
+di schema. Tre errori operativi consecutivi interrompono il batch; disaccordi
+con le aspettative non lo interrompono.
+
+Ogni esecuzione conserva in `.local-notes/llmops/judge-verification/` un report
+distinto per ID, aggiornato dopo ogni prova. Include ordine, input esatti,
+aspettative separate, voti e motivazioni, token, latenza, impronte di dataset,
+suite, schemi, sorgenti e configurazione. Cambiamenti durante la raccolta o
+identità del modello incoerenti invalidano il report. Un'interruzione conserva
+i risultati già ottenuti; un output esistente non viene sovrascritto.
+
+Il riepilogo distingue accettazioni di risposte alterate, penalizzazioni di
+risposte proposte corrette e mancato riconoscimento nella dimensione bersaglio.
+I tassi qualitativi usano solo giudizi validi, mostrando separatamente quanti
+erano pianificati, completati o falliti operativamente. Le coppie breve/spiegata
+segnalano differenze di voto senza attribuirle automaticamente alla lunghezza.
+`checks_passed` richiede tutte le prove previste e tutte le aspettative soddisfatte.
+Il processo restituisce un codice diverso da zero per raccolte incomplete,
+invalidate o con disaccordi. **Non è una calibrazione umana**: `human_calibrated`
+e `baseline_approved` restano `false`, anche quando tutte le prove passano.
 
 Dopo aver ottenuto un report reale completato:
 

@@ -1,0 +1,55 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/AC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+16                                                           CHAPTER 1. BASIC AC THEORY
+
+Might this comparison be used to assign a “bandsaw equivalent” blade speed to the jigsaw’s
+back-and-forth blade motion; to relate the wood-cutting effectiveness of one to the other? This
+is the general idea used to assign a “DC equivalent” measurement to any AC voltage or cur-
+rent: whatever magnitude of DC voltage or current would produce the same amount of heat
+energy dissipation through an equal resistance:Figure 1.20
+
+                           5A RMS                                5A
+
+
+                 10 V             2Ω           10 V               2Ω
+                 RMS
+
+                            5A RMS           50 W                5A      50 W
+                                             power                       power
+                                           dissipated                  dissipated
+                                Equal power dissipated through
+                                   equal resistance loads
+
+
+     Figure 1.20: An RMS voltage produces the same heating effect as a the same DC voltage
+
+    In the two circuits above, we have the same amount of load resistance (2 Ω) dissipating the
+same amount of power in the form of heat (50 watts), one powered by AC and the other by
+DC. Because the AC voltage source pictured above is equivalent (in terms of power delivered
+to a load) to a 10 volt DC battery, we would call this a “10 volt” AC source. More specifically,
+we would denote its voltage value as being 10 volts RMS. The qualifier “RMS” stands for
+Root Mean Square, the algorithm used to obtain the DC equivalent value from points on a
+graph (essentially, the procedure consists of squaring all the positive and negative points on a
+waveform graph, averaging those squared values, then taking the square root of that average
+to obtain the final answer). Sometimes the alternative terms equivalent or DC equivalent are
+used instead of “RMS,” but the quantity and principle are both the same.
+    RMS amplitude measurement is the best way to relate AC quantities to DC quantities, or
+other AC quantities of differing waveform shapes, when dealing with measurements of elec-
+tric power. For other considerations, peak or peak-to-peak measurements may be the best to
+employ. For instance, when determining the proper size of wire (ampacity) to conduct electric
+power from a source to a load, RMS current measurement is the best to use, because the prin-
+cipal concern with current is overheating of the wire, which is a function of power dissipation
+caused by current through the resistance of the wire. However, when rating insulators for
+service in high-voltage AC applications, peak voltage measurements are the most appropriate,
+because the principal concern here is insulator “flashover” caused by brief spikes of voltage,
+irrespective of time.
+    Peak and peak-to-peak measurements are best performed with an oscilloscope, which can
+capture the crests of the waveform with a high degree of accuracy due to the fast action of
+the cathode-ray-tube in response to changes in voltage. For RMS measurements, analog meter
+movements (D’Arsonval, Weston, iron vane, electrodynamometer) will work so long as they
+have been calibrated in RMS figures. Because the mechanical inertia and dampening effects
+of an electromechanical meter movement makes the deflection of the needle naturally pro-
+portional to the average value of the AC, not the true RMS value, analog meters must be
+specifically calibrated (or mis-calibrated, depending on how you look at it) to indicate voltage

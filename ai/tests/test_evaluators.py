@@ -4,7 +4,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import ValidationError
 
 from calibrate_judge import agreement, compare, export_annotations
@@ -26,6 +26,17 @@ def verdict(score=2):
 
 def judge_reply(score=2):
     return AIMessage(content="", tool_calls=[{"name": "JudgeVerdict", "id": "judge-1", "args": verdict(score)}])
+
+
+class CalculatorJudgeFake(FakeModel):
+    """Simula solo il roundtrip obbligatorio; l'aritmetica è testata separatamente."""
+    async def ainvoke(self, messages):
+        payload = json.loads(next(m.content for m in reversed(messages) if isinstance(m, HumanMessage)))
+        if payload["reference"]["numbers"] and not any(isinstance(m, ToolMessage) and m.name == "calculator" for m in messages):
+            self.calls.append(messages.copy())
+            return AIMessage(content="", tool_calls=[{"name": "calculator", "id": f"calc-{len(self.calls)}", "args": {
+                "expression": "1+1", "variables": [], "response_quote": payload["response"]["response"]}}])
+        return await super().ainvoke(messages.copy())
 
 
 def turn_result(text="Spiegazione", **kwargs):
@@ -140,11 +151,11 @@ class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
     async def test_judge_sees_evidence_and_reference_but_not_tutor_identity_or_metrics(self):
         bundle = load_dataset()
         case = next(c for c in bundle.dataset.cases if c.name == "power")
-        judge = FakeModel([judge_reply()])
-        result = await evaluate(case, Settings(), model=FakeModel([call(call_id="live"), answer("R1: 1000 mW", "circuit", ["live"], True)]),
+        judge = CalculatorJudgeFake([judge_reply()])
+        result = await evaluate(case, Settings(), model=FakeModel([call(call_id="live"), answer("R1: 1000 mW", "circuit", ["live"], True, numbers=[(1000,"mW")])]),
             judge_settings=local_judge_settings(Settings(), model="local-judge"), judge_model=judge)
         self.assertTrue(result.ok, result.error)
-        self.assertEqual(result.turns[0].judge.metrics.model_calls, 1)
+        self.assertEqual(result.turns[0].judge.metrics.model_calls, 2)
         self.assertEqual(result.metrics.model_calls, 2)
         payload = json.loads(judge.calls[0][-1].content)
         self.assertEqual(payload["tool_outputs"][0]["result"]["data"]["components"]["R1"]["data"]["p"], 1)
@@ -177,7 +188,7 @@ class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
     async def test_semantic_review_can_resolve_unparsed_numeric_answer(self):
         case = next(c for c in load_dataset().dataset.cases if c.name == "ohm-calculation")
         result = await evaluate(case, Settings(), model=FakeModel([answer("La corrente è un decimo di ampere.")]),
-            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply()]), judge_policy="blocking")
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=CalculatorJudgeFake([judge_reply()]), judge_policy="blocking")
         self.assertTrue(result.ok, result.error)
         self.assertTrue(any(c.status == "review" for c in result.turns[0].checks))
         summary = summarize([EvaluationTrial(repetition=1, case=case, result=result)])
@@ -210,7 +221,7 @@ class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
     async def test_advisory_does_not_promote_uncertain_numbers_using_judge_score(self):
         case = next(c for c in load_dataset().dataset.cases if c.name == "ohm-calculation")
         result = await evaluate(case, Settings(), model=FakeModel([answer("Un decimo di ampere.")]),
-            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=FakeModel([judge_reply()]))
+            judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=CalculatorJudgeFake([judge_reply()]))
         self.assertFalse(result.ok)
         self.assertTrue(any(c.status == "review" for c in result.turns[0].checks))
         self.assertEqual(result.turns[0].judge.status, "completed")
@@ -240,12 +251,12 @@ class JudgeRunnerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_followups_keep_current_and_historical_tool_outputs_separate(self):
         case = next(c for c in load_dataset().dataset.cases if c.name == "memory-voltage")
-        judge = FakeModel([judge_reply(), judge_reply()])
-        result = await evaluate(case, Settings(), model=FakeModel([call(call_id="a"), answer("0.1 A e 1 W", "circuit", ["a"], True),
-            call(call_id="b"), answer("0.05 A e 0.25 W", "circuit", ["b"], True)]),
+        judge = CalculatorJudgeFake([judge_reply(), judge_reply()])
+        result = await evaluate(case, Settings(context_max_tokens=24000), model=FakeModel([call(call_id="a"), answer("0.1 A e 1 W", "circuit", ["a"], True, numbers=[(.1,"A"),(1,"W")]),
+            call(call_id="b"), answer("0.05 A e 0.25 W", "circuit", ["b"], True, numbers=[(.05,"A"),(.25,"W")])]),
             judge_settings=local_judge_settings(Settings(), model="judge"), judge_model=judge)
         self.assertTrue(result.ok, result.error)
-        payload = json.loads(judge.calls[1][-1].content)
+        payload = json.loads(next(m.content for m in reversed(judge.calls[-1]) if isinstance(m, HumanMessage)))
         self.assertEqual([o["call_id"] for o in payload["tool_outputs"]], ["b"])
         self.assertEqual(payload["history"][0]["tool_outputs"][0]["call_id"], "a")
 

@@ -1,0 +1,53 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.4. OCTAL AND HEXADECIMAL NUMERATION                                                       11
+
+------           -------          -------           -----          -----------
+Zero                0               0                 0                 0
+One                 1               1                 1                 1
+Two                 2               10                2                 2
+Three               3               11                3                 3
+Four                4               100               4                 4
+Five                5               101               5                 5
+Six                 6               110               6                 6
+Seven               7               111               7                 7
+Eight               8               1000              10                8
+Nine                9               1001              11                9
+Ten                 10              1010              12                A
+Eleven              11              1011              13                B
+Twelve              12              1100              14                C
+Thirteen            13              1101              15                D
+Fourteen            14              1110              16                E
+Fifteen             15              1111              17                F
+Sixteen             16              10000             20                10
+Seventeen           17              10001             21                11
+Eighteen            18              10010             22                12
+Nineteen            19              10011             23                13
+Twenty              20              10100             24                14
+
+   Octal and hexadecimal numeration systems would be pointless if not for their ability to be
+easily converted to and from binary notation. Their primary purpose in being is to serve as a
+”shorthand” method of denoting a number represented electronically in binary form. Because
+the bases of octal (eight) and hexadecimal (sixteen) are even multiples of binary’s base (two),
+binary bits can be grouped together and directly converted to or from their respective octal or
+hexadecimal digits. With octal, the binary bits are grouped in three’s (because 23 = 8), and
+with hexadecimal, the binary bits are grouped in four’s (because 24 = 16):
+
+BINARY TO OCTAL CONVERSION
+Convert 10110111.12 to octal:
+.
+.                          implied zero                   implied zeros
+.                               |                             ||
+.                               010   110               111   100
+Convert each group of bits      ###   ###               ### . ###
+to its octal equivalent:          2     6                7     4
+.
+Answer:     10110111.12 = 267.48
+
+   We had to group the bits in three’s, from the binary point left, and from the binary point
+right, adding (implied) zeros as necessary to make complete 3-bit groups. Each octal digit was
+translated from the 3-bit binary groups. Binary-to-Hexadecimal conversion is much the same:
+
+BINARY TO HEXADECIMAL CONVERSION

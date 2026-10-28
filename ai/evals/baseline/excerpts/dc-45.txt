@@ -1,0 +1,39 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+Chapter 2
+
+OHM’s LAW
+
+Contents
+        2.1 How voltage, current, and resistance relate . . . . . . . . . . . . . . . . . .             35
+        2.2 An analogy for Ohm’s Law . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          40
+        2.3 Power in electric circuits . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      42
+        2.4 Calculating electric power . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        44
+        2.5 Resistors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   46
+        2.6 Nonlinear conduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        51
+        2.7 Circuit wiring . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .    56
+        2.8 Polarity of voltage drops . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       60
+        2.9 Computer simulation of electric circuits . . . . . . . . . . . . . . . . . . . .            61
+        2.10 Contributors . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   76
+
+
+
+         ”One microampere flowing in one ohm causes a one microvolt potential drop.”
+         Georg Simon Ohm
+
+
+2.1     How voltage, current, and resistance relate
+An electric circuit is formed when a conductive path is created to allow free electrons to contin-
+uously move. This continuous movement of free electrons through the conductors of a circuit
+is called a current, and it is often referred to in terms of ”flow,” just like the flow of a liquid
+through a hollow pipe.
+    The force motivating electrons to ”flow” in a circuit is called voltage. Voltage is a specific
+measure of potential energy that is always relative between two points. When we speak of a
+certain amount of voltage being present in a circuit, we are referring to the measurement of
+how much potential energy exists to move electrons from one particular point in that circuit to
+another particular point. Without reference to two particular points, the term ”voltage” has no
+meaning.
+
+                                                     35

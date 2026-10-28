@@ -1,0 +1,50 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+7.8. EXAMPLE CIRCUITS AND NETLISTS                                                            91
+
+7.8.5    Simple AC resistor-capacitor circuit
+
+                                               R1
+                                  1                          2
+                                           30 Ω
+
+                             V1         12 V         C1          100 µF
+                                       60 Hz
+
+                                  0                          0
+The .ac card specifies the points of ac analysis from 60Hz to 60Hz, at a single point. This card,
+of course, is a bit more useful for multi-frequency analysis, where a range of frequencies can
+be analyzed in steps. The .print card outputs the AC voltage between nodes 1 and 2, and the
+AC voltage between node 2 and ground.
+
+  Netlist:
+Demo of a simple AC circuit
+v1 1 0 ac 12 sin
+r1 1 2 30
+c1 2 0 100u
+.ac lin 1 60 60
+.print ac v(1,2) v(2)
+.end
+
+  Output:
+freq              v(1,2)              v(2)
+6.000E+01         8.990E+00           7.949E+00
+
+7.8.6    Low-pass filter
+
+                                      L1                  L2
+                        2                       3                            4
+                                  100 mH              250 mH
+
+                   V1       24 V
+
+                        1                  C1       100 µF           Rload   1 kΩ
+
+
+                  V2        24 V
+
+
+
+                        0                       0                            0

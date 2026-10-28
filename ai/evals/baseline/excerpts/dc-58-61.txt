@@ -1,0 +1,80 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+48                                                                   CHAPTER 2. OHM’S LAW
+
+showing some devices called potentiometers, which can be used as variable resistors:
+
+
+
+
+   Because resistors dissipate heat energy as the electric currents through them overcome
+the ”friction” of their resistance, resistors are also rated in terms of how much heat energy
+they can dissipate without overheating and sustaining damage. Naturally, this power rating is
+specified in the physical unit of ”watts.” Most resistors found in small electronic devices such as
+portable radios are rated at 1/4 (0.25) watt or less. The power rating of any resistor is roughly
+proportional to its physical size. Note in the first resistor photograph how the power ratings
+relate with size: the bigger the resistor, the higher its power dissipation rating. Also note how
+resistances (in ohms) have nothing to do with size!
+
+
+   Although it may seem pointless now to have a device doing nothing but resisting electric
+current, resistors are extremely useful devices in circuits. Because they are simple and so
+commonly used throughout the world of electricity and electronics, we’ll spend a considerable
+amount of time analyzing circuits composed of nothing but resistors and batteries.
+
+
+   For a practical illustration of resistors’ usefulness, examine the photograph below. It is a
+picture of a printed circuit board, or PCB: an assembly made of sandwiched layers of insulating
+phenolic fiber-board and conductive copper strips, into which components may be inserted and
+secured by a low-temperature welding process called ”soldering.” The various components on
+this circuit board are identified by printed labels. Resistors are denoted by any label beginning
+with the letter ”R”.
+2.6. NONLINEAR CONDUCTION                                                                       51
+
+current (2 amps). We don’t know the resistor’s resistance in ohms or the power dissipated by
+it in watts. Surveying our array of Ohm’s Law equations, we find two equations that give us
+answers from known quantities of voltage and current:
+          E
+    R=               and          P = IE
+          I
+   Inserting the known quantities of voltage (E) and current (I) into these two equations, we
+can determine circuit resistance (R) and power dissipation (P):
+           10 V
+    R=              = 5Ω
+           2A
+
+    P = (2 A)(10 V) = 20 W
+   For the circuit conditions of 10 volts and 2 amps, the resistor’s resistance must be 5 Ω. If
+we were designing a circuit to operate at these values, we would have to specify a resistor with
+a minimum power rating of 20 watts, or else it would overheat and fail.
+
+   • REVIEW:
+
+   • Devices called resistors are built to provide precise amounts of resistance in electric cir-
+     cuits. Resistors are rated both in terms of their resistance (ohms) and their ability to
+     dissipate heat energy (watts).
+
+   • Resistor resistance ratings cannot be determined from the physical size of the resistor(s)
+     in question, although approximate power ratings can. The larger the resistor is, the more
+     power it can safely dissipate without suffering damage.
+
+   • Any device that performs some useful task with electric power is generally known as a
+     load. Sometimes resistor symbols are used in schematic diagrams to designate a non-
+     specific load, rather than an actual resistor.
+
+
+2.6      Nonlinear conduction
+         ”Advances are made by answering questions. Discoveries are made by questioning
+      answers.”
+         Bernhard Haisch, Astrophysicist
+
+   Ohm’s Law is a simple and powerful mathematical tool for helping us analyze electric cir-
+cuits, but it has limitations, and we must understand these limitations in order to properly
+apply it to real circuits. For most conductors, resistance is a rather stable property, largely
+unaffected by voltage or current. For this reason we can regard the resistance of many circuit
+components as a constant, with voltage and current being directly related to each other.
+   For instance, our previous circuit example with the 3 Ω lamp, we calculated current through
+the circuit by dividing voltage by resistance (I=E/R). With an 18 volt battery, our circuit current
+was 6 amps. Doubling the battery voltage to 36 volts resulted in a doubled current of 12 amps.

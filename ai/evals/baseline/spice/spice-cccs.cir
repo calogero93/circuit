@@ -1,0 +1,18 @@
+spice-cccs
+V1 in 0 1
+R1 in sense 1000
+VS sense 0 0
+F1 out 0 VS 5
+RL out 0 2000
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+op
+let m_v = v(out)
+print m_v
+let m_i = i(vs)
+print m_i
+quit
+.endc
+.end

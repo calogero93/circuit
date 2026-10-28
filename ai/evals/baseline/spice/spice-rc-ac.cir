@@ -1,0 +1,16 @@
+spice-rc-ac
+V1 in 0 AC 6
+R1 in out 47
+C1 out 0 47u
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+ac lin 1 200 200
+let m_vr = mag(v(in)-v(out))
+print m_vr
+let m_vc = mag(v(out))
+print m_vc
+quit
+.endc
+.end

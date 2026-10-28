@@ -1,0 +1,201 @@
+{
+  "format_version": 1,
+  "id": "textbook-judge-probes",
+  "version": "1.0.0",
+  "dataset_bundle_sha256": "ddd6f95e6cbd39917d1228ed4afc311fc4b5a421146a876c9db2ae056d177155",
+  "author": "Codex: risposte e mutazioni assistite, non voti umani; soluzioni originali di Tony R. Kuphaldt nel corpus.",
+  "expectation_basis": "Confronto con le soluzioni pubblicate e i riferimenti analitici del dataset. Valori e tabelle logiche controllati dal loader; aspettative semantiche proposte e da revisionare. Nessuna etichetta umana o approvazione della baseline.",
+  "cases": [
+    {
+      "case_id": "book-dc-power-closed",
+      "correct_concise": "Nel modello a resistenza costante: I = V/R = 18 V / 3 ohm = 6 A; P = VI = 108 W. Sono risultati del modello ideale: una lampada reale può cambiare resistenza con la temperatura.",
+      "correct_explained": "La lampada è rappresentata da un resistore ideale costante di 3 ohm alimentato a 18 V. Applico la legge di Ohm: I = 18 V / 3 ohm = 6 A. La corrente di 6 A attraversa il carico. Per la dissipazione uso P = VI: P = 18 V × 6 A = 108 W. Anche V²/R dà lo stesso risultato. La potenza di 108 W è quella del modello didattico; non implica che una lampada reale conservi la stessa resistenza quando cambia temperatura.",
+      "mutation": {
+        "kind": "numeric_value",
+        "before": "P = 18 V × 6 A = 108 W.",
+        "after": "P = 18 V × 6 A = 18 W.",
+        "explanation": "18 × 6 vale 108, come nella soluzione DC 2.4; la variante altera soltanto il risultato della potenza.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          1
+        ],
+        "wrong_quantity": {
+          "value": 18,
+          "unit": "W"
+        }
+      }
+    },
+    {
+      "case_id": "book-dc-series-closed",
+      "correct_concise": "R_tot = 3 + 10 + 5 = 18 kohm. I = 9 V / 18 kohm = 500 µA, uguale in tutti i resistori. V_R1 = 1.5 V, V_R2 = 5 V, V_R3 = 2.5 V; le cadute sommano a 9 V.",
+      "correct_explained": "In serie la resistenza equivalente è la somma: R_tot = 3 kohm + 10 kohm + 5 kohm = 18 kohm. La corrente comune è I = 9 V / 18 kohm = 500 µA. Ogni caduta si ottiene moltiplicando questa corrente per il rispettivo resistore: V_R1 = 1.5 V e V_R3 = 2.5 V; V_R2 = 5 V. La verifica di Kirchhoff è 1.5 + 5 + 2.5 = 9 V. I 9 V della batteria sono applicati alla serie completa, non a ogni singolo resistore.",
+      "mutation": {
+        "kind": "component_swap",
+        "before": "V_R1 = 1.5 V e V_R3 = 2.5 V",
+        "after": "V_R1 = 2.5 V e V_R3 = 1.5 V",
+        "explanation": "Scambia le cadute di R1 e R3 conservando tutti i numeri corretti. La sola presenza dei numeri non rileva il difetto.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          2,
+          4
+        ]
+      }
+    },
+    {
+      "case_id": "book-dc-parallel-closed",
+      "correct_concise": "Ogni ramo ha 9 V: I_R1 = 0.9 mA, I_R2 = 4.5 mA, I_R3 = 9 mA. I_tot = 14.4 mA; R_eq = 9 V / 14.4 mA = 625 ohm, inferiore al resistore più piccolo da 1 kohm.",
+      "correct_explained": "I tre resistori sono collegati alla stessa coppia di nodi, quindi hanno tutti 9 V ai capi. Per Ohm: I_R1 = 9 V / 10 kohm = 0.9 mA; I_R2 = 9 V / 2 kohm = 4.5 mA; I_R3 = 9 V / 1 kohm = 9 mA. La legge dei nodi dà I_tot = 0.9 + 4.5 + 9 = 14.4 mA. Infine R_eq = 9 V / 14.4 mA = 625 ohm. Il valore è inferiore a 1 kohm, coerentemente con il parallelo di resistori positivi.",
+      "mutation": {
+        "kind": "numeric_value",
+        "before": "R_eq = 9 V / 14.4 mA = 625 ohm.",
+        "after": "R_eq = 9 V / 14.4 mA = 13000 ohm.",
+        "explanation": "La resistenza equivalente pubblicata è 625 ohm. La sostituzione introduce un valore errato nonostante le correnti corrette.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          4
+        ],
+        "wrong_quantity": {
+          "value": 13000,
+          "unit": "ohm"
+        }
+      }
+    },
+    {
+      "case_id": "book-dc-divider-closed",
+      "correct_concise": "R_tot = 22.5 kohm. Nel partitore ideale non caricato V_Rn = 45 V × Rn/R_tot: V_R1 = 10 V, V_R2 = 20 V, V_R3 = 15 V. La somma è 45 V.",
+      "correct_explained": "Il circuito è una serie senza altri carichi. Sommo le resistenze: R_tot = 5 kohm + 10 kohm + 7.5 kohm = 22.5 kohm. Uso V_Rn = V_tot × Rn/R_tot, quindi ogni caduta è proporzionale alla propria resistenza. I risultati sono V_R1 = 10 V e V_R2 = 20 V; V_R3 = 15 V. La somma delle cadute è 10 + 20 + 15 = 45 V. La formula qui vale per il partitore non caricato descritto nella domanda.",
+      "mutation": {
+        "kind": "component_swap",
+        "before": "V_R1 = 10 V e V_R2 = 20 V",
+        "after": "V_R1 = 20 V e V_R2 = 10 V",
+        "explanation": "Scambia le cadute dei primi due resistori; valori e somma restano presenti, ma le associazioni ai componenti sono sbagliate.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "case_id": "book-ac-rms-closed",
+      "correct_concise": "Con 10 V RMS su 2 ohm, I_AC,RMS = 5 A e P_media = V_RMS²/R = 50 W. Con 10 V continui: I_DC = 5 A e P_DC = 50 W. RMS di tensione e corrente esprime equivalenza termica; non è il picco né la media aritmetica. La potenza istantanea AC può variare: 50 W è la potenza media.",
+      "correct_explained": "Per il resistore ideale uso i valori efficaci senza confonderli con i picchi. In alternata I_AC,RMS = 10 V / 2 ohm = 5 A e P_media = V_RMS²/R = 50 W. In continua I_DC = 10 V / 2 ohm = 5 A e P_DC = VI = 50 W. Il valore RMS di tensione o corrente ha lo stesso effetto termico del corrispondente valore continuo sulla stessa resistenza. Non è la media aritmetica della tensione. I 50 W indicano potenza media, non potenza RMS. La potenza istantanea in alternata può variare; i 10 V forniti sono RMS, non il valore di picco.",
+      "mutation": {
+        "kind": "rms_confusion",
+        "before": "I 50 W indicano potenza media, non potenza RMS.",
+        "after": "I 50 W indicano potenza RMS, che si ottiene usando la media aritmetica della tensione.",
+        "explanation": "Introduce la confusione fra potenza media, RMS di tensione/corrente e media aritmetica, pur mantenendo corretti i valori numerici.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1
+      }
+    },
+    {
+      "case_id": "book-ac-series-closed",
+      "correct_concise": "R_tot = 100 + 500 + 400 = 1000 ohm. I_RMS = 10 mA; V_R1,RMS = 1 V, V_R2,RMS = 5 V, V_R3,RMS = 4 V. Ohm e Kirchhoff si applicano al circuito puramente resistivo usando sempre valori RMS.",
+      "correct_explained": "Le tre resistenze sono in serie: R_tot = 100 ohm + 500 ohm + 400 ohm = 1000 ohm. La sorgente è espressa in valore efficace: I_RMS = 10 mA. Le cadute RMS risultano V_R1,RMS = 1 V, V_R2,RMS = 5 V e V_R3,RMS = 4 V, con somma 10 V. Essendo il circuito puramente resistivo, uso le leggi di Ohm e Kirchhoff senza introdurre reattanze; conservo la convenzione RMS per tutte le tensioni e correnti.",
+      "mutation": {
+        "kind": "unit",
+        "before": "I_RMS = 10 mA.",
+        "after": "I_RMS = 10 A.",
+        "explanation": "Elimina il prefisso milli e moltiplica la corrente per mille: il riferimento è 0.01 A, non 10 A.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          1
+        ],
+        "wrong_quantity": {
+          "value": 10,
+          "unit": "A"
+        }
+      }
+    },
+    {
+      "case_id": "book-digital-and-closed",
+      "correct_concise": "Tabella AND: 00 → 0; 01 → 0; 10 → 0; 11 → 1. L’uscita vale 1 soltanto quando entrambi gli ingressi sono 1. Questi sono livelli logici astratti.",
+      "correct_explained": "Una AND ideale a due ingressi richiede che siano veri sia A sia B. La tabella completa è: 00 → 0; 01 → 0; 10 → 0; 11 → 1. Se almeno un ingresso vale 0, anche l’uscita vale 0; solo entrambi gli ingressi a 1 producono uscita 1. I simboli 0 e 1 rappresentano livelli logici: senza specifiche della famiglia non deduco soglie di tensione analogiche.",
+      "mutation": {
+        "kind": "truth_table",
+        "before": "11 → 1",
+        "after": "11 → 0",
+        "explanation": "La riga AND con entrambi gli ingressi a 1 deve dare 1; la variante introduce un’uscita 0.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "logic_gate": "and",
+        "logic_inputs": [
+          1,
+          1
+        ],
+        "wrong_output": 0
+      }
+    },
+    {
+      "case_id": "book-digital-xor-closed",
+      "correct_concise": "Tabella XOR a due ingressi: 00 → 0; 01 → 1; 10 → 1; 11 → 0. L’uscita vale 1 con ingressi diversi; con 11 sono uguali, quindi vale 0.",
+      "correct_explained": "La XOR ideale a due ingressi rileva la differenza fra A e B. La tabella completa è: 00 → 0; 01 → 1; 10 → 1; 11 → 0. Per 11 entrambi gli ingressi sono uguali e dunque l’uscita vale 0. È questa la differenza rispetto alla OR inclusiva, che darebbe 1 anche per 11. La regola è riferita alla porta a due ingressi della domanda, senza generalizzarla a un numero di ingressi diverso.",
+      "mutation": {
+        "kind": "truth_table",
+        "before": "11 → 0",
+        "after": "11 → 1",
+        "explanation": "Trasforma la riga 11 della XOR nel comportamento di una OR inclusiva; l’uscita XOR corretta è 0.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "logic_gate": "xor",
+        "logic_inputs": [
+          1,
+          1
+        ],
+        "wrong_output": 1
+      }
+    },
+    {
+      "case_id": "book-dc-power-doubled",
+      "correct_concise": "A 18 V: I = 6 A e P = 108 W. A 36 V: I = 12 A e P = 432 W. Con R = 3 ohm costante, I = V/R raddoppia e P = V²/R quadruplica; è un modello ideale, non una garanzia per lampade reali.",
+      "correct_explained": "Mantengo R = 3 ohm costante. Inizialmente I_18 = 18 V / 3 ohm = 6 A e P_18 = 18 V × 6 A = 108 W. Dopo il raddoppio della tensione I_36 = 36 V / 3 ohm = 12 A. La nuova potenza è P_36 = 36 V × 12 A = 432 W. La corrente cresce di un fattore 2 perché I è proporzionale a V; la potenza cresce di un fattore 4 perché P = V²/R. Questa conclusione assume una resistenza costante, non il comportamento termico reale di una lampada.",
+      "mutation": {
+        "kind": "numeric_value",
+        "before": "P_36 = 36 V × 12 A = 432 W.",
+        "after": "P_36 = 36 V × 12 A = 216 W.",
+        "explanation": "La soluzione pubblicata a 36 V è 432 W. La variante dimezza il risultato e lo rende incoerente con il fattore quattro dichiarato.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1,
+        "reference_indices": [
+          3
+        ],
+        "wrong_quantity": {
+          "value": 216,
+          "unit": "W"
+        }
+      }
+    },
+    {
+      "case_id": "book-dc-power-live",
+      "correct_concise": "Dallo snapshot corrente: R1 = 3 ohm, tensione 18 V, corrente 6 A e potenza 108 W. Ohm e P = VI confermano i dati. R1 è il sostituto ideale della lampada: il rating della fixture è aggiunto per il simulatore, non è una specifica della lampada reale né una garanzia sul suo comportamento termico.",
+      "correct_explained": "Lo snapshot di questo turno mostra un circuito convergente e R1 modellato come resistore costante da 3 ohm. Leggo 18 V ai suoi capi, 6 A di corrente e 108 W di potenza. Verifico con I = V/R e P = VI: 18/3 = 6 A e 18 × 6 = 108 W. Il resistore della fixture sostituisce la lampada dell’esempio didattico; una lampada reale può cambiare resistenza con la temperatura. Il rating è un parametro aggiunto al simulatore, non una specifica della lampada pubblicata nel libro. Il rating della fixture non certifica una lampada commerciale.",
+      "mutation": {
+        "kind": "unsupported_claim",
+        "before": "Il rating della fixture non certifica una lampada commerciale.",
+        "after": "Il rating della fixture dimostra che la lampada reale non può mai bruciarsi.",
+        "explanation": "Introduce una garanzia assoluta sulla lampada reale a partire da un parametro artificiale della fixture; il libro e le evidenze non la sostengono.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1
+      }
+    },
+    {
+      "case_id": "book-dc-divider-live",
+      "correct_concise": "Dallo snapshot: sorgente 45 V, R1 = 15 kohm e R2 = 7.5 kohm. Su R2 leggo 15 V e 2 mA. R1 raggruppa i 5 kohm e 10 kohm del libro; R2 della fixture corrisponde a R3 del libro. È un partitore ideale non caricato.",
+      "correct_explained": "Uso lo snapshot convergente corrente: la sorgente vale 45 V e i parametri sono R1 = 15 kohm, R2 = 7.5 kohm. La resistenza superiore raggruppa i primi due resistori originali da 5 kohm e 10 kohm. R2 della fixture corrisponde a R3 del libro. La tensione misurata su R2 è 15 V e la corrente che lo attraversa è 2 mA. Sono coerenti con 45 V × 7.5/(15 + 7.5) = 15 V e 15 V / 7.5 kohm = 2 mA. Le due resistenze della fixture sono un adattamento ideale non caricato, non tre componenti distinti.",
+      "mutation": {
+        "kind": "component_mapping",
+        "before": "R2 della fixture corrisponde a R3 del libro.",
+        "after": "R2 della fixture corrisponde a R2 del libro.",
+        "explanation": "Scambia il ruolo del resistore inferiore della fixture con il secondo resistore del libro, nonostante il raggruppamento dichiarato.",
+        "target_criterion": "groundedness",
+        "maximum_score": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/AC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+3.2. AC INDUCTOR CIRCUITS                                                                    59
+
+current is positive or negative, a resistor still dissipates energy.
+
+
+3.2      AC inductor circuits
+Inductors do not behave the same as resistors. Whereas resistors simply oppose the flow of
+electrons through them (by dropping a voltage directly proportional to the current), inductors
+oppose changes in current through them, by dropping a voltage directly proportional to the
+rate of change of current. In accordance with Lenz’s Law, this induced voltage is always of such
+a polarity as to try to maintain current at its present value. That is, if current is increasing
+in magnitude, the induced voltage will “push against” the electron flow; if current is decreas-
+ing, the polarity will reverse and “push with” the electron flow to oppose the decrease. This
+opposition to current change is called reactance, rather than resistance.
+    Expressed mathematically, the relationship between the voltage dropped across the induc-
+tor and rate of current change through the inductor is as such:
+    e = L di
+          dt
+   The expression di/dt is one from calculus, meaning the rate of change of instantaneous cur-
+rent (i) over time, in amps per second. The inductance (L) is in Henrys, and the instantaneous
+voltage (e), of course, is in volts. Sometimes you will find the rate of instantaneous voltage
+expressed as “v” instead of “e” (v = L di/dt), but it means the exact same thing. To show what
+happens with alternating current, let’s analyze a simple inductor circuit: (Figure 3.4)
+
+
+                            ET     I                      EL
+                                            EL        L
+
+                                            IL                         IL
+                                                          90°
+                                 E T = EL    I = IL
+
+      Figure 3.4: Pure inductive circuit: Inductor current lags inductor voltage by 90o .
+
+   If we were to plot the current and voltage for this very simple circuit, it would look some-
+thing like this: (Figure 3.5)
+   Remember, the voltage dropped across an inductor is a reaction against the change in cur-
+rent through it. Therefore, the instantaneous voltage is zero whenever the instantaneous
+current is at a peak (zero change, or level slope, on the current sine wave), and the instan-
+taneous voltage is at a peak wherever the instantaneous current is at maximum change (the
+points of steepest slope on the current wave, where it crosses the zero line). This results in a
+voltage wave that is 90o out of phase with the current wave. Looking at the graph, the voltage
+wave seems to have a “head start” on the current wave; the voltage “leads” the current, and
+the current “lags” behind the voltage. (Figure 3.6)
+   Things get even more interesting when we plot the power for this circuit: (Figure 3.7)
+   Because instantaneous power is the product of the instantaneous voltage and the instanta-
+neous current (p=ie), the power equals zero whenever the instantaneous current or voltage is
+60                               CHAPTER 3. REACTANCE AND IMPEDANCE – INDUCTIVE
+
+
+
+                                                                 e=
+                                                                 i=
+                        +
+
+                                                                Time
+
+                        -
+
+
+                            Figure 3.5: Pure inductive circuit, waveforms.
+
+
+
+                            current slope = 0     current slope = max. (+)
+                              voltage = 0             voltage = max. (+)
+
+                                                               e=
+                                                               i=
+                       +
+
+                                                               Time
+
+                       -
+
+                                                        current slope = 0
+                                                          voltage = 0
+                                 current slope = max. (-)
+                                   voltage = max. (-)
+
+               Figure 3.6: Current lags voltage by 90o in a pure inductive circuit.
+
+
+
+                                                                 e=
+                                                                 i=
+                        +                                        p=
+
+                                                                Time
+
+                        -
+
+
+     Figure 3.7: In a pure inductive circuit, instantaneous power may be positive or negative
+3.2. AC INDUCTOR CIRCUITS                                                                      61
+
+zero. Whenever the instantaneous current and voltage are both positive (above the line), the
+power is positive. As with the resistor example, the power is also positive when the instanta-
+neous current and voltage are both negative (below the line). However, because the current
+and voltage waves are 90o out of phase, there are times when one is positive while the other is
+negative, resulting in equally frequent occurrences of negative instantaneous power.
+    But what does negative power mean? It means that the inductor is releasing power back to
+the circuit, while a positive power means that it is absorbing power from the circuit. Since the
+positive and negative power cycles are equal in magnitude and duration over time, the inductor
+releases just as much power back to the circuit as it absorbs over the span of a complete cycle.
+What this means in a practical sense is that the reactance of an inductor dissipates a net
+energy of zero, quite unlike the resistance of a resistor, which dissipates energy in the form of
+heat. Mind you, this is for perfect inductors only, which have no wire resistance.
+    An inductor’s opposition to change in current translates to an opposition to alternating
+current in general, which is by definition always changing in instantaneous magnitude and
+direction. This opposition to alternating current is similar to resistance, but different in that
+it always results in a phase shift between current and voltage, and it dissipates zero power.
+Because of the differences, it has a different name: reactance. Reactance to AC is expressed
+in ohms, just like resistance is, except that its mathematical symbol is X instead of R. To be
+specific, reactance associated with an inductor is usually symbolized by the capital letter X
+with a letter L as a subscript, like this: XL .
+    Since inductors drop voltage in proportion to the rate of current change, they will drop more
+voltage for faster-changing currents, and less voltage for slower-changing currents. What this
+means is that reactance in ohms for any inductor is directly proportional to the frequency of
+the alternating current. The exact formula for determining reactance is as follows:
+    XL = 2πfL
+   If we expose a 10 mH inductor to frequencies of 60, 120, and 2500 Hz, it will manifest the
+reactances in Table Figure 3.1.
+
+
+                          Table 3.1: Reactance of a 10 mH inductor:
+                          Frequency (Hertz) Reactance (Ohms)
+                                           60                3.7699
+                                          120                7.5398
+                                         2500              157.0796
+
+    In the reactance equation, the term “2πf ” (everything on the right-hand side except the L)
+has a special meaning unto itself. It is the number of radians per second that the alternating
+current is “rotating” at, if you imagine one cycle of AC to represent a full circle’s rotation.
+A radian is a unit of angular measurement: there are 2π radians in one full circle, just as
+there are 360o in a full circle. If the alternator producing the AC is a double-pole unit, it will
+produce one cycle for every full turn of shaft rotation, which is every 2π radians, or 360o . If
+this constant of 2π is multiplied by frequency in Hertz (cycles per second), the result will be a
+figure in radians per second, known as the angular velocity of the AC system.
+    Angular velocity may be represented by the expression 2πf, or it may be represented by its
+own symbol, the lower-case Greek letter Omega, which appears similar to our Roman lower-
+case “w”: ω. Thus, the reactance formula XL = 2πfL could also be written as XL = ωL.

@@ -1,0 +1,96 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+74                   CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+   pw = pulse width
+   pd = period
+Example 1:           v1 1 0 pulse (-3 3 0 0 0 10m 20m)
+   Comments: Example 1 is a perfect square wave oscillating between -3 and +3 volts, with
+zero rise and fall times, a 20 millisecond period, and a 50 percent duty cycle (+3 volts for 10
+ms, then -3 volts for 10 ms).
+
+   AC SINEWAVE CURRENT SOURCES (when using .ac card to specify frequency):
+General form: i[name] [+node] [-node] ac [current] [phase] sin
+Example 1:     i1 1 0 ac 3 sin            (3 amps)
+Example 2:     i1 1 0 ac 1m 240 sin       (1 mA 6 240o )
+   Comments: The same comments apply here (and in the next example) as for AC voltage
+sources.
+
+  AC SINEWAVE CURRENT SOURCES (when NOT using .ac card to specify fre-
+quency):
+General form: i[name] [+node] [-node] sin([offset]
++             [current] [freq] 0 0)
+Example 1:    i1 1 0 sin(0 1.5 60 0 0)
+
+  DC CURRENT SOURCES (when using .dc card to specify current):
+General form: i[name] [+node] [-node] dc
+Example 1:    i1 1 0 dc
+
+   DC CURRENT SOURCES (when NOT using .dc card to specify current):
+General form: i[name] [+node] [-node] dc [current]
+Example 1:          i1 1 0 dc 12
+   Comments: Even though the books all say that the first node given for the DC current
+source is the positive node, that’s not what I’ve found to be in practice. In actuality, a DC
+current source in SPICE pushes current in the same direction as a voltage source (battery)
+would with its negative node specified first.
+
+  PULSE CURRENT SOURCES
+General form: i[name] [+node] [-node] pulse ([i] [p] [td] [tr]
++                   [tf] [pw] [pd])
+  Parameter definitions:
+  i = initial value
+  p = pulse value
+  td = delay time
+  tr = rise time
+  tf = fall time
+  pw = pulse width
+  pd = period
+Example 1:          i1 1 0 pulse (-3m 3m 0 0 0 17m 34m)
+7.6. ANALYSIS OPTIONS                                                                          75
+
+   Comments: Example 1 is a perfect square wave oscillating between -3 mA and +3 mA,
+with zero rise and fall times, a 34 millisecond period, and a 50 percent duty cycle (+3 mA for
+17 ms, then -3 mA for 17 ms).
+
+    VOLTAGE SOURCES (dependent):
+General form: e[name] [out+node] [out-node] [in+node] [in-node]
++                     [gain]
+Example 1:          e1 2 0 1 2 999k
+    Comments: Dependent voltage sources are great to use for simulating operational ampli-
+fiers. Example 1 shows how such a source would be configured for use as a voltage follower,
+inverting input connected to output (node 2) for negative feedback, and the noninverting input
+coming in on node 1. The gain has been set to an arbitrarily high value of 999,000. One word
+of caution, though: SPICE does not recognize the input of a dependent source as being a load,
+so a voltage source tied only to the input of an independent voltage source will be interpreted
+as ”open.” See op-amp circuit examples for more details on this.
+
+   CURRENT SOURCES (dependent):
+
+
+7.6     Analysis options
+AC ANALYSIS:
+General form: .ac [curve] [points] [start] [final]
+Example 1:          .ac lin 1 1000 1000
+    Comments: The [curve] field can be ”lin” (linear), ”dec” (decade), or ”oct” (octave), specify-
+ing the (non)linearity of the frequency sweep. ¡points¿ specifies how many points within the
+frequency sweep to perform analyses at (for decade sweep, the number of points per decade;
+for octave, the number of points per octave). The [start] and [final] fields specify the starting
+and ending frequencies of the sweep, respectively. One final note: the ”start” value cannot be
+zero!
+
+   DC ANALYSIS:
+General form:         .dc [source] [start] [final] [increment]
+Example 1:            .dc vin 1.5 15 0.5
+   Comments: The .dc card is necessary if you want to print or plot any voltage between
+two nonzero nodes. Otherwise, the default ”small-signal” analysis only prints out the voltage
+between each nonzero node and node zero.
+
+    TRANSIENT ANALYSIS:
+General form: .tran [increment] [stop time] [start time]
++                        [comp interval]
+Example 1:        .tran 1m 50m uic
+Example 2:        .tran .5m 32m 0 .01m
+    Comments: Example 1 has an increment time of 1 millisecond and a stop time of 50 mil-
+liseconds (when only two parameters are specified, they are increment time and stop time,

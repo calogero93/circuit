@@ -1,0 +1,50 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/SEMI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.5. DECIBELS                                                                                  13
+
+    If:
+      AV(Bel) = 2 log AV(ratio)              AI(Bel) = 2 log AI(ratio)
+
+    Then:             AV(Bel)                                AI(Bel)
+
+      AV(ratio) = 10    2
+                                             AI(ratio) = 10 2
+   Here are the equations used for converting voltage or current gains in decibels into unitless
+ratios:
+    If:
+      AV(dB) = 20 log AV(ratio)              AI(dB) = 20 log AI(ratio)
+
+    Then:             AV(dB)                                 AI(dB)
+                       20
+      AV(ratio) = 10                         AI(ratio) = 10 20
+    While the bel is a unit naturally scaled for power, another logarithmic unit has been in-
+vented to directly express voltage or current gains/losses, and it is based on the natural loga-
+rithm rather than the common logarithm as bels and decibels are. Called the neper, its unit
+symbol is “Np ; though, lower-case “n” may be encountered.
+                  Voutput                                 Ioutput
+    AV(ratio) =                             AI(ratio) =
+                  Vinput                                  Iinput
+    AV(neper) = ln AV(ratio)                AI(neper) = ln AI(ratio)
+    For better or for worse, neither the neper nor its attenuated cousin, the decineper, is popu-
+larly used as a unit in American engineering applications.
+    Example: The voltage into a 600 Ω audio line amplifier is 10 mV, the voltage across a 600
+Ω load is 1 V. Find the power gain in dB.
+
+          A(dB) = 20 log10 (VO / VI ) = 20 log10 (1 /0.01) = 20 log10 (100) = 20 (2) = 40 dB
+
+    Example: Find the voltage gain ratio AV (ratio) = (VO / VI ) for a 20 dB gain amplifier
+having a 50 Ω input and out impedance.
+
+          AV (dB) = 20 log10 AV (ratio)
+
+          20 = 20 log10 AV (ratio)
+
+          20/20 = log10 AP (ratio)
+
+          1020/20 = 10log10 (AV (ratio) )
+
+          10 = AV (ratio) = (VO / VI )
+
+   • REVIEW:

@@ -1,0 +1,93 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/AC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.4. SIMPLE AC CIRCUIT CALCULATIONS                                                           19
+
+       must be “skewed” accordingly. This means that the accuracy of an electromechanical
+       meter’s RMS indication is dependent on the purity of the waveform: whether it is the
+       exact same waveshape as the waveform used in calibrating.
+
+
+1.4        Simple AC circuit calculations
+Over the course of the next few chapters, you will learn that AC circuit measurements and cal-
+culations can get very complicated due to the complex nature of alternating current in circuits
+with inductance and capacitance. However, with simple circuits (figure 1.23) involving nothing
+more than an AC power source and resistance, the same laws and rules of DC apply simply
+and directly.
+
+                                                R1
+                                              100 Ω
+
+                            10 V                         R2      500 Ω
+
+                                                R3
+                                              400 Ω
+
+        Figure 1.23: AC circuit calculations for resistive circuits are the same as for DC.
+
+
+
+    Rtotal = R1 + R2 + R3
+
+    Rtotal = 1 kΩ
+
+
+                 Etotal                10 V
+      Itotal =              Itotal =            Itotal = 10 mA
+                 Rtotal                1 kΩ
+
+      ER1 = ItotalR1        ER2 = ItotalR2      ER3 = ItotalR3
+
+
+      ER1 = 1 V             ER2 = 5 V           ER3 = 4 V
+   Series resistances still add, parallel resistances still diminish, and the Laws of Kirchhoff
+and Ohm still hold true. Actually, as we will discover later on, these rules and laws always
+hold true, its just that we have to express the quantities of voltage, current, and opposition to
+current in more advanced mathematical forms. With purely resistive circuits, however, these
+complexities of AC are of no practical consequence, and so we can treat the numbers as though
+we were dealing with simple DC quantities.
+20                                                              CHAPTER 1. BASIC AC THEORY
+
+    Because all these mathematical relationships still hold true, we can make use of our famil-
+iar “table” method of organizing circuit values just as with DC:
+               R1          R2          R3         Total
+      E        1           5            4           10       Volts
+      I       10m         10m          10m         10m       Amps
+      R       100         500         400           1k       Ohms
+   One major caveat needs to be given here: all measurements of AC voltage and current
+must be expressed in the same terms (peak, peak-to-peak, average, or RMS). If the source
+voltage is given in peak AC volts, then all currents and voltages subsequently calculated are
+cast in terms of peak units. If the source voltage is given in AC RMS volts, then all calculated
+currents and voltages are cast in AC RMS units as well. This holds true for any calculation
+based on Ohm’s Laws, Kirchhoff ’s Laws, etc. Unless otherwise stated, all values of voltage and
+current in AC circuits are generally assumed to be RMS rather than peak, average, or peak-to-
+peak. In some areas of electronics, peak measurements are assumed, but in most applications
+(especially industrial electronics) the assumption is RMS.
+
+     • REVIEW:
+
+     • All the old rules and laws of DC (Kirchhoff ’s Voltage and Current Laws, Ohm’s Law) still
+       hold true for AC. However, with more complex circuits, we may need to represent the AC
+       quantities in more complex form. More on this later, I promise!
+
+     • The “table” method of organizing circuit values is still a valid analysis tool for AC circuits.
+
+
+1.5       AC phase
+Things start to get complicated when we need to relate two or more AC voltages or currents
+that are out of step with each other. By “out of step,” I mean that the two waveforms are not
+synchronized: that their peaks and zero points do not match up at the same points in time.
+The graph in figure 1.24 illustrates an example of this.
+
+                          A B                             A B
+
+                                                                                A B
+                    A B
+
+                                         A B                            A B
+
+                                Figure 1.24: Out of phase waveforms
+
+   The two waves shown above (A versus B) are of the same amplitude and frequency, but
+they are out of step with each other. In technical terms, this is called a phase shift. Earlier

@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+174                            CHAPTER 6. DIVIDER CIRCUITS AND KIRCHHOFF’S LAWS
+
+without going through the current calculation(s) of Ohm’s Law.
+   Using this formula, we can re-analyze the example circuit’s voltage drops in fewer steps:
+
+                                                    R1
+                                                 5 kΩ
+                                    +
+                             45 V                        10 kΩ      R2
+                                    -
+                                                7.5 kΩ
+
+                                                    R3
+
+
+
+                     5 kΩ
+      ER1 = 45 V              = 10 V
+                   22.5 kΩ
+
+                    10 kΩ
+      ER2 =45 V               = 20 V
+                   22.5 kΩ
+
+                    7.5 kΩ
+      ER3 =45 V               = 15 V
+                   22.5 kΩ
+    Voltage dividers find wide application in electric meter circuits, where specific combinations
+of series resistors are used to ”divide” a voltage into precise proportions as part of a voltage
+measurement device.
+
+
+
+                                               R1
+
+                                 Input
+                                voltage
+
+                                               R2         Divided
+                                                          voltage
+
+
+
+    One device frequently used as a voltage-dividing component is the potentiometer, which is
+a resistor with a movable element positioned by a manual knob or lever. The movable element,
+typically called a wiper, makes contact with a resistive strip of material (commonly called the
+slidewire if made of resistive metal wire) at any point selected by the manual control:

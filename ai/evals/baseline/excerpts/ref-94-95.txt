@@ -1,0 +1,95 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/REF.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+86                   CHAPTER 7. USING THE SPICE CIRCUIT SIMULATION PROGRAM
+
+7.7.7    Fourier analysis
+When performing a Fourier (frequency-domain) analysis on a waveform, I have found it neces-
+sary to either print or plot the waveform using the .print or .plot cards, respectively. If you
+don’t print or plot it, SPICE will pause for a moment during analysis and then abort the job
+after outputting the ”initial transient solution.”
+   Also, when analyzing a square wave produced by the ”pulse” source function, you must
+give the waveform some finite rise and fall time, or else the Fourier analysis results will be
+incorrect. For some reason, a perfect square wave with zero rise/fall time produces significant
+levels of even harmonics according to SPICE’s Fourier analysis option, which is not true for
+real square waves.
+
+
+7.8     Example circuits and netlists
+The following circuits are pre-tested netlists for SPICE 2g6, complete with short descriptions
+when necessary. Feel free to ”copy” and ”paste” any of the netlists to your own SPICE source file
+for analysis and/or modification. My goal here is twofold: to give practical examples of SPICE
+netlist design to further understanding of SPICE netlist syntax, and to show how simple and
+compact SPICE netlists can be in analyzing simple circuits.
+    All output listings for these examples have been ”trimmed” of extraneous information, giv-
+ing you the most succinct presentation of the SPICE output as possible. I do this primarily
+to save space on this document. Typical SPICE outputs contain lots of headers and summary
+information not necessarily germane to the task at hand. So don’t be surprised when you run
+a simulation on your own and find that the output doesn’t exactly look like what I have shown
+here!
+
+
+7.8.1    Multiple-source DC resistor network, part 1
+
+                                     R1         2            R2
+                          1                                            3
+                                 10 kΩ                  8.1 kΩ
+
+                     V1       24 V         R3       4.7 kΩ        V2       15 V
+
+
+                          0                     0                      0
+Without a .dc card and a .print or .plot card, the output for this netlist will only display
+voltages for nodes 1, 2, and 3 (with reference to node 0, of course).
+
+  Netlist:
+Multiple dc sources
+v1 1 0 dc 24
+v2 3 0 dc 15
+7.8. EXAMPLE CIRCUITS AND NETLISTS                                                       87
+
+r1 1 2 10k
+r2 2 3 8.1k
+r3 2 0 4.7k
+.end
+
+  Output:
+node   voltage           node        voltage        node        voltage
+( 1)   24.0000           ( 2)        9.7470         ( 3)        15.0000
+
+voltage source currents
+name       current
+v1       -1.425E-03
+v2       -6.485E-04
+
+total power dissipation          4.39E-02         watts
+
+7.8.2    Multiple-source DC resistor network, part 2
+
+                                    R1        2            R2
+                         1                                           3
+                                10 kΩ                 8.1 kΩ
+
+                    V1       24 V        R3       4.7 kΩ        V2       15 V
+
+
+                         0                    0                      0
+By adding a .dc analysis card and specifying source V1 from 24 volts to 24 volts in 1 step
+(in other words, 24 volts steady), we can use the .print card analysis to print out voltages
+between any two points we desire. Oddly enough, when the .dc analysis option is invoked,
+the default voltage printouts for each node (to ground) disappears, so we end up having to
+explicitly specify them in the .print card to see them at all.
+
+  Netlist:
+Multiple dc sources
+v1 1 0
+v2 3 0 15
+r1 1 2 10k
+r2 2 3 8.1k
+r3 2 0 4.7k
+.dc v1 24 24 1
+.print dc v(1) v(2) v(3) v(1,2) v(2,3)
+.end
+
+   Output:

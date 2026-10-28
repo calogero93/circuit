@@ -1,0 +1,49 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+2.4. CALCULATING ELECTRIC POWER                                                              45
+
+   Let’s try taking that same circuit and increasing the battery voltage to see what happens.
+Intuition should tell us that the circuit current will increase as the voltage increases and the
+lamp resistance stays the same. Likewise, the power will increase as well:
+
+                                                      I = ???
+
+
+
+                                           +
+                            Battery                               Lamp
+                           E = 36 V                               R=3Ω
+                                           -
+
+
+
+
+                                                      I = ???
+   Now, the battery voltage is 36 volts instead of 18 volts. The lamp is still providing 3 Ω of
+electrical resistance to the flow of electrons. The current is now:
+          E                36 V
+    I=             =                  = 12 A
+          R                3Ω
+   This stands to reason: if I = E/R, and we double E while R stays the same, the current
+should double. Indeed, it has: we now have 12 amps of current instead of 6. Now, what about
+power?
+    P = I E = (12 A)(36 V) = 432 W
+   Notice that the power has increased just as we might have suspected, but it increased quite
+a bit more than the current. Why is this? Because power is a function of voltage multiplied
+by current, and both voltage and current doubled from their previous values, the power will
+increase by a factor of 2 x 2, or 4. You can check this by dividing 432 watts by 108 watts and
+seeing that the ratio between them is indeed 4.
+   Using algebra again to manipulate the formulae, we can take our original power formula
+and modify it for applications where we don’t know both voltage and current:
+   If we only know voltage (E) and resistance (R):
+                       E
+    If,       I=                  and          P=IE
+                       R
+
+                                                          2
+                           E                          E
+    Then,      P =           E        or       P=
+                           R                          R
+   If we only know current (I) and resistance (R):

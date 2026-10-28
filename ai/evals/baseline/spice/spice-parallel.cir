@@ -1,0 +1,17 @@
+spice-parallel
+V1 in 0 6
+R1 in 0 1000
+R2 in 0 2200
+R3 in 0 4700
+.options reltol=1e-8 abstol=1e-12 vntol=1e-10 temp=27 tnom=27
+.control
+set noaskquit
+set numdgt=15
+op
+let m_i = -i(v1)
+print m_i
+let m_eq = v(in)/(-i(v1))
+print m_eq
+quit
+.endc
+.end

@@ -1,0 +1,55 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+5.2. SIMPLE SERIES CIRCUITS                                                                  135
+
+                             1
+
+                             +
+                                                               R 1 + R2 + R3 =
+                        9V
+                                                                   18 kΩ
+                             -
+
+                             4
+   Now we have all the necessary information to calculate circuit current, because we have
+the voltage between points 1 and 4 (9 volts) and the resistance between points 1 and 4 (18 kΩ):
+               Etotal
+    Itotal =
+               Rtotal
+
+               9 volts
+    Itotal =           = 500 µA
+               18 kΩ
+   Knowing that current is equal through all components of a series circuit (and we just deter-
+mined the current through the battery), we can go back to our original circuit schematic and
+note the current through each component:
+
+                                          R1 3 kΩ
+                                  1                                2
+
+                                  +      I = 500 µA
+
+                                                      I = 500 µA
+                                                                   R2
+                             9V
+                                                                   10 kΩ
+                                  -      I = 500 µA
+
+                                  4        R3 5 kΩ                 3
+
+   Now that we know the amount of current through each resistor, we can use Ohm’s Law to
+determine the voltage drop across each one (applying Ohm’s Law in its proper context):
+    ER1 = IR1 R1          ER2 = IR2 R2        ER3 = IR3 R3
+
+    ER1 = (500 µA)(3 kΩ) = 1.5 V
+
+    ER2 = (500 µA)(10 kΩ) = 5 V
+
+    ER3 = (500 µA)(5 kΩ) = 2.5 V
+    Notice the voltage drops across each resistor, and how the sum of the voltage drops (1.5 +
+5 + 2.5) is equal to the battery (supply) voltage: 9 volts. This is the third principle of series
+circuits: that the supply voltage is equal to the sum of the individual voltage drops.
+    However, the method we just used to analyze this simple series circuit can be streamlined
+for better understanding. By using a table to list all voltages, currents, and resistances in the

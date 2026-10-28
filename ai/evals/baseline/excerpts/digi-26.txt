@@ -1,0 +1,52 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DIGI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.6. CONVERSION FROM DECIMAL NUMERATION                                                         17
+
+.   RESULT:      8710     = 1278
+
+   We can use a similar technique for converting numeration systems dealing with quantities
+less than 1, as well. For converting a decimal number less than 1 into binary, octal, or hexadec-
+imal, we use repeated multiplication, taking the integer portion of the product in each step as
+the next digit of our converted number. Let’s use the decimal number 0.812510 as an example,
+converting to binary:
+
+.   0.8125 x 2 = 1.625             Integer portion of product = 1
+.
+.   0.625 x 2 = 1.25               Take < 1 portion of product and remultiply
+.                                  Integer portion of product = 1
+.
+.   0.25 x 2 = 0.5                 Integer portion of product = 0
+.
+.   0.5 x 2 = 1.0                  Integer portion of product = 1
+.                                  Stop when product is a pure integer
+.                                  (ends with .0)
+.
+.   RESULT:      0.812510       = 0.11012
+
+    As with the repeat-division process for integers, each step gives us the next digit (or bit)
+further away from the ”point.” With integer (division), we worked from the LSB to the MSB
+(right-to-left), but with repeated multiplication, we worked from the left to the right. To convert
+a decimal number greater than 1, with a ¡ 1 component, we must use both techniques, one at a
+time. Take the decimal example of 54.4062510 , converting to binary:
+
+REPEATED DIVISION FOR THE INTEGER PORTION:
+.
+.     54
+.    --- = 27.0          Remainder = 0
+.     2
+.
+.     27
+.    --- = 13.5          Remainder = 1 (0.5 x 2)
+.     2
+.
+.     13
+.    --- = 6.5           Remainder = 1 (0.5 x 2)
+.     2
+.
+.     6
+.    --- = 3.0           Remainder = 0
+.     2
+.
+.     3

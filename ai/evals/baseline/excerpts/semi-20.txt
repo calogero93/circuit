@@ -1,0 +1,48 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/SEMI.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+1.5. DECIBELS                                                                                 11
+
+logarithmic in nature, such as the bel (decibel) and Richter scales.
+   When converting a power gain from units of bels or decibels to a unitless ratio, the mathe-
+matical inverse function of common logarithms is used: powers of 10, or the antilog.
+    If:
+      AP(Bel) = log AP(ratio)
+
+    Then:
+      AP(ratio) = 10AP(Bel)
+   Converting decibels into unitless ratios for power gain is much the same, only a division
+factor of 10 is included in the exponent term:
+    If:
+      AP(dB) = 10 log AP(ratio)
+
+    Then:            AP(dB)
+
+      AP(ratio) = 10 10
+    Example: Power into an amplifier is 1 Watt, the power out is 10 Watts. Find the power
+gain in dB.
+
+          AP (dB) = 10 log10 (PO / PI ) = 10 log10 (10 /1) = 10 log10 (10) = 10 (1) = 10 dB
+
+Example: Find the power gain ratio AP (ratio) = (PO / PI ) for a 20 dB Power gain.
+
+          AP (dB) = 20 = 10 log10 AP (ratio)
+
+
+          20/10 = log10 AP (ratio)
+
+
+          1020/10 = 10log10 (AP (ratio) )
+
+          100 = AP (ratio) = (PO / PI )
+
+    Because the bel is fundamentally a unit of power gain or loss in a system, voltage or current
+gains and losses don’t convert to bels or dB in quite the same way. When using bels or decibels
+to express a gain other than power, be it voltage or current, we must perform the calculation
+in terms of how much power gain there would be for that amount of voltage or current gain.
+For a constant load impedance, a voltage or current gain of 2 equates to a power gain of 4 (22 );
+a voltage or current gain of 3 equates to a power gain of 9 (32 ). If we multiply either voltage
+or current by a given factor, then the power gain incurred by that multiplication will be the
+square of that factor. This relates back to the forms of Joule’s Law where power was calculated
+from either voltage or current, and resistance:

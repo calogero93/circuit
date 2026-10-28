@@ -1,0 +1,51 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+44                                                                  CHAPTER 2. OHM’S LAW
+
+this rating would be the norm rather than the exception.
+
+     • REVIEW:
+
+     • Power is the measure of how much work can be done in a given amount of time.
+
+     • Mechanical power is commonly measured (in America) in ”horsepower.”
+
+     • Electrical power is almost always measured in ”watts,” and it can be calculated by the
+       formula P = IE.
+
+     • Electrical power is a product of both voltage and current, not either one separately.
+
+     • Horsepower and watts are merely two different units for describing the same kind of
+       physical measurement, with 1 horsepower equaling 745.7 watts.
+
+
+2.4        Calculating electric power
+We’ve seen the formula for determining the power in an electric circuit: by multiplying the
+voltage in ”volts” by the current in ”amps” we arrive at an answer in ”watts.” Let’s apply this
+to a circuit example:
+
+                                             I = ???
+
+
+
+                                   +
+                       Battery                                      Lamp
+                      E = 18 V                                      R=3Ω
+                                   -
+
+
+
+
+                                             I = ???
+   In the above circuit, we know we have a battery voltage of 18 volts and a lamp resistance of
+3 Ω. Using Ohm’s Law to determine current, we get:
+           E          18 V
+      I=         =               = 6A
+           R          3Ω
+   Now that we know the current, we can take that value and multiply it by the voltage to
+determine power:
+      P = I E = (6 A)(18 V) = 108 W
+   Answer: the lamp is dissipating (releasing) 108 watts of power, most likely in the form of
+both light and heat.

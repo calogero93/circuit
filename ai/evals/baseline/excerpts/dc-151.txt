@@ -1,0 +1,47 @@
+Tony R. Kuphaldt — Lessons In Electric Circuits
+Fonte: docs/dataset/DC.pdf
+Licenza: CC BY 4.0; adattamento italiano assistito, non revisione umana.
+
+5.3. SIMPLE PARALLEL CIRCUITS                                                                   141
+
+    This is the second principle of parallel circuits: the total circuit current is equal to the sum
+of the individual branch currents. Using this principle, we can fill in the IT spot on our table
+with the sum of IR1 , IR2 , and IR3 :
+               R1             R2       R3          Total
+    E           9              9        9             9         Volts
+    I          0.9m          4.5m      9m          14.4m        Amps
+    R          10k            2k        1k                      Ohms
+
+                                        Rule of parallel
+                                             circuits
+                                        Itotal = I1 + I2 + I3
+    Finally, applying Ohm’s Law to the rightmost (”Total”) column, we can calculate the total
+circuit resistance:
+               R1             R2       R3          Total
+    E           9              9        9             9         Volts
+    I          0.9m          4.5m      9m          14.4m        Amps
+    R          10k            2k        1k           625        Ohms
+
+
+                Etotal         9V                  Ohm’s
+    Rtotal =             =           = 625 Ω
+                Itotal       14.4 mA                Law
+    Please note something very important here. The total circuit resistance is only 625 Ω:
+less than any one of the individual resistors. In the series circuit, where the total resistance
+was the sum of the individual resistances, the total was bound to be greater than any one of the
+resistors individually. Here in the parallel circuit, however, the opposite is true: we say that the
+individual resistances diminish rather than add to make the total. This principle completes
+our triad of ”rules” for parallel circuits, just as series circuits were found to have three rules
+for voltage, current, and resistance. Mathematically, the relationship between total resistance
+and individual resistances in a parallel circuit looks like this:
+                      1
+    Rtotal =
+                 1    1    1
+                    +    +
+                 R1   R2   R3
+   The same basic form of equation works for any number of resistors connected together in
+parallel, just add as many 1/R terms on the denominator of the fraction as needed to accom-
+modate all parallel resistors in the circuit.
+   Just as with the series circuit, we can use computer analysis to double-check our calcula-
+tions. First, of course, we have to describe our example circuit to the computer in terms it can
+understand. I’ll start by re-drawing the circuit:
