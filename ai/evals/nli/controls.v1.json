@@ -1,0 +1,236 @@
+{
+  "version": "1.0.0",
+  "dataset_bundle_sha256": "a1034c0478bba2b7680635279153437a632e3d4852def238fb359b1dcb670087",
+  "review_status": "proposed",
+  "author": "Codex: contrasti derivati dai riferimenti pubblicati del dataset; nessuna calibrazione umana",
+  "cases": [
+    {
+      "id": "exact-theory-current-flow",
+      "case_id": "theory-current-flow",
+      "category": "semantic",
+      "reference_statements": [
+        "La corrente descrive il flusso di carica; la tensione è una differenza di potenziale tra due punti. Flusso e differenza di potenziale sono grandezze diverse."
+      ],
+      "response": "La corrente descrive il flusso di carica; la tensione è una differenza di potenziale tra due punti. Flusso e differenza di potenziale sono grandezze diverse.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Testo del riferimento pubblicato, senza trasformazioni semantiche."
+    },
+    {
+      "id": "exact-theory-series-current",
+      "case_id": "theory-series-current",
+      "category": "semantic",
+      "reference_statements": [
+        "In una serie senza diramazioni esiste un solo percorso di corrente: la stessa corrente attraversa tutti i resistori, mentre le cadute di tensione possono essere diverse."
+      ],
+      "response": "In una serie senza diramazioni esiste un solo percorso di corrente: la stessa corrente attraversa tutti i resistori, mentre le cadute di tensione possono essere diverse.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Testo del riferimento pubblicato, senza trasformazioni semantiche."
+    },
+    {
+      "id": "exact-theory-parallel-voltage",
+      "case_id": "theory-parallel-voltage",
+      "category": "semantic",
+      "reference_statements": [
+        "I rami in parallelo sono collegati alla stessa coppia di nodi, quindi condividono la differenza di potenziale; le correnti dei rami possono differire."
+      ],
+      "response": "I rami in parallelo sono collegati alla stessa coppia di nodi, quindi condividono la differenza di potenziale; le correnti dei rami possono differire.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Testo del riferimento pubblicato, senza trasformazioni semantiche."
+    },
+    {
+      "id": "exact-theory-rms-meaning",
+      "case_id": "theory-rms-meaning",
+      "category": "semantic",
+      "reference_statements": [
+        "Il valore efficace RMS esprime l’equivalenza termica con una tensione continua applicata alla stessa resistenza. Si ottiene dalla radice della media dei quadrati, non dalla semplice media aritmetica."
+      ],
+      "response": "Il valore efficace RMS esprime l’equivalenza termica con una tensione continua applicata alla stessa resistenza. Si ottiene dalla radice della media dei quadrati, non dalla semplice media aritmetica.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Testo del riferimento pubblicato, senza trasformazioni semantiche."
+    },
+    {
+      "id": "no-rating",
+      "case_id": "theory-resistor-rating",
+      "category": "formatting",
+      "reference_statements": [
+        "No. Resistenza e potenza nominale sono specifiche diverse; il resistore deve dissipare la potenza richiesta senza superare le condizioni del proprio rating. Il valore in ohm da solo non determina il rating termico."
+      ],
+      "response": "No. Resistenza e potenza nominale sono specifiche diverse; il resistore deve dissipare la potenza richiesta senza superare le condizioni del proprio rating. Il valore in ohm da solo non determina il rating termico.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "No. deve restare insieme alla spiegazione, non diventare un fatto isolato."
+    },
+    {
+      "id": "no-negative-current",
+      "case_id": "stress-negative-current",
+      "category": "formatting",
+      "reference_statements": [
+        "No. Il segno della corrente dipende dal verso scelto. Per determinare il segno della potenza servono anche tensione e convenzioni di riferimento coerenti; una corrente negativa da sola non dimostra generazione."
+      ],
+      "response": "No. Il segno della corrente dipende dal verso scelto. Per determinare il segno della potenza servono anche tensione e convenzioni di riferimento coerenti; una corrente negativa da sola non dimostra generazione.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Il segno della corrente non prova da solo generazione; No. è un prefisso della spiegazione."
+    },
+    {
+      "id": "numbered-rating",
+      "case_id": "theory-resistor-rating",
+      "category": "formatting",
+      "reference_statements": [
+        "No. Resistenza e potenza nominale sono specifiche diverse; il resistore deve dissipare la potenza richiesta senza superare le condizioni del proprio rating. Il valore in ohm da solo non determina il rating termico."
+      ],
+      "response": "**1. Potenza nominale:**\nNo. Resistenza e potenza nominale sono specifiche diverse; il resistore deve dissipare la potenza richiesta senza superare le condizioni del proprio rating. Il valore in ohm da solo non determina il rating termico.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Una numerazione e un titolo non introducono affermazioni false."
+    },
+    {
+      "id": "numbered-series",
+      "case_id": "theory-series-current",
+      "category": "formatting",
+      "reference_statements": [
+        "In una serie senza diramazioni esiste un solo percorso di corrente: la stessa corrente attraversa tutti i resistori, mentre le cadute di tensione possono essere diverse."
+      ],
+      "response": "## Corrente\n\n1. In una serie senza diramazioni esiste un solo percorso di corrente: la stessa corrente attraversa tutti i resistori, mentre le cadute di tensione possono essere diverse.",
+      "direction": "faithfulness",
+      "expected_status": "pass",
+      "rationale": "Solo presentazione: i fatti della serie sono invariati."
+    },
+    {
+      "id": "rating-determines",
+      "case_id": "theory-resistor-rating",
+      "category": "semantic",
+      "reference_statements": [
+        "No. Resistenza e potenza nominale sono specifiche diverse; il resistore deve dissipare la potenza richiesta senza superare le condizioni del proprio rating. Il valore in ohm da solo non determina il rating termico."
+      ],
+      "response": "Il valore in ohm da solo determina il rating termico.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Rimossa la negazione del fatto sul rating; la resistenza non ne determina da sola il limite."
+    },
+    {
+      "id": "series-different-current",
+      "case_id": "theory-series-current",
+      "category": "semantic",
+      "reference_statements": [
+        "In una serie senza diramazioni esiste un solo percorso di corrente: la stessa corrente attraversa tutti i resistori, mentre le cadute di tensione possono essere diverse."
+      ],
+      "response": "In una serie senza diramazioni la corrente è diversa in ogni resistore.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Opposto della stessa corrente in tutti i resistori della serie."
+    },
+    {
+      "id": "parallel-different-voltage",
+      "case_id": "theory-parallel-voltage",
+      "category": "semantic",
+      "reference_statements": [
+        "I rami in parallelo sono collegati alla stessa coppia di nodi, quindi condividono la differenza di potenziale; le correnti dei rami possono differire."
+      ],
+      "response": "I rami in parallelo hanno differenze di potenziale diverse.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Opposto della tensione condivisa sulla stessa coppia di nodi."
+    },
+    {
+      "id": "rms-arithmetic",
+      "case_id": "theory-rms-meaning",
+      "category": "semantic",
+      "reference_statements": [
+        "Il valore efficace RMS esprime l’equivalenza termica con una tensione continua applicata alla stessa resistenza. Si ottiene dalla radice della media dei quadrati, non dalla semplice media aritmetica."
+      ],
+      "response": "Il valore RMS si ottiene dalla semplice media aritmetica.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Il riferimento esclude la semplice media aritmetica."
+    },
+    {
+      "id": "current-is-voltage",
+      "case_id": "theory-current-flow",
+      "category": "semantic",
+      "reference_statements": [
+        "La corrente descrive il flusso di carica; la tensione è una differenza di potenziale tra due punti. Flusso e differenza di potenziale sono grandezze diverse."
+      ],
+      "response": "La corrente e la tensione sono la stessa grandezza fisica.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Il riferimento distingue flusso di carica e differenza di potenziale."
+    },
+    {
+      "id": "negative-proves-generation",
+      "case_id": "stress-negative-current",
+      "category": "semantic",
+      "reference_statements": [
+        "No. Il segno della corrente dipende dal verso scelto. Per determinare il segno della potenza servono anche tensione e convenzioni di riferimento coerenti; una corrente negativa da sola non dimostra generazione."
+      ],
+      "response": "Una corrente negativa da sola dimostra che il componente genera potenza.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Il riferimento nega espressamente questa sufficienza."
+    },
+    {
+      "id": "xor-both-high",
+      "case_id": "theory-xor-gate",
+      "category": "semantic",
+      "reference_statements": [
+        "La XOR a due ingressi è alta quando gli ingressi sono diversi; con entrambi alti è bassa. La OR inclusiva è alta anche quando entrambi gli ingressi sono alti."
+      ],
+      "response": "La XOR a due ingressi è alta quando entrambi gli ingressi sono alti.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Per la XOR i due ingressi alti producono basso."
+    },
+    {
+      "id": "late-support",
+      "case_id": "theory-resistor-rating",
+      "category": "long_context",
+      "reference_statements": [
+        "Il valore in ohm da solo non determina il rating termico."
+      ],
+      "response": "Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Il valore in ohm da solo non determina il rating termico.",
+      "direction": "completeness",
+      "expected_status": "pass",
+      "rationale": "Il fatto richiesto compare alla fine, oltre una singola finestra del classificatore; non si può controllare soltanto il prefisso."
+    },
+    {
+      "id": "late-contradiction",
+      "case_id": "theory-resistor-rating",
+      "category": "long_context",
+      "reference_statements": [
+        "Il valore in ohm da solo non determina il rating termico."
+      ],
+      "response": "Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Resistenza e potenza nominale sono specifiche diverse. Il valore in ohm da solo determina il rating termico.",
+      "direction": "faithfulness",
+      "expected_status": "fail",
+      "rationale": "Una contraddizione finale non può essere nascosta da molte frasi precedenti corrette."
+    },
+    {
+      "id": "formula-correct",
+      "case_id": "theory-joule",
+      "category": "policy",
+      "reference_statements": [
+        "Per un resistore ideale valgono P=VI, P=I²R e P=V²/R. Le forme resistive derivano dalla relazione V=IR e richiedono il modello resistivo."
+      ],
+      "response": "P = I^2 * R",
+      "direction": "faithfulness",
+      "expected_status": "review",
+      "rationale": "Una formula isolata richiede verifica matematica distinta; la policy non dichiara né vera né falsa una formula sulla base di NLI."
+    },
+    {
+      "id": "formula-wrong",
+      "case_id": "theory-joule",
+      "category": "policy",
+      "reference_statements": [
+        "Per un resistore ideale valgono P=VI, P=I²R e P=V²/R. Le forme resistive derivano dalla relazione V=IR e richiedono il modello resistivo."
+      ],
+      "response": "P = I^2 / R",
+      "direction": "faithfulness",
+      "expected_status": "review",
+      "rationale": "Una formula isolata richiede verifica matematica distinta; la policy non dichiara né vera né falsa una formula sulla base di NLI."
+    }
+  ]
+}

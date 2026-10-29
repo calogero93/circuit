@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 import httpx
 
 from experiments import digest
-from verification_schemas import NliRequest, NliResponse
+from verification_schemas import NliRequest, NliResponse, NliTokenCount
 from nli_verifier import LocalNLI
 
 
@@ -26,6 +26,7 @@ class HttpNLI(LocalNLI):
             response = self.client.get('/v1/model')
             response.raise_for_status()
             self.remote = response.json()
+            self.max_tokens = int(self.remote['identity'].get('max_tokens', 512))
             if digest(self.remote['identity']) != self.remote['model_id']:
                 raise ValueError('Identità NLI non coerente')
             self.identity = {'transport':'loopback-http', 'origin':base_url.rstrip('/'),
@@ -45,6 +46,15 @@ class HttpNLI(LocalNLI):
         if result.scores is None or result.error:
             raise ValueError(result.error or 'NLI non disponibile')
         return result.scores
+
+    def count_tokens(self, premise, hypothesis):
+        request = NliRequest(premise=premise, hypothesis=hypothesis)
+        response = self.client.post('/v1/tokens', json=request.model_dump(mode='json'))
+        response.raise_for_status()
+        result = NliTokenCount.model_validate(response.json())
+        if result.model_id != self.remote['model_id'] or result.max_tokens != self.max_tokens:
+            raise ValueError('Identità o limite del tokenizer NLI cambiati durante la prova')
+        return result.tokens
 
     def assert_unchanged(self):
         response = self.client.get('/v1/model', params={'verify_files':'true'})

@@ -26,6 +26,14 @@ from verify_judge import probe_input
 BUNDLE = load_dataset(TEXTBOOK_DIR)
 
 
+class TokenCounter:
+    # Contatore finto: questi test verificano l'orchestrazione, non il tokenizer.
+    max_tokens = 512
+
+    def count_tokens(self, premise, hypothesis):
+        return len(premise.split()) + len(hypothesis.split()) + 4
+
+
 def payload(text, name='book-dc-power-closed'):
     case = next(c for c in BUNDLE.dataset.cases if c.name == name)
     return probe_input(BUNDLE, case, text)[0]
@@ -137,16 +145,17 @@ class NliTests(unittest.TestCase):
 
     def test_both_directions_and_every_sentence_are_compared(self):
         calls=[]
-        class NLI:
+        class NLI(TokenCounter):
             def check(self,p,h,d):
                 calls.append((p,h,d))
                 return NliCheck(premise=p,hypothesis=h,direction=d,scores=None,status='review',detail='fake')
         p=payload('Prima affermazione. Seconda affermazione.')
         result=explanation_checks(p,NLI(),references(p))
-        self.assertEqual(sum(c.direction=='faithfulness' for c in result),2)
-        self.assertEqual(sum(c.direction=='completeness' for c in result),len(p.reference.concepts))
+        self.assertEqual(len({c.preparation.target_id for c in result if c.direction=='faithfulness'}),2)
+        self.assertEqual({s.reference_index for c in result if c.direction=='completeness'
+            for s in c.preparation.hypothesis_spans},set(range(len(p.reference.concepts))))
         self.assertEqual(calls[0][1],'Prima affermazione.')
-        self.assertTrue(all(c[0]==p.response.response for c in calls if c[2]=='completeness'))
+        self.assertTrue(all(c[0] in p.response.response for c in calls if c[2]=='completeness'))
 
     def test_disagreement_is_review_instead_of_compensation(self):
         def check(status): return NliCheck(premise='p',hypothesis='h',direction='faithfulness',scores=NliScores(entailment=.9,neutral=.05,contradiction=.05),status=status,detail='fake')
@@ -184,7 +193,7 @@ class NliTests(unittest.TestCase):
 
 class PipelineTests(unittest.IsolatedAsyncioTestCase):
     async def test_incompatible_binding_is_retried_and_preserved_not_called_answer_error(self):
-        p=payload('I = 6 A. P = 18 W.')
+        p=payload('La corrente è 6 A. La potenza è 18 W.')
         class Model:
             count=0
             def bind_tools(self,*_,**__):return self
@@ -213,23 +222,23 @@ class PipelineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(set(r)=={'reference_index','label','unit'} for r in model.data['references']))
 
     async def test_semantic_success_cannot_override_numeric_failure(self):
-        class NLI:
+        class NLI(TokenCounter):
             def check(self,p,h,d): return NliCheck(premise=p,hypothesis=h,direction=d,
                 scores=NliScores(entailment=.99,neutral=.005,contradiction=.005),status='pass',detail='fake')
-        p=payload('I = 6 A. P = 18 W.')
+        p=payload('La corrente è 6 A. La potenza è 18 W.')
         result,_=await verify_answer(p,Settings(),NLI(),references=references(p),inventory=inventory((0,'result',0),(1,'result',1)))
         self.assertEqual(result.numeric_status,'fail');self.assertEqual(result.explanation_status,'pass');self.assertEqual(result.status,'fail')
 
     async def test_numeric_success_cannot_override_semantic_contradiction(self):
-        class NLI:
+        class NLI(TokenCounter):
             def check(self,p,h,d): return NliCheck(premise=p,hypothesis=h,direction=d,
                 scores=NliScores(entailment=.005,neutral=.005,contradiction=.99),status='fail',detail='fake')
-        p=payload('I = 6 A. P = 108 W.')
+        p=payload('La corrente è 6 A. La potenza è 108 W.')
         result,_=await verify_answer(p,Settings(),NLI(),references=references(p),inventory=inventory((0,'result',0),(1,'result',1)))
         self.assertEqual(result.numeric_status,'pass');self.assertEqual(result.explanation_status,'fail');self.assertEqual(result.status,'fail')
 
     async def test_missing_extraction_coverage_is_review(self):
-        class NLI:
+        class NLI(TokenCounter):
             def check(self,p,h,d): return NliCheck(premise=p,hypothesis=h,direction=d,
                 scores=NliScores(entailment=.99,neutral=.005,contradiction=.005),status='pass',detail='fake')
         p=payload('I = 6 A. P = 18 W.')

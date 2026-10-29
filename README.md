@@ -98,8 +98,11 @@ conversazioni e le note didattiche. Memoria e ricerca documentale hanno quindi
 compiti distinti.
 
 La verifica offline del tutor separa risultati numerici strutturati e spiegazioni:
-confronti numerici nel codice e classificatore NLI locale su CPU, con esiti incerti
-espliciti. È una diagnostica in corso di validazione, esterna al percorso live;
+confronti numerici nel codice, prove testuali esatte, dichiarazioni scalari con
+etichette univoche e classificatore NLI locale
+su CPU. Le unità conservano contesto e provenienza; il tokenizer impone il
+budget reale e i controlli sugli oggetti impediscono di usare grandezze disgiunte
+come prova. Gli esiti incerti restano espliciti. È una diagnostica in corso di validazione, esterna al percorso live;
 avvio e limiti sono in [`ai/README.md`](ai/README.md#verifica-con-output-strutturato-e-nli-locale).
 
 | Area | Codice | Responsabilità |

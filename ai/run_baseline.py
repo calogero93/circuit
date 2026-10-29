@@ -21,6 +21,7 @@ from experiments import ROOT, create_manifest, digest, source_snapshot, utc_now
 from graph import create_graph
 from judge import RUBRIC, local_judge_settings
 from nli_http import HttpNLI
+from nli_context import PROTOCOL as NLI_PROTOCOL
 from schemas import CaseReference, JudgeInput, ModelQuestion, NumericReference, SubmitAnswer
 from verification_schemas import ExplanationReference, ResponseInventory
 from verify_judge import check_endpoint
@@ -124,8 +125,8 @@ async def run(settings,nli,*,directory=DIRECTORY,split='development',mode='refer
     for case in cases:
         for tool in benchmark_tools(case,directory,binary,output.parent/'spice-executed'):
             schemas[tool.name]=convert_to_openai_tool(tool)
-    protocol={'version':3,'question_prefix':PREFIX,'tools':schemas,'inventory_schema':ResponseInventory.model_json_schema(),
-        'nli_pairing':'whole_factual_reference_to_each_sentence; response_to_each_required_fact',
+    protocol={'version':4,'question_prefix':PREFIX,'tools':schemas,'inventory_schema':ResponseInventory.model_json_schema(),
+        'nli_pairing':NLI_PROTOCOL,
         'aggregation':'fail > review > pass; verifier negatives expect fail',
         'tutor_solutions_visible':False,'retrieval_enabled':False}
     manifest.limitations[:2]=[

@@ -65,6 +65,10 @@ class LocalNLI:
         if self.files != self._hashes():
             raise ValueError("File del modello NLI cambiati durante la verifica")
 
+    def count_tokens(self, premise, hypothesis):
+        """Usa lo stesso tokenizer e gli stessi token speciali dell'inferenza."""
+        return len(self.tokenizer.encode(premise, hypothesis).ids)
+
     def predict(self, premise, hypothesis):
         import numpy as np
         encoded = self.tokenizer.encode(premise, hypothesis)
@@ -106,12 +110,8 @@ def explanation_checks(payload, nli, references):
     evidence = {t.call_id for t in payload.tool_outputs if t.result.ok}
     if any(set(r.source_ids) - sources or set(r.evidence_ids) - evidence for r in references):
         raise ValueError("Riferimento NLI associato a fonti o evidenze non disponibili")
-    # Le domande non sono fatti: non si usano come premessa né si convertono
-    # automaticamente gli obiettivi della rubric in affermazioni vere.
-    premise = "\n".join(ref.statement for ref in references)
-    forward = [nli.check(premise, sentence, "faithfulness") for sentence in sentences(payload.response.response)]
-    backward = [nli.check(payload.response.response, ref.statement, "completeness") for ref in references if ref.required]
-    return forward + backward
+    from nli_context import contextual_checks
+    return contextual_checks(payload.response.response, nli, references, payload.reference.numbers)
 
 
 def semantic_status(checks, direction):
@@ -119,13 +119,28 @@ def semantic_status(checks, direction):
     grouped = {}
     for check in checks:
         if check.direction == direction:
-            grouped.setdefault(check.hypothesis, []).append(check)
+            if direction == 'faithfulness' and check.preparation and check.preparation.reason == 'structure_only':
+                continue
+            target = check.preparation.target_id if check.preparation else check.hypothesis
+            grouped.setdefault(target, []).append(check)
     if not grouped:
         return 'review'
     decisions = []
     for group in grouped.values():
         statuses = {c.status for c in group}
-        if any(c.scores is None for c in group) or {'pass','fail'} <= statuses:
+        def exact_proof(c):
+            from nli_context import normalize
+            p = c.preparation
+            origins = ('reference', 'response') if c.direction == 'faithfulness' else ('response', 'reference')
+            return bool(p and p.reason == 'exact_reference' and p.coverage_complete and c.status == 'pass'
+                and c.scores is None and p.premise_spans and p.hypothesis_spans
+                and all(s.origin == origins[0] for s in p.premise_spans)
+                and all(s.origin == origins[1] for s in p.hypothesis_spans)
+                and p.raw_premise == p.raw_hypothesis
+                and c.premise == c.hypothesis == normalize(p.raw_premise) == normalize(p.raw_hypothesis))
+        from nli_numeric import valid_proof
+        if (any(c.scores is None and not (exact_proof(c) or valid_proof(c)) or c.preparation and not c.preparation.coverage_complete for c in group)
+                or {'pass','fail'} <= statuses):
             decisions.append('review')  # Evidenze discordanti: nessuna compensazione.
         elif 'fail' in statuses:
             decisions.append('fail')

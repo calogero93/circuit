@@ -546,8 +546,8 @@ condizioni, valore e unità vengono formattati dal codice nella risposta pubblic
 Il verificatore legge questa risposta e conserva citazioni e offset originali;
 non chiede al modello di ricopiare i valori. Il reader dei report storici continua
 ad accettare l'assenza del campo, mantenendone la serializzazione precedente.
-Il nuovo rendering e i nuovi tool non modificano NLI: soglie, segmentazione e
-limite del contesto del verificatore vanno valutati in una fase distinta.
+Il confronto NLI rimane esterno al percorso live: usa i testi e i riferimenti
+fattuali del caso, senza cambiare i risultati calcolati dal tutor.
 
 `verify_answers.py` prova insieme due verificatori indipendenti sulle risposte
 curate dei libri, senza browser, RAG o nuova generazione delle risposte del tutor:
@@ -562,31 +562,87 @@ curate dei libri, senza browser, RAG o nuova generazione delle risposte del tuto
   Un'associazione incompatibile per unità o componente esplicito è un difetto
   dell'inventario: viene rifiutata e ritentata, non attribuita alla risposta.
   I tentativi originali e i motivi del rifiuto sono conservati nel report.
-- `nli_verifier.py` confronta le singole frasi con riferimenti fattuali e verifica
-  nella direzione inversa i concetti richiesti. La premessa conserva insieme
-  i fatti del caso; non si confrontano frasi isolate con fatti di altri argomenti.
-  `explanation-references.v1.json`
-  contiene parafrasi **proposte**, con fonti e ID delle evidenze: gli obiettivi
-  della rubric e le domande dell'utente non vengono trattati come fatti.
-  Il risultato NLI conserva entailment/contradiction/neutral. Le soglie iniziali
-  sono 0.8 di confidenza e 0.15 di margine, non ancora calibrate. Evidenze
-  discordanti, neutralità, coppie troppo lunghe ed errori producono `review`.
+- `nli_context.py` prepara unità con contesto originale e provenienza verificabile.
+  Titoli e numerazioni non diventano fatti; “No.” resta insieme alla spiegazione.
+  Condizioni, negazioni e distinzione fra modello ideale e comportamento reale
+  restano nel testo. Le clausole con soggetti espliciti possono essere separate;
+  una condizione iniziale non viene eliminata. Nessun LLM riscrive le affermazioni.
+- Prima dell'inferenza, un'unità **integralmente identica** a un fatto di riferimento,
+  con gli stessi qualificatori, riceve una prova testuale deterministica.
+  Non è una ricerca di sottostringhe e non normalizza o corregge valori attesi.
+  Il report usa `reason=exact_reference`, senza inventare probabilità NLI.
+  Questa verifica misura coerenza col riferimento: la correttezza del riferimento
+  resta un prerequisito del dataset. Non è una misura delle capacità neurali.
+- `nli_numeric.py` riconosce dichiarazioni complete come `Corrente R1 = 22.7 mA`.
+  Etichetta completa e unità SI devono individuare un solo riferimento numerico
+  indipendente; il confronto usa le tolleranze originali del dataset, anche per
+  arrotondamenti e prefissi. Non sceglie il riferimento in base al valore.
+  Condizioni, formule e commenti aggiuntivi impediscono questa scorciatoia;
+  è ammesso soltanto il prefisso generico “Per il modello dichiarato:”.
+  `reason=numeric_reference` conserva valori originali, atteso, tolleranze e
+  provenienza senza probabilità simulate. Tutte le dichiarazioni contrastanti
+  restano visibili e le altre spiegazioni continuano a essere verificate.
+- Per gli altri testi, `nli_verifier.py` classifica riferimento → affermazione
+  (`faithfulness`) e risposta → ogni concetto richiesto (`completeness`). I requisiti
+  composti vengono verificati per tutte le loro unità, conservando il contesto.
+  Le finestre contengono un'unità e i suoi qualificatori; il budget viene contato
+  con lo **stesso tokenizer del classificatore**, inclusi i token speciali.
+  Nessun campionamento delle sole frasi favorevoli e nessuna troncatura silenziosa.
+  Una singola unità troppo lunga o oltre il budget di 256 coppie resta `review`.
+- Il controllo `anchors` conserva ID di componenti, porte logiche e grandezze
+  nominate o dichiarate con unità SI/assegnazioni simboliche convenzionali.
+  Se i due testi nominano soltanto ID o grandezze disgiunti, il punteggio NLI
+  viene conservato ma non vale come prova: esito `review`, motivo `anchor_mismatch`.
+  Una frase sulla OR non prova un'affermazione sulla XOR; una corrente non è
+  una tensione. L'assenza di un disallineamento non certifica la relazione semantica.
+- Le formule isolate richiedono verifica matematica: NLI non dichiara corretto
+  o errato `P=I²·R` per il solo punteggio linguistico. Senza una corrispondenza
+  testuale completa con un fatto disponibile, il caso resta `review`.
+  Le frasi naturali e le dichiarazioni numeriche con oggetto esplicito continuano
+  a essere confrontate; i valori sono verificati separatamente dal codice.
+
+I campi di preparazione e provenienza sono Pydantic in `verification_schemas.py`:
+intervalli originali, target, finestre, token, controlli sugli oggetti e motivi
+espliciti di mancata verifica. Punteggi neurali, prove testuali e prove scalari sono contati
+separatamente. I report storici restano leggibili. `explanation-references.v1.json`
+e i fatti del dataset contengono parafrasi **proposte**, con fonti ed evidenze;
+obiettivi della rubric e domande dell'utente non diventano premesse fattuali.
+
+Le soglie NLI restano **0.8 di confidenza e 0.15 di margine**, non calibrate.
+Nei confronti neurali un supporto e una contraddizione discordanti producono
+`review`; neutralità, limiti e fallimenti non sono promossi a successi.
+La scelta di unità brevi segue il problema di granularità discusso in
+[SummaC, Laban et al.](https://aclanthology.org/2022.tacl-1.10/): il protocollo di
+questo progetto aggiunge contesto, tracciabilità e controlli sugli oggetti,
+ma non riproduce né rivendica le prestazioni del paper.
 
 Numeri, spiegazioni e completezza hanno esiti separati. L'aggregazione è
 `fail > review > pass`: non usa medie compensative. Il parser non è un interprete
 generale della matematica e NLI non certifica la verità fisica; componenti impliciti,
 ipotesi e affermazioni non coperte richiedono ancora revisione. Il verificatore
 non sostituisce i controlli di pertinenza, lingua, sicurezza e policy dei tool.
+Le prove sulle risposte libere hanno mostrato anche contraddizioni spurie su
+dati d'ingresso o aspetti non coperti dal riferimento. Un `fail` neurale non
+dimostra quindi da solo un errore fisico del tutor. Il percorso resta diagnostico:
+prove deterministiche sui riferimenti e controlli proposti non bastano per
+approvare un cancello CI o una calibrazione.
 
 ```mermaid
 flowchart LR
     A["Risposta originale + numeric_results"] --> B["Occorrenze numeriche con offset"]
     B --> C["Inventario Pydantic: sole associazioni"]
     C --> D["Confronto numerico nel codice"]
-    A --> E["Frasi e contesto della spiegazione"]
-    F["Riferimenti fattuali con fonti"] --> N["NLI ONNX locale"]
-    E --> N
-    N --> G["Correttezza e completezza separate"]
+    A --> E["Unità, contesto e intervalli originali"]
+    F["Fatti di riferimento con fonti"] --> P["Identità testuale completa"]
+    E --> P
+    P -->|"Prova diretta"| G["Supporto e completezza separati"]
+    E --> S["Dichiarazioni scalari: etichetta e unità univoche"]
+    S --> D
+    S -->|"Prova numerica tracciata"| G
+    P -->|"Senza prova testuale o scalare"| T["Finestre con budget reale del tokenizer"]
+    T --> N["NLI ONNX locale"]
+    N --> K["Controllo ID e grandezze: conserva i punteggi"]
+    K --> G
     D --> R["fail / review / pass"]
     G --> R
 ```
@@ -596,18 +652,18 @@ Da `ai/`, installazione opzionale e download **esplicito una tantum**:
 ```bash
 uv sync --extra nli --extra dev
 uv run --no-sync python prepare_nli.py \
-  --model minilm \
-  --output ../.local-notes/models/multilingual-MiniLMv2-L6-mnli-xnli-0a71e92
+  --model mdeberta \
+  --output ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
 ```
 
-Il modello iniziale è [multilingual-MiniLMv2-L6-mnli-xnli](https://huggingface.co/MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli),
+Il modello storico iniziale era [multilingual-MiniLMv2-L6-mnli-xnli](https://huggingface.co/MoritzLaurer/multilingual-MiniLMv2-L6-mnli-xnli),
 revisione `0a71e92a985b6e1ad1828cf67ce9c459639c1dca`, in formato ONNX su CPU.
 Il supporto multilingue dichiarato non dimostra affidabilità sull'elettronica
 italiana. Il comando registra provenienza e hash; se i file sono già presenti e
 verificati non li riscarica. La verifica successiva carica solo file locali,
 disabilita la telemetria ONNX e non scarica pesi né chiama API cloud.
 
-È disponibile anche il download esplicito di
+Il modello usato nelle valutazioni correnti è
 [mDeBERTa-v3-base-mnli-xnli](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-mnli-xnli),
 revisione `8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c` (ONNX circa 1.1 GB):
 
@@ -616,7 +672,7 @@ uv run --no-sync python prepare_nli.py --model mdeberta \
   --output ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
 ```
 
-Il verificatore sceglie il modello tramite `--nli-model-dir`; il parser legge
+L’esecuzione diretta sceglie il modello tramite `--nli-model-dir`; il parser legge
 l'ordine delle etichette dal relativo `config.json`. Entrambi i modelli sono
 sperimentali: le prove iniziali hanno mostrato falsi allarmi sulle spiegazioni
 italiane. Un modello più grande non abilita automaticamente l'uso in CI.
@@ -635,7 +691,11 @@ uv run --no-sync python nli_server.py \
 riporta lo stato, `GET /v1/model` l'identità e `POST /v1/nli` accetta
 `{"premise":"fatto di riferimento","hypothesis":"affermazione da verificare"}`.
 La risposta contiene le tre probabilità effettive del classificatore, l'ID del
-modello e l'eventuale errore. `nli_http.py` accetta soltanto endpoint loopback.
+modello e l'eventuale errore. `POST /v1/tokens` accetta la stessa coppia e
+restituisce conteggio effettivo, limite e ID del modello. Il client rileva cambi
+al tokenizer/modello durante il run. `/v1/model` espone `protocol_version=2`:
+riavvia un vecchio servizio per rendere disponibile il nuovo endpoint.
+`nli_http.py` accetta soltanto endpoint loopback.
 `LocalNLI` può anche essere chiamato direttamente da Python, come fa il runner
 storico `verify_answers.py`: i pesi e la classificazione sono gli stessi.
 Il file `source.json` accanto ai pesi registra repository, revisione e hash;
@@ -645,7 +705,7 @@ Le valutazioni successive sono offline e riutilizzano i file locali.
 ```bash
 # Estrattore sul server locale 1235; NLI eseguito separatamente sulla CPU
 AI_REQUEST_TIMEOUT=300 uv run --no-sync python verify_answers.py \
-  --nli-model-dir ../.local-notes/models/multilingual-MiniLMv2-L6-mnli-xnli-0a71e92 \
+  --nli-model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042 \
   --split development
 ```
 
@@ -655,6 +715,47 @@ non sovrascrive i report precedenti. Tre prove consecutive con errori operativi
 fermano il batch. È una diagnostica separata dal vecchio judge e dal percorso
 live: non installa hook, non approva una baseline e non aggiunge NLI alle richieste
 degli studenti. Prima di usarlo come cancello servono valutazione e calibrazione.
+
+### Regressione NLI senza rigenerare il tutor
+
+`verify_nli.py` esegue i [19 controlli versionati](evals/nli/controls.v1.json) e,
+facoltativamente, riclassifica risposte già salvate. Non contatta Gemma:
+`llm_calls=0`. Mantiene separati testi di riferimento, risposte del tutor,
+contrasti semantici, formattazione, limiti e regole sulle formule.
+I contrasti sono proposte di Codex derivate dai fatti pubblicati; non sono
+etichette umane. Non modificano i 100 casi, i riferimenti o le tolleranze
+numeriche della baseline. Le prove testuali identiche e i confronti scalari non vengono presentati
+come successi del classificatore neurale.
+
+Da `ai/`, con servizio locale già avviato:
+
+```bash
+uv run --no-sync python verify_nli.py --nli-base-url http://127.0.0.1:8091
+# In alternativa, stessa preparazione e pesi via Python diretto:
+uv run --no-sync python verify_nli.py \
+  --nli-model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
+```
+
+Per ripetere il confronto sugli stessi testi, senza nuove generazioni:
+
+```bash
+uv run --no-sync python verify_nli.py --nli-base-url http://127.0.0.1:8091 \
+  --saved-report /percorso/report-salvato.json \
+  --output ../.local-notes/llmops/nli/confronto-1/report.json
+```
+
+`--saved-report` è ripetibile. Il runner accetta report completati del dataset
+compatibile, verifica hash, fatti, valori e tolleranze originali e registra le risposte assenti o
+non ricostruibili senza attribuire loro uno score. Confronta l'identità dei
+pesi/runtime con quella dei vecchi punteggi, conserva gli esiti numerici storici
+senza ricalcolarli e non sovrascrive report esistenti. Codice, controlli e input
+cambiati durante il batch invalidano la prova.
+
+Exit code 0 soltanto se tutti i controlli hanno l'esito dichiarato; un `review`
+ancora irrisolto non approva il cancello. `baseline_approved` e `human_calibrated`
+restano false anche con controlli passati: testi già osservati, corrispondenze
+letterali e confronti proposti non costituiscono calibrazione umana indipendente.
+
 
 ### Calcolatore del judge
 

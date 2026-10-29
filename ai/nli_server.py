@@ -8,7 +8,7 @@ from fastapi import FastAPI
 
 from experiments import digest
 from nli_verifier import LocalNLI
-from verification_schemas import NliRequest, NliResponse
+from verification_schemas import NliRequest, NliResponse, NliTokenCount
 
 
 def create_app(model_dir=None, *, predictor=None):
@@ -31,7 +31,13 @@ def create_app(model_dir=None, *, predictor=None):
         if verify_files:
             async with app.state.lock:
                 await asyncio.to_thread(app.state.nli.assert_unchanged)
-        return {'model_id': app.state.model_id, 'identity': app.state.identity}
+        return {'model_id': app.state.model_id, 'identity': app.state.identity, 'protocol_version': 2}
+
+    @app.post('/v1/tokens', response_model=NliTokenCount)
+    async def count_tokens(request: NliRequest):
+        async with app.state.lock:
+            count = await asyncio.to_thread(app.state.nli.count_tokens, request.premise, request.hypothesis)
+        return NliTokenCount(model_id=app.state.model_id, tokens=count, max_tokens=app.state.nli.max_tokens)
 
     @app.post('/v1/nli', response_model=NliResponse)
     async def classify(request: NliRequest):

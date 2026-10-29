@@ -12,6 +12,7 @@ from dataset import TEXTBOOK_DIR, load_dataset, select_cases
 from experiments import ROOT, create_manifest, digest, file_digest, source_snapshot, utc_now
 from judge import local_judge_settings
 from nli_verifier import LocalNLI
+from nli_context import PROTOCOL as NLI_PROTOCOL
 from verification_schemas import AnswerVerification, ResponseInventory
 from verification_references import load_references
 from verify_judge import altered_response, check_endpoint, load_probes, probe_input
@@ -40,12 +41,12 @@ async def run(bundle, cases, settings, nli, *, output, model=None):
     references_path = TEXTBOOK_DIR / 'explanation-references.v1.json'
     references = load_references(bundle, references_path)
     manifest = create_manifest(settings, cases, dataset_identity=bundle.identity())
-    protocol = {"version": 1, "mode": "structured-numeric-and-local-nli",
+    protocol = {"version": 2, "mode": "structured-numeric-and-local-nli",
         "inventory_schema_sha256": digest(ResponseInventory.model_json_schema()),
         "result_schema_sha256": digest(AnswerVerification.model_json_schema()),
         "extraction_prompt_sha256": digest(EXTRACTION_PROMPT), "nli": nli.identity,
         "explanation_references_sha256": file_digest(references_path), "explanation_reference_version": references.version,
-        "nli_pairing": "whole_factual_reference_to_each_sentence; response_to_each_required_fact",
+        "nli_pairing": NLI_PROTOCOL,
         "suite_sha256": file_digest(suite_path), "aggregation": "fail > review > pass; no compensating average"}
     report = {"id": uuid4().hex, "created_at": utc_now(), "status": "prepared", "error": None,
         "manifest": manifest.model_dump(mode="json"), "protocol": protocol,

@@ -1,7 +1,7 @@
 """Contratti del verificatore numerico + NLI; tutti gli esiti restano separati."""
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_serializer, model_validator
 
 
 class Contract(BaseModel):
@@ -78,6 +78,82 @@ class NliResponse(Contract):
     error: str | None = Field(description="Limite o errore operativo; non viene trasformato in supporto.")
 
 
+class NliTokenCount(Contract):
+    model_id: str = Field(description="Identità del classificatore e del tokenizer che conteranno e valuteranno la stessa coppia.")
+    tokens: int = Field(ge=0, description="Token effettivi della coppia, inclusi i token speciali, senza troncatura.")
+    max_tokens: int = Field(ge=1, description="Limite effettivo del classificatore; non un limite stimato in caratteri.")
+
+
+class NliSourceSpan(Contract):
+    origin: Literal["response", "reference"] = Field(description="Testo originale cui appartiene l'intervallo; la domanda non è una premessa fattuale.")
+    reference_index: int | None = Field(description="Indice del fatto originale quando origin=reference; null per la risposta.")
+    start: int = Field(ge=0, description="Offset iniziale in caratteri Python nel testo originale.")
+    end: int = Field(ge=0, description="Offset finale esclusivo nel testo originale.")
+    quote: str = Field(description="Sottostringa originale esatta, prima della normalizzazione di presentazione.")
+
+
+class NliTextUnit(Contract):
+    span: NliSourceSpan = Field(description="Intervallo originale della frase o del blocco, incluse formule che non vanno spezzate.")
+    context: list[NliSourceSpan] = Field(description="Titoli, condizioni o prefissi originali necessari a leggere l'unità; mai fatti aggiunti dal verificatore.")
+    kind: Literal["claim", "structure"] = Field(description="Claim viene verificato; structure è soltanto un marcatore o un titolo riconosciuto, conservato nel contesto.")
+
+
+class NliPassage(Contract):
+    raw: str = Field(description="Concatenazione degli intervalli originali ordinati, prima della normalizzazione di presentazione.")
+    spans: list[NliSourceSpan] = Field(description="Provenienza completa dei brani concatenati; non si campionano frasi in base al risultato NLI.")
+
+
+class NliAnchors(Contract):
+    premise_identifiers: list[str] = Field(description="ID di componenti e porte logiche esplicitamente nominati nell'evidenza; nessun ID inferito dal classificatore.")
+    hypothesis_identifiers: list[str] = Field(description="ID espliciti nominati nell'affermazione; distinguere OR da XOR e R1 da R2.")
+    premise_quantities: list[str] = Field(description="Grandezze nominate o indicate da quantità SI e assegnazioni simboliche convenzionali nell'evidenza; nessuna inferenza del classificatore.")
+    hypothesis_quantities: list[str] = Field(description="Grandezze nominate o indicate da unità/assegnazioni nell'affermazione; una corrente non è una tensione.")
+    comparable: bool = Field(description="False se entrambi i testi nominano soltanto ID o grandezze disgiunti. True non dimostra da solo pertinenza o correttezza.")
+    reason: Literal["different_identifiers", "different_quantities"] | None = Field(description="Motivo del mancato collegamento; null se questa verifica non trova un disallineamento esplicito.")
+
+
+class NliNumericDeclaration(Contract):
+    label: str = Field(min_length=1, description="Etichetta completa della dichiarazione scalare, conservando ID, condizioni e maiuscole; nessuna associazione per somiglianza del valore.")
+    value: float = Field(description="Valore realmente letto dalla dichiarazione, normalizzato in SI dal parser numerico.")
+    unit: str = Field(description="Unità SI normalizzata; i prefissi non vengono ignorati.")
+    case_model_prefix: bool = Field(description="True solo per il prefisso generico 'Per il modello dichiarato:' del caso corrente; altri qualificatori non vengono eliminati.")
+
+
+class NliNumericProof(Contract):
+    reference_index: int = Field(ge=0, description="Unico riferimento indipendente identificato da etichetta e unità, mai dal valore più vicino.")
+    label: str = Field(description="Etichetta esatta condivisa da dichiarazione, fatto e riferimento numerico.")
+    actual_value: float = Field(description="Valore dichiarato effettivo in SI, anche se errato; non viene corretto col valore atteso.")
+    source_value: float = Field(description="Valore presente nel fatto di riferimento, controllato contro il riferimento numerico indipendente.")
+    expected_value: float = Field(description="Valore indipendente del dataset, senza sostituzione nella risposta.")
+    unit: str = Field(description="Unità SI comune alla dichiarazione e al riferimento.")
+    absolute_tolerance: float = Field(ge=0, description="Tolleranza assoluta SI già dichiarata nel dataset; non adattata al risultato.")
+    relative_tolerance: float = Field(ge=0, description="Tolleranza relativa del dataset, invariata.")
+    case_model_prefix: bool = Field(description="Prefisso generico del modello corrente presente su almeno un lato. Condizioni specifiche o altri prefissi impediscono questa prova.")
+
+
+class NliPreparation(Contract):
+    target_id: str = Field(description="Identità del requisito confrontato; aggrega tutte le finestre dello stesso target senza confondere frasi uguali in posizioni diverse.")
+    window_index: int = Field(ge=0, description="Indice della finestra di evidenza effettivamente confrontata.")
+    window_count: int = Field(ge=1, description="Numero totale delle finestre previste per il target, incluse quelle non verificabili.")
+    token_count: int | None = Field(description="Token reali della coppia normalizzata; null se non conteggiabile.")
+    coverage_complete: bool = Field(description="Target coperto dall'identità testuale completa oppure da tutte le finestre previste. False se un limite lascia evidenza non verificata; nessuna promozione implicita.")
+    reason: Literal["evaluated", "oversized_unit", "budget_exhausted", "tokenizer_error", "model_error", "structure_only", "non_linguistic", "anchor_mismatch", "exact_reference", "numeric_reference"] = Field(description="Confronto neurale, prova testuale o numerica deterministica, non applicabilità o mancato collegamento; le prove deterministiche non producono probabilità NLI.")
+    raw_premise: str = Field(description="Evidenza originale con eventuale contesto originale, prima di rimuovere solo marcatori di presentazione.")
+    raw_hypothesis: str = Field(description="Target originale e contesto conservato; non una parafrasi generata da un LLM.")
+    premise_spans: list[NliSourceSpan] = Field(description="Intervalli originali che compongono l'evidenza, verificabili senza consultare un LLM.")
+    hypothesis_spans: list[NliSourceSpan] = Field(description="Intervalli del target, inclusi titoli e condizioni necessari a interpretarlo.")
+    anchors: NliAnchors | None = Field(default=None, description="Controllo deterministico degli ID e delle grandezze; assente nei protocolli precedenti.")
+    numeric_proof: NliNumericProof | None = Field(default=None, description="Confronto deterministico di una dichiarazione scalare con etichetta univoca e tolleranze del dataset; nessuna interpretazione NLI dei numeri.")
+
+    @model_serializer(mode="wrap")
+    def serialize_preparation(self, handler):
+        data = handler(self)
+        for field in ("anchors", "numeric_proof"):
+            if field not in self.model_fields_set:
+                data.pop(field, None)
+        return data
+
+
 class ExplanationReference(Contract):
     statement: str = Field(min_length=1, max_length=2400, description="Affermazione fattuale di riferimento, con soggetto e ipotesi espliciti; non un'istruzione al tutor o una parola chiave.")
     source_ids: list[str] = Field(description="Fonti pubblicate effettivamente disponibili che sostengono la parafrasi; non fonti inventate dal verificatore.")
@@ -98,6 +174,14 @@ class NliCheck(Contract):
     scores: NliScores | None = Field(description="Tre probabilità effettive; null se il confronto non è stato eseguito.")
     status: Status = Field(description="Contraddizione sufficientemente netta: fail; supporto netto: pass; neutro, incerto o errore operativo: review.")
     detail: str = Field(description="Criterio di decisione o limite operativo; nessun errore viene convertito in supporto.")
+    preparation: NliPreparation | None = Field(default=None, description="Provenienza, copertura e budget del protocollo contestuale; assente nei report storici.")
+
+    @model_serializer(mode="wrap")
+    def serialize_check(self, handler):
+        data = handler(self)
+        if "preparation" not in self.model_fields_set:
+            data.pop("preparation", None)
+        return data
 
 
 class ExplanationSuite(Contract):
@@ -120,3 +204,22 @@ class AnswerVerification(Contract):
     numeric_checks: list[NumericCheck] = Field(description="Controlli deterministici e copertura dei riferimenti numerici.")
     nli_checks: list[NliCheck] = Field(description="Confronti NLI effettivi, comprese incertezze e problemi di lunghezza.")
     errors: list[str] = Field(description="Errori operativi sanificati, distinti dalle risposte errate.")
+
+
+class NliControl(Contract):
+    id: str = Field(min_length=1, description="Identificativo stabile del controllo NLI, distinto dai casi della baseline.")
+    case_id: str = Field(description="Caso di origine dei fatti pubblicati, verificato contro il dataset di base.")
+    category: Literal["semantic", "formatting", "long_context", "policy"] = Field(description="Contrasti semantici, presentazione, lunghezza o regole del protocollo: non sono un'unica accuracy.")
+    reference_statements: list[str] = Field(min_length=1, description="Fatti originali esatti o loro sottostringhe, presenti nei riferimenti del caso di origine; nessuna risposta attesa generata dall'NLI.")
+    response: str = Field(min_length=1, max_length=16000, description="Testo controllato da verificare, con eventuali errori intenzionali. Non viene corretto prima della valutazione.")
+    direction: Literal["faithfulness", "completeness"] = Field(description="Direzione per cui è dichiarato l'esito atteso del controllo.")
+    expected_status: Status = Field(description="Esito desiderato derivato dal contrasto con i fatti o dalla policy, non da un precedente punteggio NLI.")
+    rationale: str = Field(min_length=1, description="Motivo del controllo e della sua aspettativa; proposta assistita, non etichetta umana calibrata.")
+
+
+class NliControlSuite(Contract):
+    version: str = Field(description="Versione dei controlli e delle aspettative.")
+    dataset_bundle_sha256: str = Field(pattern=r"^[a-f0-9]{64}$", description="Identità del dataset di base che contiene fonti e fatti dei controlli.")
+    review_status: Literal["proposed"] = Field(description="Contrasti derivati da fonti esperte; non costituiscono calibrazione umana del classificatore.")
+    author: str = Field(description="Autore effettivo dei contrasti, distinto dagli autori dei libri.")
+    cases: list[NliControl] = Field(min_length=1, description="Controlli riproducibili; versionare ogni modifica alle aspettative.")

@@ -96,7 +96,8 @@ async def verify_answer(payload, settings, nli, *, references, model=None, inven
         semantic = await asyncio.to_thread(explanation_checks, payload, nli, references)
         explanation = semantic_status(semantic, "faithfulness")
         complete = semantic_status(semantic, "completeness")
-        errors.extend("Confronto NLI non eseguito: " + c.detail for c in semantic if c.scores is None)
+        errors.extend("Confronto NLI non eseguito: " + c.detail for c in semantic if c.scores is None
+            and (c.preparation is None or c.preparation.reason not in {'structure_only', 'non_linguistic', 'exact_reference', 'numeric_reference'}))
     except Exception as exc:
         semantic, explanation, complete = [], "review", "review"
         errors.append(f"NLI non completato ({type(exc).__name__}).")
