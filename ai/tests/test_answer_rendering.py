@@ -1,10 +1,10 @@
 import unittest
 
-from answer_rendering import render_answer
-from config import Settings
-from graph import create_graph
-from numeric_verification import mentions
-from schemas import submit_answer_tool
+from circuit_ai.agent.rendering import render_answer
+from circuit_ai.core.config import Settings
+from circuit_ai.agent.graph import create_graph
+from circuit_ai.verification.numbers import mentions
+from circuit_ai.contracts.shared import submit_answer_tool
 from test_tutor import FakeModel, answer, call, custom_tool, input_state
 
 
@@ -62,9 +62,21 @@ class RenderingTests(unittest.TestCase):
             render_answer(dict(draft(), learning_notes=["x" * 321]), state())
         render_answer(dict(draft(), explanation="1. Si applica Ohm a R1.\n2. Si controlla il risultato."), state())
 
+    def test_symbolic_rc_identity_is_not_an_unverified_numeric_result(self):
+        formulas = [r'$v_C(t)=V_f(1-e^{-t/\tau})$',
+                    r'\[v_C(t)=V_f(1-\exp(-t/\tau))\]']
+        for formula in formulas:
+            with self.subTest(formula=formula):
+                render_answer(dict(draft(1,'s'), explanation='Carica esponenziale: '+formula), state())
+        for text in [r'$\tau=1\text{ s}$', r'$G=1$',
+                     r'$v_C(t)=V_f(1-e^{-t/\tau})=0.632$',
+                     'La carica raggiunge 86.5%.']:
+            with self.subTest(text=text), self.assertRaisesRegex(ValueError, 'solo in numeric_results'):
+                render_answer(dict(draft(1,'s'), explanation=text), state())
+
     def test_input_quantities_are_allowed_but_results_and_invented_inputs_are_not(self):
         from langchain_core.messages import HumanMessage
-        from schemas import ModelQuestion
+        from circuit_ai.contracts.shared import ModelQuestion
         evidence = dict(state(), messages=[HumanMessage(content=ModelQuestion(
             question="Calcola la corrente con 18 V e 3 ohm.").model_dump_json())])
         result = render_answer(dict(draft(6, "A"), explanation="Con 18 V e 3 ohm si applica I = V/R."), evidence)
@@ -77,7 +89,7 @@ class RenderingTests(unittest.TestCase):
 
     def test_units_implicit_in_the_question_can_come_from_successful_typed_inputs(self):
         from langchain_core.messages import HumanMessage
-        from schemas import ModelQuestion
+        from circuit_ai.contracts.shared import ModelQuestion
         current = dict(state(), messages=[HumanMessage(content=ModelQuestion(
             question="v(t)=15 sin(2 pi 60 t) V, t in secondi; calcola a t=5 ms.").model_dump_json())],
             trace=[{"tool": "sine_voltage", "ok": True, "input": {
@@ -92,7 +104,7 @@ class RenderingTests(unittest.TestCase):
     def test_nominal_circuit_inputs_are_current_and_never_confused_with_measurements(self):
         import json
         from langchain_core.messages import HumanMessage, ToolMessage
-        from schemas import ModelQuestion
+        from circuit_ai.contracts.shared import ModelQuestion
         question = HumanMessage(content=ModelQuestion(question="Leggi la corrente di R1.").model_dump_json())
         snapshot = ToolMessage(name="getCircuitSnapshot", tool_call_id="current", content=json.dumps({"ok": True,
             "data": {"netlist": {"components": [{"type": "resistor", "params": {"R": 3, "ratedPower": 200}}]},
@@ -115,12 +127,61 @@ class RenderingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render_answer(dict(draft(4, "ohm"), explanation="Si legge il parametro nominale di R1."), nominal)
 
+    def test_pulse_source_nominals_can_be_reported_without_invented_inputs(self):
+        import json
+        from langchain_core.messages import HumanMessage, ToolMessage
+        from circuit_ai.contracts.shared import ModelQuestion
+        current = dict(state('getCircuitSnapshot', True), messages=[
+            HumanMessage(content=ModelQuestion(question='Identifica i componenti.').model_dump_json()),
+            ToolMessage(name='getCircuitSnapshot', tool_call_id='current', content=json.dumps({'ok':True,
+                'data':{'netlist':{'components':[{'type':'pulse','params':{'Vh':5,'Vl':0,'freq':.1,'duty':50}}]}}}))])
+        packet = dict(draft(), numeric_results=[],
+            explanation='V1 ha livello alto 5 V, livello basso 0 V, frequenza 0.1 Hz e duty cycle 50 %.')
+        render_answer(packet, current)
+        with self.assertRaises(ValueError):
+            render_answer(dict(packet, explanation='V1 ha livello alto 6 V.'), current)
+
 
 class GraphIntegrationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_context_pressure_keeps_snapshot_and_calculator_before_final_answer(self):
+        from dataclasses import replace
+        from langchain_core.tools import StructuredTool
+        from circuit_ai.contracts.shared import NoInput
+        from circuit_ai.tools.physics import calculation_tools
+
+        async def unused(): raise AssertionError("Tool non pertinente")
+        async def snapshot():
+            return {"revision": 3, "converged": True, "measurementsAvailable": True}
+        oversized = StructuredTool.from_function(coroutine=unused, name="unused",
+            args_schema=NoInput, description="x" * 24000)
+        class CheckedModel(FakeModel):
+            def bind_tools(self, tools, **kwargs):
+                super().bind_tools(tools, **kwargs)
+                available = {t.name if hasattr(t, 'name') else t['function']['name'] for t in tools}
+                parent = self
+                class Bound:
+                    async def ainvoke(self, messages):
+                        response = await parent.ainvoke(messages)
+                        for decision in response.tool_calls:
+                            if decision['name'] not in available:
+                                raise AssertionError('Tool necessario non disponibile: ' + decision['name'])
+                        return response
+                return Bound()
+        model = CheckedModel([call(), call('calculate', {'expression':'R*C', 'variables':[
+            {'name':'R','value':10000,'unit':'ohm'}, {'name':'C','value':.0001,'unit':'F'}]}),
+            answer('La costante di tempo teorica è data da R·C.', numbers=[(1,'s')])])
+        settings = replace(Settings(), context_max_tokens=6000, summary_threshold_tokens=2000)
+        result = await create_graph(settings, model=model,
+            tools=[oversized, custom_tool(snapshot), *calculation_tools()]).compile().ainvoke(input_state('Analizza il circuito RC.'))
+        self.assertEqual(result['answer']['numeric_results'][0]['value'], 1)
+        self.assertEqual([t['tool'] for t in result['trace']], ['getCircuitSnapshot','calculate'])
+        self.assertEqual(result['schema_errors'], 0)
+        self.assertLessEqual(result['metrics']['prompt_tokens_estimate'], settings.context_max_tokens)
+
     async def test_context_pressure_keeps_the_final_contract_available(self):
         from langchain_core.tools import StructuredTool
         from dataclasses import replace
-        from schemas import NoInput
+        from circuit_ai.contracts.shared import NoInput
 
         async def unused():
             raise AssertionError("Nessun tool operativo deve essere eseguito")
@@ -134,7 +195,7 @@ class GraphIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(result["metrics"]["prompt_tokens_estimate"], 9000)
 
     async def test_physical_calculation_through_the_real_graph_without_browser(self):
-        from calculation_tools import calculation_tools
+        from circuit_ai.tools.physics import calculation_tools
         model = FakeModel([call("power_from_current", {"current": {"value": 20, "unit": "mA"},
             "resistance": {"value": 1, "unit": "kohm"}}), answer("Si usa I²·R.", numbers=[(.4, "W")])])
         result = await create_graph(Settings(), model=model, tools=calculation_tools()).compile().ainvoke(input_state("Potenza RMS?"))

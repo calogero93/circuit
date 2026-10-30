@@ -115,3 +115,60 @@ test('tutor: segnala stream interrotto e permette una nuova conversazione', asyn
   expect(second).not.toBe(first);
   await expect(page.locator('.tutor .msg.error')).toHaveCount(0);
 });
+
+test('tutor: rispetta il budget del server oltre 125 secondi e permette di interrompere', async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    const original = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+      if (input !== '/api/chat/stream') return original(input, init);
+      const encoder = new TextEncoder();
+      let timer: ReturnType<typeof setTimeout>;
+      const signal = init?.signal;
+      let interrupted: () => void;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          interrupted = () => { clearTimeout(timer); controller.error(signal?.reason); };
+          signal?.addEventListener('abort', interrupted, { once: true });
+          const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+          send({ event: 'status', data: { message: 'Sintesi della conversazione precedente' } });
+          timer = setTimeout(() => {
+            signal?.removeEventListener('abort', interrupted);
+            send({ event: 'final', data: { response: 'Analisi RC completata.', tools: [],
+              snapshot_revision: null, revision_consistent: true } });
+            controller.close();
+          }, 180_000);
+        },
+        cancel() { clearTimeout(timer); signal?.removeEventListener('abort', interrupted); },
+      });
+      return new Response(body, { headers: { 'content-type': 'application/x-ndjson',
+        'X-Tutor-Timeout-Ms': document.documentElement.dataset.tutorBudget || '240000' } });
+    };
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Tutor AI' }).click();
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+  const send = async () => {
+    await page.locator('.tutor textarea').fill('Analizza RC');
+    await page.getByRole('button', { name: 'Invia', exact: true }).click({ force: true });
+    await expect(page.locator('.tutor [role="status"]')).toHaveText('Sintesi della conversazione precedente');
+  };
+  await send();
+  await page.clock.fastForward(130_000);
+  await expect(page.locator('.tutor .msg.error')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Interrompi', exact: true })).toBeVisible();
+  await page.clock.fastForward(50_000);
+  await expect(page.locator('.tutor .msg.assistant')).toHaveText('Analisi RC completata.');
+  await expect(page.getByRole('button', { name: 'Interrompi', exact: true })).toHaveCount(0);
+  await page.evaluate(() => { document.documentElement.dataset.tutorBudget = '1000'; });
+  await send();
+  await page.clock.fastForward(6100);
+  await expect(page.locator('.tutor .msg.error')).toHaveText('Il tutor ha superato il tempo di risposta');
+  await page.getByRole('button', { name: 'Nuova conversazione' }).click({ force: true });
+  await page.evaluate(() => { delete document.documentElement.dataset.tutorBudget; });
+  await send();
+  await page.getByRole('button', { name: 'Interrompi', exact: true }).click({ force: true });
+  await expect(page.locator('.tutor .msg.error')).toHaveText('Richiesta interrotta');
+  await expect(page.getByRole('button', { name: 'Invia', exact: true })).toBeDisabled(); // input vuoto, turno concluso
+  await expect(page.getByRole('button', { name: 'Nuova conversazione' })).toBeEnabled();
+});

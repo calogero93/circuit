@@ -7,12 +7,12 @@ import unittest
 
 from pydantic import ValidationError
 
-from config import Settings
-from dataset import DATA_DIR, load_dataset, select_cases, validate_cases
-from evaluate import evaluate
-from evaluation_fixtures import FixtureRuntime, build_fixture, transient
-from experiments import create_manifest, new_report, validate_run_identity
-from schemas import (DatasetCase, DCOutput, EvaluationDataset, FixtureScenario, SnapshotOutput, TransientOutput)
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import DATA_DIR, load_dataset, select_cases, validate_cases
+from circuit_ai.evaluation.runner import evaluate
+from circuit_ai.evaluation.fixtures import FixtureRuntime, build_fixture, transient
+from circuit_ai.evaluation.experiments import create_manifest, new_report, validate_run_identity
+from circuit_ai.contracts.shared import (DatasetCase, DCOutput, EvaluationDataset, FixtureScenario, SnapshotOutput, TransientOutput)
 from test_tutor import FakeModel, answer, call, last_tool
 
 
@@ -157,7 +157,7 @@ class SyntheticDatasetTests(unittest.IsolatedAsyncioTestCase):
             "category": "rag", "source_ids": ["divider-formula"], "rationale": "Verifica comprensione della formula senza confronto testuale."}
 
     async def test_preparation_never_calls_model_or_claims_generated_cases(self):
-        from generate_dataset import generate
+        from circuit_ai.evaluation.generate import generate
         model = FakeModel([])
         artifact = await generate(load_dataset(), Settings(), count=1, model=model, prepare_only=True)
         self.assertEqual(artifact.status, "prepared")
@@ -165,7 +165,7 @@ class SyntheticDatasetTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(model.calls, [])
 
     async def test_generator_keeps_real_provenance_and_never_auto_accepts_or_edits_dataset(self):
-        from generate_dataset import generate
+        from circuit_ai.evaluation.generate import generate
         from langchain_core.messages import AIMessage
         before = (DATA_DIR / "dataset.v1.json").read_bytes()
         model = FakeModel([AIMessage(content="", tool_calls=[{"name": "SyntheticCaseBatch", "id": "generated",
@@ -180,7 +180,7 @@ class SyntheticDatasetTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('"reference":', model.calls[0][-1].content)
 
     async def test_invalid_synthetic_references_do_not_enter_dataset(self):
-        from generate_dataset import generate
+        from circuit_ai.evaluation.generate import generate
         from langchain_core.messages import AIMessage
         proposal = self.proposal()
         proposal["fixture_id"] = "invented-circuit"

@@ -11,11 +11,11 @@ import unittest
 import httpx
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
-from config import Settings
-from dataset import TEXTBOOK_DIR, load_dataset
-from experiments import ROOT
-from judge_probe_schemas import JudgeProbeReport
-from verify_judge import (altered_response, identity_error, load_probes, probe_input,
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import TEXTBOOK_DIR, load_dataset
+from circuit_ai.evaluation.experiments import ROOT
+from circuit_ai.contracts.probes import JudgeProbeReport
+from circuit_ai.evaluation.probes import (altered_response, identity_error, load_probes, probe_input,
     run_verification, validate_mutation)
 from test_tutor import FakeModel
 

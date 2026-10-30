@@ -1,9 +1,9 @@
 """Prepara le coppie senza riscriverne i fatti; gli stub non valutano NLI reale."""
 import unittest
 
-from nli_context import PROTOCOL, anchors, contextual_checks, formula_only, normalize, units
-from nli_verifier import LocalNLI, semantic_status
-from verification_schemas import ExplanationReference, NliCheck, NliScores
+from circuit_ai.nli.context import PROTOCOL, anchors, contextual_checks, formula_only, normalize, units
+from circuit_ai.nli.classifier import LocalNLI, semantic_status
+from circuit_ai.contracts.verification import ExplanationReference, NliCheck, NliScores
 
 
 def reference(text):

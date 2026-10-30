@@ -44,7 +44,7 @@ relay → Client:
 Il browser registra un `session_id` distinto per scheda. Il client indica la
 sessione da interrogare; ometterla è ammesso soltanto con un unico host
 connesso. Le risposte sono accettate soltanto dal browser destinatario.
-Il catalogo degli argomenti è generato da `ai/schemas.py`; gli output vengono
+Il catalogo degli argomenti è generato da `ai/circuit_ai/contracts/shared.py`; gli output vengono
 validati in Python prima di essere passati al modello.
 
 `id` è scelto dal client e restituito così com'è (correlazione richiesta/risposta).

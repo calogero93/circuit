@@ -54,6 +54,13 @@ function NumberParam({ inst, p }: { inst: ComponentInstance; p: ParamDef }) {
     markEvent(inst.id, simController.time);
   };
 
+  const commitText = () => {
+    if (text === null) return;
+    const normalized = text.trim().replace(',', '.');
+    if (normalized) commit(Number(normalized));
+    setText(null);
+  };
+
   return (
     <label className="param">
       <span className="param-label">
@@ -65,9 +72,9 @@ function NumberParam({ inst, p }: { inst: ComponentInstance; p: ParamDef }) {
         aria-label={p.label}
         value={text ?? String(value)}
         onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== null && commit(Number(text))}
+        onBlur={commitText}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && text !== null) commit(Number(text));
+          if (e.key === 'Enter') commitText();
         }}
       />
     </label>

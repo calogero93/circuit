@@ -10,16 +10,16 @@ import tempfile
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from baseline_dataset import DIRECTORY, load_baseline
-from baseline_runtime import arithmetic
-from experiments import ROOT
-from numeric_verification import mentions, validate_numeric_results
-from answer_contracts import NumericAnswer
-from spice_reference import run_spice
-from run_baseline import answer_checks, payload_for, run, summary, validate_model_identity
-from schemas import SubmitAnswer, TurnMetrics
-from config import Settings
-from verification_schemas import AnswerVerification
+from circuit_ai.baseline.dataset import DIRECTORY, load_baseline
+from circuit_ai.baseline.runtime import arithmetic
+from circuit_ai.evaluation.experiments import ROOT
+from circuit_ai.verification.numbers import mentions, validate_numeric_results
+from circuit_ai.contracts.answer import NumericAnswer
+from circuit_ai.integrations.spice import run_spice
+from circuit_ai.baseline.runner import answer_checks, payload_for, run, summary, validate_model_identity
+from circuit_ai.contracts.shared import SubmitAnswer, TurnMetrics
+from circuit_ai.core.config import Settings
+from circuit_ai.contracts.verification import AnswerVerification
 
 
 class BaselineTests(unittest.TestCase):
@@ -149,7 +149,7 @@ class RunnerTests(unittest.IsolatedAsyncioTestCase):
                 mentions=[],inventory=None,inventory_attempts=[],numeric_checks=[],nli_checks=[],errors=[]),TurnMetrics()
         with tempfile.TemporaryDirectory() as tmp:
             output=Path(tmp)/'report.json'
-            with patch('run_baseline.check_endpoint',new=AsyncMock()),patch('run_baseline.verify_answer',side_effect=verify),patch('run_baseline.generate',new=AsyncMock()) as generate:
+            with patch('circuit_ai.baseline.runner.check_endpoint',new=AsyncMock()),patch('circuit_ai.baseline.runner.verify_answer',side_effect=verify),patch('circuit_ai.baseline.runner.generate',new=AsyncMock()) as generate:
                 report,_=await run(Settings(),Nli(),split='all',case_ids=[positive.id,negative.id],output=output)
                 generate.assert_not_awaited()
             self.assertEqual(report['status'],'completed')

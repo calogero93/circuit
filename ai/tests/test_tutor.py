@@ -16,19 +16,19 @@ from langgraph.store.memory import InMemoryStore
 from pydantic import ValidationError
 import websockets
 
-from config import Settings, create_model
-from graph import create_graph
-from main import create_app
-from modules.tool_bridge import ToolBridge
-from memory import recall
-from schemas import (ComponentInput, ConversationSummary, Evidence, ModelQuestion,
+from circuit_ai.core.config import Settings, create_model
+from circuit_ai.agent.graph import create_graph
+from circuit_ai.api.server import create_app
+from circuit_ai.integrations.bridge import ToolBridge
+from circuit_ai.memory.postgres import recall
+from circuit_ai.contracts.shared import (ComponentInput, ConversationSummary, Evidence, ModelQuestion,
                      NodeInput, SubmitAnswer, TransientInput)
-from tools import BROWSER_TOOLS, make_tools
+from circuit_ai.tools.catalog import BROWSER_TOOLS, make_tools
 
 
 def answer(text, kind="theory", evidence=None, measured=False, notes=None, numbers=None):
     # Le fixture emettono il contratto LLM corrente, senza metadati gestiti dal server.
-    from numeric_verification import mentions
+    from circuit_ai.verification.numbers import mentions
     found = mentions(text)
     if numbers is None:
         numbers = [(m.value, m.unit) for m in found]
@@ -97,7 +97,7 @@ def custom_tool(function, name="getCircuitSnapshot"):
 class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def test_theory_does_not_connect_browser_and_is_structured(self):
         model = FakeModel([answer("Una resistenza limita la corrente.")])
-        with patch("modules.tool_bridge.websockets.connect", side_effect=AssertionError("browser inatteso")):
+        with patch('circuit_ai.integrations.bridge.websockets.connect', side_effect=AssertionError("browser inatteso")):
             result = await create_graph(Settings(), model=model).compile().ainvoke(input_state("Cos'è una resistenza?"))
         self.assertEqual(result["trace"], [])
         self.assertEqual(result["answer"]["kind"], "theory")
@@ -300,6 +300,8 @@ class ApiTests(unittest.TestCase):
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "unused", "OPENAI_API_KEY": "unused"}, clear=True):
             settings = Settings.from_env()
             self.assertEqual(settings.provider, "local")
+            self.assertEqual(settings.base_url, "http://127.0.0.1:1235/v1")
+            self.assertEqual(Settings().base_url, settings.base_url)
             self.assertNotIn("search_info", [t.name for t in make_tools(settings)])
 
     def test_local_adapter_uses_configured_endpoint(self):
@@ -307,6 +309,63 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(model.openai_api_base, "http://127.0.0.1:9999/v1")
         with patch.dict("os.environ", {"LLM_PROVIDER": "anthropic"}, clear=True):
             with self.assertRaises(ValueError): Settings.from_env()
+
+    def test_local_endpoint_can_be_overridden(self):
+        with patch.dict("os.environ", {"LLM_BASE_URL": "http://127.0.0.1:9999/v1"}, clear=True):
+            self.assertEqual(Settings.from_env().base_url, "http://127.0.0.1:9999/v1")
+
+    def test_request_budget_is_configurable_finite_and_advertised_to_browser(self):
+        with patch.dict('os.environ', {}, clear=True):
+            self.assertEqual(Settings.from_env().request_timeout, 300)
+        with patch.dict('os.environ', {'AI_REQUEST_TIMEOUT':'420'}, clear=True):
+            settings = Settings.from_env()
+        model = FakeModel([answer('Una resistenza limita la corrente.')])
+        with TestClient(create_app(settings, lambda s: create_graph(s, model=model), TestMemory)) as client:
+            response = client.post('/api/chat/stream', json={'query':'Ciao','thread_id':'budget'})
+            self.assertEqual(response.headers['X-Tutor-Timeout-Ms'], '420000')
+            self.assertEqual(json.loads(response.text.splitlines()[-1])['event'], 'final')
+        for timeout in (0, -1, float('nan'), float('inf')):
+            with self.subTest(timeout=timeout), self.assertRaises(ValueError):
+                replace(Settings(), request_timeout=timeout)
+
+    def test_http_and_stream_distinguish_model_memory_and_schema_errors(self):
+        from types import SimpleNamespace
+        import httpx
+        from openai import APIConnectionError, BadRequestError, APITimeoutError
+        from psycopg import OperationalError
+        from psycopg_pool import PoolTimeout
+
+        request = httpx.Request("POST", "http://localhost/v1/chat/completions")
+        cases = [
+            (APIConnectionError(request=request), 502, "model_unavailable", "LLM_BASE_URL"),
+            (APITimeoutError(request=request), 504, "timeout", "tempo di risposta"),
+            (TimeoutError(), 504, "timeout", "tempo di risposta"),
+            (BadRequestError("private payload", response=httpx.Response(400, request=request), body=None),
+                502, "model_request_rejected", "tool calling"),
+            (OperationalError("private database URL"), 503, "memory_unavailable", "PostgreSQL"),
+            (PoolTimeout("private database URL"), 503, "memory_unavailable", "PostgreSQL"),
+            (ValueError("private model payload"), 502, "invalid_response", "log del servizio AI"),
+        ]
+        for error, status, code, expected in cases:
+            with self.subTest(code=code, exception=type(error).__name__):
+                class ErrorGraph:
+                    def compile(self, **_): return self
+                    async def aget_state(self, _): return SimpleNamespace(values={})
+                    async def astream(self, *_, **__):
+                        raise error
+                        yield  # Mantiene il protocollo di generatore asincrono.
+                with TestClient(create_app(Settings(), lambda s: ErrorGraph(), TestMemory)) as client:
+                    body = {"query": "Ciao", "thread_id": "diagnostic-errors"}
+                    with self.assertLogs("circuit_ai.api.server", level="ERROR"):
+                        response = client.post("/api/chat", json=body)
+                        stream = client.post("/api/chat/stream", json=body)
+                    self.assertEqual(response.status_code, status)
+                    event = json.loads(stream.text.splitlines()[-1])
+                    self.assertEqual(event["event"], "error")
+                    self.assertEqual(event["data"]["code"], code)
+                    self.assertEqual(event["data"]["message"], response.json()["detail"])
+                    self.assertIn(expected, event["data"]["message"])
+                    self.assertNotIn("private", response.text + stream.text)
 
     def test_local_http_adapter_sends_schemas_and_parses_structured_reply(self):
         requests = []
@@ -391,10 +450,10 @@ class ApiTests(unittest.TestCase):
             thread.join(timeout=2)
 
     def test_schema_fields_are_described_and_constraints_enforced(self):
-        import schemas
+        import circuit_ai.contracts.shared as schemas
         from pydantic import BaseModel
         for cls in vars(schemas).values():
-            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == "schemas":
+            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == 'circuit_ai.contracts.shared':
                 for name, field in cls.model_fields.items():
                     self.assertTrue(field.description, f"{cls.__name__}.{name}")
         for cls, args in [(ComponentInput, {"componentId": ""}), (NodeInput, {"nodeId": ""}),

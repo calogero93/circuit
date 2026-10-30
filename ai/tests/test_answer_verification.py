@@ -9,18 +9,18 @@ from unittest.mock import patch
 from langchain_core.messages import AIMessage
 from pydantic import ValidationError
 
-from answer_contracts import NumericAnswer
-from answer_verifier import extract_inventory, verify_answer
-from config import Settings
-from dataset import TEXTBOOK_DIR, load_dataset
-from graph import validate_answer
-from nli_verifier import LocalNLI, explanation_checks, semantic_status, sentences
-from numeric_verification import aggregate, mentions, validate_numeric_results, verify_numbers
-from prepare_nli import FILES, MODEL, REVISION, prepare
-from schemas import SubmitAnswer, submit_answer_tool
-from verification_schemas import ExplanationReference, NliCheck, NliScores, ResponseInventory
-from verification_references import load_references
-from verify_judge import probe_input
+from circuit_ai.contracts.answer import NumericAnswer
+from circuit_ai.verification.answers import extract_inventory, verify_answer
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import TEXTBOOK_DIR, load_dataset
+from circuit_ai.agent.graph import validate_answer
+from circuit_ai.nli.classifier import LocalNLI, explanation_checks, semantic_status, sentences
+from circuit_ai.verification.numbers import aggregate, mentions, validate_numeric_results, verify_numbers
+from circuit_ai.nli.prepare import FILES, MODEL, REVISION, prepare
+from circuit_ai.contracts.shared import SubmitAnswer, submit_answer_tool
+from circuit_ai.contracts.verification import ExplanationReference, NliCheck, NliScores, ResponseInventory
+from circuit_ai.verification.references import load_references
+from circuit_ai.evaluation.probes import probe_input
 
 
 BUNDLE = load_dataset(TEXTBOOK_DIR)
@@ -180,12 +180,12 @@ class NliTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'etichette'): LocalNLI(d)
 
     def test_prepare_reuses_hash_verified_files_without_network(self):
-        from experiments import file_digest
+        from circuit_ai.evaluation.experiments import file_digest
         with tempfile.TemporaryDirectory() as d:
             root=Path(d)
             for f in FILES: (root/f).write_text('test')
             (root/'source.json').write_text(json.dumps({'model':MODEL,'revision':REVISION,'files_sha256':{f:file_digest(root/f) for f in FILES}}))
-            with patch('prepare_nli.urlopen',side_effect=AssertionError('network')): self.assertEqual(prepare(root),root)
+            with patch('circuit_ai.nli.prepare.urlopen',side_effect=AssertionError('network')): self.assertEqual(prepare(root),root)
             (root/'model.onnx').write_text('modified')
             with self.assertRaises(ValueError): prepare(root)
         with self.assertRaises(ValueError): prepare('/tmp/unused-nli',revision='main')

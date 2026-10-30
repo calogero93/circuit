@@ -140,6 +140,11 @@ select {
   font-weight: 700;
 }
 
+.playback-lag {
+  font-size: 12px;
+  color: var(--accent);
+}
+
 /* --------------------------------------------------------------- layout */
 .main {
   flex: 1;

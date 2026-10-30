@@ -10,7 +10,7 @@ import { simController } from '../viz/controller.ts';
 import { getLesson } from '../lessons/data.ts';
 import type { SimResult } from '../engine/simulator.ts';
 
-// Catalogo generato dagli schemi Pydantic: ai/export_schemas.py.
+// Catalogo generato dagli schemi Pydantic: ai/circuit_ai/tools/export_schemas.py.
 export { TOOL_DEFINITIONS } from './contracts.ts';
 
 type Json = Record<string, unknown>;

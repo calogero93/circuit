@@ -23,8 +23,12 @@ cp .env.example .env     # configura LLM_BASE_URL e LLM_MODEL
 docker compose up -d --wait postgres
 cd ai
 uv sync --extra dev
-uv run python main.py   # FastAPI su http://127.0.0.1:8080
+uv run python -m circuit_ai   # FastAPI su http://127.0.0.1:8080
 ```
+
+Il tutor usa LM Studio su `http://127.0.0.1:1235/v1` per default; imposta
+`LLM_BASE_URL` se la porta è diversa. Dopo modifiche alla configurazione Python
+riavvia il servizio AI.
 
 In un altro terminale, dalla radice: `npm run tool-bridge`. Il browser si
 collega automaticamente al relay tramite il proxy WebSocket di Vite. Il tutor
@@ -111,10 +115,10 @@ avvio e limiti sono in [`ai/README.md`](ai/README.md#verifica-con-output-struttu
 | Modello e componenti | [`src/model/`](src/model/), [`src/library/`](src/library/) | Circuito, compilazione dei fili in nodi elettrici, modelli dei dispositivi e formule. |
 | Simulazione | [`src/engine/`](src/engine/), [`controller.ts`](src/viz/controller.ts) | Soluzioni numeriche, stato delle sessioni, campioni e confronto A/B. |
 | Interfaccia e didattica | [`src/editor/`](src/editor/), [`src/viz/`](src/viz/), [`src/math/`](src/math/), [`src/viz3d/`](src/viz3d/), [`src/lessons/`](src/lessons/), [`src/scenarios/`](src/scenarios/) | Editor, strumenti, visualizzazioni, lezioni e scenari salvabili. |
-| Tutor e contratti | [`ai/main.py`](ai/main.py), [`ai/graph.py`](ai/graph.py), [`ai/schemas.py`](ai/schemas.py), [`ai/config.py`](ai/config.py) | HTTP, orchestrazione, schemi di input/output e configurazione del modello. |
-| Collegamento ai tool live | [`src/ai/`](src/ai/), [`tool-bridge.mjs`](server/tool-bridge.mjs), [`tool_bridge.py`](ai/modules/tool_bridge.py), [`ai/tools.py`](ai/tools.py) | Registrazione delle schede, RPC WebSocket, esecuzione browser e validazione dei risultati. |
-| Memoria e contesto | [`ai/memory.py`](ai/memory.py), [`ai/context.py`](ai/context.py) | Checkpoint PostgreSQL, note fra conversazioni, budget e riassunti del contesto. |
-| Valutazione offline | [`ai/evals/`](ai/evals/), [`ai/evaluate.py`](ai/evaluate.py), [`ai/evaluators.py`](ai/evaluators.py), [`ai/judge.py`](ai/judge.py), [`ai/calibrate_judge.py`](ai/calibrate_judge.py) | Dataset, esperimenti ripetibili, controlli deterministici, judge locale e confronto con etichette umane. |
+| Tutor e contratti | [`ai/circuit_ai/api/server.py`](ai/circuit_ai/api/server.py), [`ai/circuit_ai/agent/graph.py`](ai/circuit_ai/agent/graph.py), [`ai/circuit_ai/contracts/shared.py`](ai/circuit_ai/contracts/shared.py), [`ai/circuit_ai/core/config.py`](ai/circuit_ai/core/config.py) | HTTP, orchestrazione, schemi di input/output e configurazione del modello. |
+| Collegamento ai tool live | [`src/ai/`](src/ai/), [`tool-bridge.mjs`](server/tool-bridge.mjs), [`tool_bridge.py`](ai/circuit_ai/integrations/bridge.py), [`ai/circuit_ai/tools/catalog.py`](ai/circuit_ai/tools/catalog.py) | Registrazione delle schede, RPC WebSocket, esecuzione browser e validazione dei risultati. |
+| Memoria e contesto | [`ai/circuit_ai/memory/postgres.py`](ai/circuit_ai/memory/postgres.py), [`ai/circuit_ai/agent/context.py`](ai/circuit_ai/agent/context.py) | Checkpoint PostgreSQL, note fra conversazioni, budget e riassunti del contesto. |
+| Valutazione offline | [`ai/evals/`](ai/evals/), [`ai/circuit_ai/evaluation/runner.py`](ai/circuit_ai/evaluation/runner.py), [`ai/circuit_ai/evaluation/checks.py`](ai/circuit_ai/evaluation/checks.py), [`ai/circuit_ai/evaluation/judge.py`](ai/circuit_ai/evaluation/judge.py), [`ai/circuit_ai/evaluation/calibration.py`](ai/circuit_ai/evaluation/calibration.py) | Dataset, esperimenti ripetibili, controlli deterministici, judge locale e confronto con etichette umane. |
 
 ### Flusso della simulazione live
 
@@ -124,8 +128,8 @@ flowchart TD
     Compile["Compila la netlist e sceglie il motore"]
     Session["Crea o aggiorna la sessione; eventuale sessione A/B"]
     Frame["Callback requestAnimationFrame"]
-    Running{"Simulazione in esecuzione?"}
-    Step["Avanza le sessioni nel budget del frame"]
+    Running{"In esecuzione e scheda visibile?"}
+    Step["Accumula tempo reale × velocità; esegue i passi maturati nel budget del frame"]
     Paused["Mantiene il risultato; DC iniziale se necessario"]
     Result["Pubblica SimResult, campioni e diagnostica"]
     Render["Aggiorna strumenti e visualizzazioni"]
@@ -143,6 +147,16 @@ seconda sessione con il circuito modificato.
 
 Il passo numerico e il frame grafico hanno ritmi diversi: il controller può
 eseguire più passi per callback e il solver analogico usa sottopassi adattivi.
+La velocità predefinita è **1×**: un secondo reale corrisponde a un secondo
+simulato, se il calcolo riesce a tenere il ritmo. Il selettore accanto a
+Esegui/Pausa offre **0,25×, 0,5×, 1×, 2×, 5× e 10×**, indipendenti da Δt.
+Per un clock a **0,1 Hz** ciascun livello High/Low dura cinque secondi a 1×;
+nei campi numerici è ammessa anche la virgola decimale (`0,1`).
+
+Il controller mantiene il budget di 8 ms per frame. Se il calcolo è troppo lento,
+mostra il ritardo accumulato senza saltare passi fisici. Pausa e scheda in
+background sospendono il live; alla ripresa non viene recuperato il tempo della
+sospensione. Gli scenari salvano la velocità; quelli precedenti partono a 1×.
 Gli strumenti leggono risultati e diagnostica pubblicati dal controller.
 `runDC` e `runTransient`, richiesti dal tutor, effettuano analisi dedicate;
 la transitoria richiesta via tool usa una sessione separata da quella live.
@@ -229,11 +243,11 @@ Il nuovo [`dataset da 100 record`](ai/evals/baseline/dataset.v1.json) amplia
 questa prova con 30 esercizi svolti, 30 circuiti realmente eseguiti con ngspice,
 20 domande teoriche e 20 casi alterati, ambigui o difficili. Sono 90 domande per
 il tutor e 10 controlli negativi del verificatore, con fonti e famiglie tracciate.
-Il runner [`run_baseline.py`](ai/run_baseline.py) usa il grafo con tool offline
+Il runner [`circuit_ai/baseline/runner.py`](ai/circuit_ai/baseline/runner.py) usa il grafo con tool offline
 di calcolo e simulazione; NLI specializzato gira su CPU/RAM, direttamente o
 su localhost, mentre Gemma resta in LM Studio. Nessun retrieval è richiesto.
 Comandi e limiti: [`dataset e ngspice`](ai/README.md#dataset-da-100-record-e-ngspice).
-[`ai/verify_judge.py`](ai/verify_judge.py) verifica il judge con risposte corrette
+[`ai/circuit_ai/evaluation/probes.py`](ai/circuit_ai/evaluation/probes.py) verifica il judge con risposte corrette
 brevi e spiegate e varianti con errori controllati, mantenendo aspettative e
 mutazioni nascoste al modello. Questa verifica rimane distinta dalla calibrazione
 umana e dall'approvazione della baseline.

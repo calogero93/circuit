@@ -38,7 +38,7 @@ class DocumentIndexTests(unittest.TestCase):
         models.Distance = SimpleNamespace(COSINE="cosine")
         sentence = ModuleType("sentence_transformers")
         sentence.SentenceTransformer = Embedder
-        path = Path(__file__).resolve().parents[1] / "modules/vectorstore.py"
+        path = Path(__file__).resolve().parents[1] / "circuit_ai/rag/vectorstore.py"
         spec = importlib.util.spec_from_file_location("index_under_test", path)
         module = importlib.util.module_from_spec(spec)
         with patch.dict(sys.modules, {"qdrant_client": qdrant, "qdrant_client.models": models, "sentence_transformers": sentence}):

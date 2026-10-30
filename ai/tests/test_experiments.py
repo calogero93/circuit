@@ -10,11 +10,11 @@ from unittest.mock import patch
 import httpx
 from langchain_core.messages import AIMessage
 
-from config import Settings, create_model
-from context import record_call
-from evaluate import CASES, run_experiment
-from experiments import create_manifest, new_report, source_snapshot, validate_run_identity
-from schemas import EvaluationReport, EvaluationResult, ModelObservation, TurnMetrics
+from circuit_ai.core.config import Settings, create_model
+from circuit_ai.agent.context import record_call
+from circuit_ai.evaluation.runner import CASES, run_experiment
+from circuit_ai.evaluation.experiments import create_manifest, new_report, source_snapshot, validate_run_identity
+from circuit_ai.contracts.shared import EvaluationReport, EvaluationResult, ModelObservation, TurnMetrics
 
 
 class ManifestTests(unittest.TestCase):
@@ -30,8 +30,8 @@ class ManifestTests(unittest.TestCase):
     def test_model_generation_prompt_contracts_and_code_change_identity(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "ai").mkdir()
-            path = root / "ai/graph.py"
+            (root / "ai/circuit_ai/agent").mkdir(parents=True)
+            path = root / "ai/circuit_ai/agent/graph.py"
             path.write_text("originale")
             base = create_manifest(Settings(), CASES[:1], root=root)
             for settings in [replace(Settings(), model="altro-modello"), replace(Settings(), temperature=.5),
@@ -39,9 +39,9 @@ class ManifestTests(unittest.TestCase):
                              replace(Settings(), reasoning_effort="none"),
                              replace(Settings(), model_quantization="Q8_0")]:
                 self.assertNotEqual(base.configuration_id, create_manifest(settings, CASES[:1], root=root).configuration_id)
-            with patch("experiments.SYSTEM_PROMPT", "prompt diverso"):
+            with patch('circuit_ai.evaluation.experiments.SYSTEM_PROMPT', "prompt diverso"):
                 self.assertNotEqual(base.configuration_id, create_manifest(Settings(), CASES[:1], root=root).configuration_id)
-            with patch("experiments.tool_schemas", return_value={"nuovo": {}}):
+            with patch('circuit_ai.evaluation.experiments.tool_schemas', return_value={"nuovo": {}}):
                 self.assertNotEqual(base.configuration_id, create_manifest(Settings(), CASES[:1], root=root).configuration_id)
             path.write_text("modificato ma non committato")
             self.assertNotEqual(base.configuration_id, create_manifest(Settings(), CASES[:1], root=root).configuration_id)
@@ -156,8 +156,8 @@ class ReportTests(unittest.IsolatedAsyncioTestCase):
     async def test_source_change_invalidates_experiment(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "ai").mkdir()
-            path = root / "ai/graph.py"
+            (root / "ai/circuit_ai/agent").mkdir(parents=True)
+            path = root / "ai/circuit_ai/agent/graph.py"
             path.write_text("prima")
             report = new_report(create_manifest(Settings(), CASES[:1], root=root))
             self.assertIsNone(validate_run_identity(report, root))

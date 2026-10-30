@@ -7,6 +7,7 @@ import { formatSI } from '../model/units.ts';
 import { replaceCircuit } from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
 import { simController, useSimTick } from '../viz/controller.ts';
+import { PLAYBACK_SPEEDS, isPlaybackSpeed } from '../viz/playback.ts';
 import {
   applyScenario,
   captureScenario,
@@ -28,7 +29,9 @@ export function Toolbar() {
   const execute = useStudio((s) => s.execute);
   const timestep = useStudio((s) => s.timestep);
   const setTimestep = useStudio((s) => s.setTimestep);
-  const { time, converged } = useSimTick();
+  const playbackSpeed = useStudio((s) => s.playbackSpeed);
+  const setPlaybackSpeed = useStudio((s) => s.setPlaybackSpeed);
+  const { time, converged, playbackLag } = useSimTick();
   const diagnostics = simController.frame?.result.diagnostics;
 
   const circuitFile = useRef<HTMLInputElement>(null);
@@ -155,6 +158,16 @@ export function Toolbar() {
         <button className={`btn${running ? ' on' : ''}`} onClick={() => setRunning(!running)}>
           {running ? '‖ Pausa' : '▶ Esegui'}
         </button>
+        <select aria-label="Velocità simulazione" value={playbackSpeed}
+          title="Velocità rispetto al tempo reale: 1× = un secondo simulato per secondo reale. In background la simulazione è sospesa."
+          onChange={(e) => {
+            const speed = Number(e.target.value);
+            if (isPlaybackSpeed(speed)) setPlaybackSpeed(speed);
+          }}>
+          {PLAYBACK_SPEEDS.map((speed) => (
+            <option key={speed} value={speed}>{String(speed).replace('.', ',')}×{speed === 1 ? ' (tempo reale)' : ''}</option>
+          ))}
+        </select>
         <select value={timestep} onChange={(e) => setTimestep(Number(e.target.value))} title="Intervallo dei campioni; il solver analogico usa sottopassi adattivi">
           {[1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3].map((dt) => (
             <option key={dt} value={dt}>
@@ -166,6 +179,12 @@ export function Toolbar() {
           title={diagnostics?.warnings.join('\n') || 'Simulazione con controllo di convergenza e sottopassi adattivi'}>
           {converged ? `t = ${formatSI(time, 's', 3)}` : '⚠ non converge'}
         </span>
+        {running && converged && playbackLag > 0.1 * playbackSpeed && (
+          <span className="playback-lag" role="status"
+            title="Il calcolo è più lento della velocità richiesta. I passi rimasti vengono recuperati senza saltare stati fisici.">
+            In ritardo: {formatSI(playbackLag, 's', 2)} simulati
+          </span>
+        )}
       </div>
 
       <div className="tool-group">

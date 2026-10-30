@@ -2,11 +2,11 @@ import unittest
 
 from pydantic import BaseModel
 
-import calculation_schemas
-from calculation_engine import arithmetic
-from calculation_tools import calculation_tools, execute
-from config import Settings
-from tools import make_tools, tool_schemas
+import circuit_ai.contracts.calculations as calculation_schemas
+from circuit_ai.tools.engine import arithmetic
+from circuit_ai.tools.physics import calculation_tools, execute
+from circuit_ai.core.config import Settings
+from circuit_ai.tools.catalog import make_tools, tool_schemas
 
 
 def q(value, unit):
@@ -57,7 +57,7 @@ class CalculationTests(unittest.TestCase):
 
     def test_all_fields_are_described_and_tools_have_public_schemas(self):
         for cls in vars(calculation_schemas).values():
-            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == "calculation_schemas":
+            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == 'circuit_ai.contracts.calculations':
                 for name, field in cls.model_fields.items():
                     self.assertTrue(field.description, f"{cls.__name__}.{name}")
         self.assertIn("power_from_current", tool_schemas())

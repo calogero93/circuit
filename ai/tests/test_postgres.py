@@ -7,9 +7,9 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 
-from config import Settings
-from graph import create_graph
-from main import create_app
+from circuit_ai.core.config import Settings
+from circuit_ai.agent.graph import create_graph
+from circuit_ai.api.server import create_app
 from test_tutor import FakeModel, answer
 
 

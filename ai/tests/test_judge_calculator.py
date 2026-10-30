@@ -3,12 +3,12 @@ from decimal import ROUND_DOWN, localcontext
 
 from langchain_core.messages import AIMessage
 
-from config import Settings
-from dataset import TEXTBOOK_DIR, load_dataset
-from judge import calculator_tool, judge_answer
-from judge_calculator import calculate
-from schemas import CalculatorInput
-from verify_judge import probe_input
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import TEXTBOOK_DIR, load_dataset
+from circuit_ai.evaluation.judge import calculator_tool, judge_answer
+from circuit_ai.tools.calculator import calculate
+from circuit_ai.contracts.shared import CalculatorInput
+from circuit_ai.evaluation.probes import probe_input
 from test_evaluators import judge_reply
 from test_tutor import FakeModel
 

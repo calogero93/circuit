@@ -15,6 +15,7 @@ import type { SimResult, Simulator, TransientSession } from '../engine/simulator
 import { useStudio, type ABConfig, type Probe } from '../store/studio.ts';
 import { pinKey } from '../model/types.ts';
 import { vsinDef } from '../library/sources.ts';
+import { PlaybackClock, type PlaybackSpeed } from './playback.ts';
 
 export interface BodePoint {
   f: number;
@@ -36,10 +37,11 @@ export interface ScopeSample {
 }
 
 /** Tick a bassa frequenza per i consumer React (colori fili, valori vivi). */
-export const useSimTick = create<{ tick: number; time: number; converged: boolean }>(() => ({
+export const useSimTick = create<{ tick: number; time: number; converged: boolean; playbackLag: number }>(() => ({
   tick: 0,
   time: 0,
   converged: true,
+  playbackLag: 0,
 }));
 
 /** Applica la modifica A/B al circuito (per la sessione fantasma). */
@@ -85,7 +87,7 @@ export function applyAB(circuit: Circuit, ab: ABConfig): Circuit {
 const MAX_SAMPLES = 3000;
 const FRAME_BUDGET_MS = 8;
 
-class SimController {
+export class SimController {
   revision = 0;
   readonly simulator: Simulator = new AnalogSimulator();
   private digitalSim: Simulator = new DigitalSimulator();
@@ -117,14 +119,22 @@ class SimController {
   private stepCount = 0;
   private lastTickPush = 0;
   private raf = 0;
+  private unsubscribe: (() => void) | null = null;
+  private clock = new PlaybackClock();
+  private running = true;
+  private playbackSpeed: PlaybackSpeed = 1;
+  private visibilityChanged = () => this.clock.reset(performance.now());
 
   get time(): number {
     return this.session?.time ?? 0;
   }
 
   start(): void {
+    if (this.unsubscribe) return;
     this.sync();
-    useStudio.subscribe(() => this.sync());
+    this.clock.reset(performance.now());
+    this.unsubscribe = useStudio.subscribe(() => this.sync());
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.visibilityChanged);
     const loop = () => {
       this.advance();
       this.raf = requestAnimationFrame(loop);
@@ -134,6 +144,10 @@ class SimController {
 
   stop(): void {
     cancelAnimationFrame(this.raf);
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.visibilityChanged);
+    this.clock.reset(performance.now());
   }
 
   /** Punto di lavoro DC on-demand (probe, tool AI). */
@@ -152,6 +166,12 @@ class SimController {
     const dtChanged = s.timestep !== this.dt;
     const abChanged = s.ab !== this.ab || (s.abGhost && s.ab !== null) !== this.ghostOn;
     const probesChanged = s.probes !== this.probes;
+    const playbackChanged = s.running !== this.running || s.playbackSpeed !== this.playbackSpeed;
+    this.running = s.running;
+    this.playbackSpeed = s.playbackSpeed;
+    if (playbackChanged || reset || circuitChanged || temperatureChanged || dtChanged || abChanged) {
+      this.clock.reset(performance.now());
+    }
     const spanChanged = this.recomputeDecimation(s.scopeTimespan, s.timestep);
     const scopeModeChanged = s.scopeMode !== this.scopeMode;
     this.scopeMode = s.scopeMode;
@@ -332,16 +352,32 @@ class SimController {
 
   private advance(): void {
     const s = useStudio.getState();
-    if (!this.session || !this.compiled || this.compiled.items.length === 0) return;
     const start = performance.now();
+    const active = s.running && (typeof document === 'undefined' || !document.hidden);
+    this.clock.update(start, active, s.playbackSpeed);
+    if (!this.session || !this.compiled || this.compiled.items.length === 0) return;
     let result: SimResult | null = null;
     let ghost: SimResult | null = null;
 
-    if (s.running) {
-      while (performance.now() - start < FRAME_BUDGET_MS) {
+    if (active) {
+      while (this.clock.ready(this.dt) && performance.now() - start < FRAME_BUDGET_MS) {
+        const previousTime = this.session.time;
+        const previousStates = this.ghostSession ? this.session.states() : undefined;
         result = this.session.step();
         if (!result.converged) break;
-        if (this.ghostSession) ghost = this.ghostSession.step();
+        if (this.ghostSession) {
+          ghost = this.ghostSession.step();
+          if (!ghost.converged) {
+            // La coppia A/B è un avanzamento unico: annulla anche il principale.
+            this.session = this.simFor(s.circuit).transient(this.compiled, {
+              dt: this.dt, t0: previousTime, initialStates: previousStates,
+              ambientTemperature: this.ambientTemperature,
+            });
+            result = { ...result, time: previousTime, converged: false, diagnostics: ghost.diagnostics };
+            break;
+          }
+        }
+        this.clock.consume(this.dt);
         this.stepCount += 1;
         if (this.stepCount % this.decimation === 0) this.pushSample(result, ghost);
       }
@@ -367,6 +403,7 @@ class SimController {
         tick: t.tick + 1,
         time: this.session?.time ?? 0,
         converged: this.frame?.result.converged ?? true,
+        playbackLag: active ? Math.max(0, this.clock.pendingSeconds - this.dt) : 0,
       }));
     }
   }

@@ -6,6 +6,7 @@
 import { circuitFromJSON, circuitToJSON, type CircuitJSON } from '../model/serialize.ts';
 import type { PinRef } from '../model/types.ts';
 import { PROBE_COLORS, useStudio, type ABConfig, type RightTab } from '../store/studio.ts';
+import { isPlaybackSpeed, type PlaybackSpeed } from '../viz/playback.ts';
 
 export interface Scenario {
   version: 1;
@@ -16,6 +17,7 @@ export interface Scenario {
   scopeTimespan: number;
   scopeMode: 'time' | 'bode';
   timestep: number;
+  playbackSpeed?: PlaybackSpeed;
   ab: ABConfig | null;
   abGhost: boolean;
   lessonId: string | null;
@@ -36,6 +38,7 @@ export function captureScenario(name: string): Scenario {
     scopeTimespan: s.scopeTimespan,
     scopeMode: s.scopeMode,
     timestep: s.timestep,
+    playbackSpeed: s.playbackSpeed,
     ab: s.ab,
     abGhost: s.abGhost,
     lessonId: s.lessonId,
@@ -79,6 +82,7 @@ export function applyScenario(raw: unknown): boolean {
     scopeTimespan: typeof sc.scopeTimespan === 'number' && sc.scopeTimespan > 0 ? sc.scopeTimespan : 0.1,
     scopeMode: sc.scopeMode === 'bode' ? 'bode' : 'time',
     timestep: typeof sc.timestep === 'number' && sc.timestep > 0 ? sc.timestep : 1e-4,
+    playbackSpeed: isPlaybackSpeed(sc.playbackSpeed) ? sc.playbackSpeed : 1,
     ab:
       sc.ab && typeof sc.ab === 'object' && circuit.components.some((c) => c.id === sc.ab!.componentId)
         ? sc.ab

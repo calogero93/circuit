@@ -8,13 +8,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from config import Settings
-from dataset import TEXTBOOK_DIR, load_dataset, select_cases, validate_cases
-from evaluate import evaluate
-from evaluation_sources import verify_publications
-from experiments import ROOT, create_manifest, new_report, validate_run_identity
-from judge import local_judge_settings
-from schemas import JudgeInput
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import TEXTBOOK_DIR, load_dataset, select_cases, validate_cases
+from circuit_ai.evaluation.runner import evaluate
+from circuit_ai.evaluation.sources import verify_publications
+from circuit_ai.evaluation.experiments import ROOT, create_manifest, new_report, validate_run_identity
+from circuit_ai.evaluation.judge import local_judge_settings
+from circuit_ai.contracts.shared import JudgeInput
 from test_evaluators import CalculatorJudgeFake, judge_reply
 from test_tutor import FakeModel, answer, call
 
@@ -113,8 +113,8 @@ class TextbookDatasetTests(unittest.TestCase):
             pdf = root / source.publication.pdf_path
             pdf.parent.mkdir(parents=True)
             pdf.write_bytes(b"A controlled document")
-            with patch("evaluation_sources.shutil.which", return_value="pdftotext"), \
-                    patch("evaluation_sources.subprocess.run") as extract:
+            with patch('circuit_ai.evaluation.sources.shutil.which', return_value="pdftotext"), \
+                    patch('circuit_ai.evaluation.sources.subprocess.run') as extract:
                 with self.assertRaisesRegex(ValueError, "PDF modificato"):
                     verify_publications({source.id: source}, root)
                 extract.assert_not_called()
@@ -122,7 +122,7 @@ class TextbookDatasetTests(unittest.TestCase):
                 extract.return_value = subprocess.CompletedProcess([], 0, stdout="A different exercise")
                 with self.assertRaisesRegex(ValueError, "Estratto assente"):
                     verify_publications({source.id: source}, root)
-            with patch("evaluation_sources.shutil.which", return_value=None):
+            with patch('circuit_ai.evaluation.sources.shutil.which', return_value=None):
                 with self.assertRaisesRegex(ValueError, "Poppler"):
                     verify_publications({source.id: source}, root)
 

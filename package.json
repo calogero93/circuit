@@ -13,7 +13,7 @@
     "test": "node --test \"tests/engine/*.test.ts\"",
     "test:e2e": "playwright test",
     "tool-bridge": "node --env-file-if-exists=.env server/tool-bridge.mjs",
-    "ai": "cd ai && uv run python main.py",
+    "ai": "cd ai && uv run python -m circuit_ai",
     "validate:spice": "node scripts/validate-spice.ts"
   },
   "dependencies": {

@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from experiments import digest
-from verify_nli import build_jobs, load_controls, run
+from circuit_ai.evaluation.experiments import digest
+from circuit_ai.nli.runner import build_jobs, load_controls, run
 from test_nli_context import Classifier
 
 
@@ -64,7 +64,7 @@ class NliRunnerTests(unittest.TestCase):
         suite.cases = [suite.cases[0]]
         with tempfile.TemporaryDirectory() as tmp:
             p = Path(tmp) / 'report.json'
-            with patch('verify_nli.load_controls', return_value=(suite, dataset, identity)):
+            with patch('circuit_ai.nli.runner.load_controls', return_value=(suite, dataset, identity)):
                 result = run(Model(), output=p)
             self.assertEqual(result['status'], 'completed')
             self.assertFalse(result['human_calibrated'])
@@ -75,8 +75,8 @@ class NliRunnerTests(unittest.TestCase):
                 run(Model(), output=p)
 
     def test_changed_numeric_references_are_rejected(self):
-        from verify_nli import _baseline_payload
-        from schemas import SubmitAnswer
+        from circuit_ai.nli.runner import _baseline_payload
+        from circuit_ai.contracts.shared import SubmitAnswer
         suite, dataset, identity = load_controls()
         case = next(c for c in dataset.cases if c.numbers)
         payload = _baseline_payload(case, SubmitAnswer(response='Risposta', kind='theory',
@@ -92,8 +92,8 @@ class NliRunnerTests(unittest.TestCase):
 
     def test_new_schema_fields_are_described(self):
         from pydantic import BaseModel
-        import verification_schemas
+        import circuit_ai.contracts.verification as verification_schemas
         for cls in vars(verification_schemas).values():
-            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == 'verification_schemas':
+            if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == 'circuit_ai.contracts.verification':
                 for name, field in cls.model_fields.items():
                     self.assertTrue(field.description, f'{cls.__name__}.{name}')

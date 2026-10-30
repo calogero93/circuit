@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import type { Circuit, ParamValue, PinRef, Rotation } from '../model/types.ts';
 import { emptyCircuit } from '../model/types.ts';
 import type { CircuitCommand } from './commands.ts';
+import { isPlaybackSpeed, type PlaybackSpeed } from '../viz/playback.ts';
 
 export type Tool =
   | { kind: 'select' }
@@ -53,6 +54,7 @@ export interface StudioState {
   scopeTimespan: number; // secondi visualizzati
   scopeMode: 'time' | 'bode';
   running: boolean;
+  playbackSpeed: PlaybackSpeed; // secondi simulati per secondo reale attivo
   timestep: number; // dt della transitoria
   ab: ABConfig | null;
   abGhost: boolean; // confronto A/B attivo (traccia fantasma)
@@ -86,6 +88,7 @@ export interface StudioState {
   setScopeTimespan(s: number): void;
   setScopeMode(mode: 'time' | 'bode'): void;
   setRunning(running: boolean): void;
+  setPlaybackSpeed(speed: PlaybackSpeed): void;
   setTimestep(dt: number): void;
   setAB(ab: ABConfig | null): void;
   setABGhost(on: boolean): void;
@@ -114,6 +117,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   scopeTimespan: 0.1,
   scopeMode: 'time',
   running: true,
+  playbackSpeed: 1,
   timestep: 1e-4,
   ab: null,
   abGhost: false,
@@ -204,6 +208,9 @@ export const useStudio = create<StudioState>((set, get) => ({
   setScopeTimespan: (s) => set({ scopeTimespan: s }),
   setScopeMode: (scopeMode) => set({ scopeMode }),
   setRunning: (running) => set({ running }),
+  setPlaybackSpeed: (playbackSpeed) => {
+    if (isPlaybackSpeed(playbackSpeed)) set({ playbackSpeed });
+  },
   setTimestep: (dt) => set({ timestep: dt }),
   setAB: (ab) => set({ ab, abGhost: ab ? get().abGhost : false }),
   setABGhost: (on) => set({ abGhost: on }),

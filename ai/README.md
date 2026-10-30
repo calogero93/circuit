@@ -8,6 +8,43 @@ Architettura complessiva, flusso della simulazione e diagramma dei nodi LangGrap
 [`README principale`](../README.md#architettura). Qui sono descritti avvio,
 contratti, memoria e valutazione del servizio AI.
 
+## Struttura del codice
+
+Il codice Python è nel package `circuit_ai`, organizzato per responsabilità:
+
+```text
+ai/
+├── circuit_ai/
+│   ├── __main__.py       # avvio del tutor
+│   ├── api/              # FastAPI e stream HTTP
+│   ├── core/             # configurazione e percorsi condivisi
+│   ├── agent/            # grafo, contesto e rendering delle risposte
+│   ├── contracts/        # schemi Pydantic per dominio
+│   ├── tools/            # catalogo, formule fisiche e calcolatore
+│   ├── integrations/     # bridge browser, topologia e ngspice
+│   ├── memory/           # checkpoint e note PostgreSQL
+│   ├── rag/              # estrazione, indice e ricerca documentale
+│   ├── evaluation/       # dataset, esperimenti, judge e calibrazione
+│   ├── baseline/         # costruzione e runner del dataset 100
+│   ├── verification/     # inventario e confronto delle risposte
+│   └── nli/              # classificatore, servizio e regressioni NLI
+├── evals/                # dati versionati, estratti e circuiti SPICE
+├── tests/                # test Python
+├── pyproject.toml
+└── uv.lock
+```
+
+I comandi Python documentati sotto si eseguono da `ai/` con `python -m`.
+`npm run ai`, dalla radice, avvia lo stesso servizio. I precedenti comandi
+`python main.py`, `python run_baseline.py` e `python verify_nli.py` diventano
+rispettivamente `python -m circuit_ai`, `python -m circuit_ai.baseline.runner`
+e `python -m circuit_ai.nli.runner`.
+
+Dataset, directory dei pesi, memoria e formati pubblici restano negli stessi
+percorsi. I manifesti registrano ricorsivamente i nuovi sorgenti del package:
+gli hash di configurazione cambiano per il refactoring, senza riscrivere i
+report storici o modificare i riferimenti numerici.
+
 ## Avvio
 
 Dalla radice:
@@ -17,12 +54,16 @@ cp .env.example .env
 docker compose up -d --wait postgres
 cd ai
 uv sync --extra dev
-uv run python main.py
+uv run python -m circuit_ai
 ```
 
 In altri terminali: `npm run tool-bridge` e `npm run dev`. Avvia anche il modello
 locale indicato da `LLM_BASE_URL` e `LLM_MODEL`. Vite inoltra `/api` a FastAPI e
 `/tool-bridge` al relay. In produzione configura gli stessi inoltri nel proxy.
+
+Il default del tutor è `http://127.0.0.1:1235/v1`, anche senza `.env`.
+Imposta `LLM_BASE_URL` se LM Studio usa un'altra porta; dopo una modifica alla
+configurazione o al codice Python riavvia `npm run ai` (il servizio non usa reload).
 
 Compose espone PostgreSQL 17 su `127.0.0.1:5433`, con volume persistente.
 `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_PORT` configurano il
@@ -32,15 +73,15 @@ I precedenti file SQLite restano intatti e non vengono importati automaticamente
 
 ## Contratti e flusso
 
-`schemas.py` contiene richieste HTTP, argomenti e risultati dei tool, risposta
+`circuit_ai/contracts/shared.py` contiene richieste HTTP, argomenti e risultati dei tool, risposta
 finale, contesto, riassunti, evidenze e metriche. I campi usano `Field(description=...)`,
-con unità, vincoli e significato dei valori. `tools.py` valida gli output del browser
+con unità, vincoli e significato dei valori. `circuit_ai/tools/catalog.py` valida gli output del browser
 prima che diventino evidenze. Gli errori sono restituiti al modello come
 `ToolResult(ok=false, error=...)`.
 
 Il modello riceve domanda e contesto serializzati da Pydantic; decide fra i tool
 operativi e `SubmitAnswer`. L'input finale del modello è `AnswerDraft`, in
-`answer_contracts.py`: `explanation`, `numeric_results`, `learning_notes` e
+`circuit_ai/contracts/answer.py`: `explanation`, `numeric_results`, `learning_notes` e
 `limitation`. La spiegazione contiene metodo, formule simboliche e ipotesi;
 i risultati numerici compaiono solo nei dati strutturati. I dati di ingresso
 possono essere citati se valore e unità sono presenti nella domanda o negli
@@ -48,12 +89,23 @@ ingressi tipizzati di un tool riuscito (anche quando la formula ha unità implic
 o nei parametri nominali comuni letti dal circuito nel turno attuale. Per
 sorgenti e passivi, le unità note seguono la libreria; nessuna unità viene
 inventata per parametri sconosciuti. Le misure non sono trattate come ingressi
-nominali. `answer_rendering.py`
+nominali. `circuit_ai/agent/rendering.py`
 li formatta nel testo a 12 cifre significative senza modificare il valore
 strutturato né usare il ground truth. Quantità numeriche duplicate nella
 spiegazione vengono rifiutate. Sono ammessi ID come R1, esponenti simbolici
 ed elenchi numerati. La corrispondenza di un ingresso con la domanda non
 certifica da sola il suo ruolo nella formula.
+
+Per ridurre i tentativi di correzione, il prompt live chiede una spiegazione
+qualitativa breve e tutti i valori richiesti, compresi i nominali, in
+`numeric_results`, distinguendone la provenienza in `context`. Il validatore
+mantiene la compatibilità con ingressi verificati nel testo; non accetta nuovi
+numeri o duplicati e restituisce la quantità precisa da correggere. Per la
+costante RC il tutor deve chiamare `calculate` con `R*C` e parametri unitari;
+una misura live disponibile non sostituisce questo calcolo.
+La costante algebrica della formula simbolica `1−exp(−t/τ)` nei blocchi
+matematici non è trattata come un risultato numerico. Il riconoscimento è
+circoscritto; non disabilita il controllo su percentuali, risultati o duplicati.
 
 Il server costruisce `kind`, `evidence_ids` e `uses_measurements` dalle chiamate
 riuscite del turno. `evidence_ids` elenca le fonti consultate: non è una prova
@@ -67,8 +119,8 @@ da soli la scelta dei parametri, la formula del calcolatore generico o la
 correttezza di ogni frase. `SubmitAnswer` rimane il contratto pubblico HTTP e
 il reader dei report storici, con gli stessi campi di prima.
 
-`calculation_schemas.py` descrive tutti gli argomenti fisici con Pydantic;
-`calculation_tools.py` implementa sei strumenti con formule fisse nel software:
+`circuit_ai/contracts/calculations.py` descrive tutti gli argomenti fisici con Pydantic;
+`circuit_ai/tools/physics.py` implementa sei strumenti con formule fisse nel software:
 Ohm (`resistor_current`), potenza da tensione o corrente DC/RMS
 (`power_from_voltage`, `power_from_current`), serie (`series_voltage_drop`),
 partitore caricato (`loaded_divider_voltage`) e sinusoide con fase iniziale e
@@ -91,7 +143,7 @@ Le risposte teoriche non richiedono un browser connesso.
 rigenera il catalogo browser dalla stessa fonte Pydantic:
 
 ```sh
-uv run python export_schemas.py
+uv run python -m circuit_ai.tools.export_schemas
 ```
 
 ## Memoria e budget
@@ -109,6 +161,13 @@ vengono riassunti dal modello in `ConversationSummary`. Si conservano fino a
 il turno corrente e le coppie tool-call/risposta rimangono interi. I messaggi
 riassunti sono rimossi dal contesto attivo e il riassunto è persistito. I vecchi
 checkpoint continuano a essere conservati nel database.
+
+La compattazione riserva spazio al contratto finale e al calcolatore, senza
+forzare un riassunto soltanto per esporre l'intero catalogo. Se tutti gli schemi
+non entrano, il grafo riduce i tool proposti dando priorità a `calculate` e alle
+letture mirate del circuito. Non passa automaticamente al solo finale prima
+di aver lasciato la possibilità di eseguire un calcolo necessario. Limite dei
+round e revisioni incoerenti continuano a imporre il finale.
 
 `AI_CONTEXT_MAX_TOKENS` (default 12000) limita il prompt stimato, compresi gli
 schemi dei tool. Anche le richieste di riassunto rispettano il budget. I risultati
@@ -139,19 +198,38 @@ strutturato, traccia, evidenze, prima revisione osservata, coerenza e metriche.
 `tool_start`, `tool_end`, `summary`, `final` o `error`. La UI mostra i tool mentre
 lavorano e il testo solo dopo la validazione finale; non mostra frammenti JSON
 del modello. Il client rileva anche una chiusura senza evento finale.
+`AI_REQUEST_TIMEOUT` è il budget dell'intero turno (default **300 secondi**),
+inclusi lock, riassunti, inferenze, tool e memoria. Le intestazioni dello stream
+comunicano questo limite con `X-Tutor-Timeout-Ms`: la UI aggiunge cinque secondi
+per ricevere l'evento finale/errore, invece di troncare sempre a 125 secondi.
+L'attesa iniziale delle intestazioni ha un limite separato di dieci secondi.
+La chat mostra la fase corrente e consente di interrompere la richiesta.
+Il log del servizio registra durata delle chiamate LLM e motivi dei rifiuti
+di `SubmitAnswer`; allungare il timeout non rende valida una risposta errata.
 `GET /healthz` riporta provider, modello e tipo di memoria.
+È un controllo del servizio avviato: non effettua un'inferenza e non certifica
+che il modello sia raggiungibile. Per controllare LM Studio usa
+`curl http://127.0.0.1:1235/v1/models`, adattando la porta alla configurazione.
+Una domanda al tutor verifica l'intero percorso, inclusi memoria e contratti.
+
+Gli errori distinguono `model_unavailable` (connessione LLM),
+`model_request_rejected` (richiesta rifiutata dal server LLM),
+`memory_unavailable` (PostgreSQL), `timeout` e `invalid_response`.
+HTTP e stream mostrano lo stesso messaggio; i dettagli tecnici e i payload
+restano nei log del servizio. Un errore di connessione non viene più presentato
+come una risposta non conforme del modello.
 
 ## Verifica
 
 ```sh
 uv run --extra dev python -m unittest discover -s tests -v
 AI_TEST_DATABASE_URL=postgresql://circuit:circuit@127.0.0.1:5433/circuit uv run --extra dev python -m unittest discover -s tests -v
-uv run --extra dev python evaluate.py
+uv run --extra dev python -m circuit_ai.evaluation.runner
 ```
 
 I test ordinari usano modelli controllati e server HTTP/WS locali. La variabile
 `AI_TEST_DATABASE_URL` abilita prove reali di riavvio, isolamento e riassunti su
-PostgreSQL; usa un database di sviluppo/test. `evaluate.py` usa il modello locale
+PostgreSQL; usa un database di sviluppo/test. `circuit_ai/evaluation/runner.py` usa il modello locale
 reale con circuiti deterministici, registra scelte, risposte e metriche in
 `.local-notes/llmops/<experiment_id>/report.json` (ignorato da Git). `--case theory` esegue un solo
 caso. L'esito automatico controlla contratti e grounding; formule, linguaggio e
@@ -166,8 +244,8 @@ provenienza. I casi selezionati hanno un'impronta separata dalla configurazione.
 API key, credenziali PostgreSQL e credenziali nell'URL non entrano nel report.
 
 ```sh
-uv run --extra dev python evaluate.py --manifest-only
-uv run --extra dev python evaluate.py --case theory --repetitions 3
+uv run --extra dev python -m circuit_ai.evaluation.runner --manifest-only
+uv run --extra dev python -m circuit_ai.evaluation.runner --case theory --repetitions 3
 ```
 
 Il primo comando prepara il manifesto senza rete, database o download di pesi.
@@ -241,11 +319,11 @@ Da `ai/`:
 
 ```bash
 # Struttura, composizione, fonti, split e integrità degli artefatti
-uv run --no-sync python baseline_dataset.py
+uv run --no-sync python -m circuit_ai.baseline.dataset
 # Verifica anche PDF originali e pagine dichiarate; richiede pdftotext
-uv run --no-sync python baseline_dataset.py --verify-pdfs
+uv run --no-sync python -m circuit_ai.baseline.dataset --verify-pdfs
 # Rigenera i dati e riesegue tutte le simulazioni: cambia l'identità del dataset
-uv run --no-sync python build_baseline.py --ngspice-bin /percorso/ngspice
+uv run --no-sync python -m circuit_ai.baseline.build --ngspice-bin /percorso/ngspice
 # Include la riesecuzione reale dei 30 circuiti nella suite software
 AI_TEST_NGSPICE_BIN=/percorso/ngspice \
   uv run --no-sync python -m unittest discover -s tests -q
@@ -268,8 +346,8 @@ Non viene eseguito retrieval RAG.
 
 Il calcolatore usa Decimal a 50 cifre; seno e coseno usano float64 con angoli
 in radianti e dominio limitato. `pi` è una costante disponibile. I contratti
-sono separati dall'implementazione in `calculation_schemas.py`, `baseline_schemas.py` e
-`verification_schemas.py`, con descrizioni Pydantic per tutti i campi.
+sono separati dall'implementazione in `circuit_ai/contracts/calculations.py`, `circuit_ai/contracts/baseline.py` e
+`circuit_ai/contracts/verification.py`, con descrizioni Pydantic per tutti i campi.
 I quesiti includono fase iniziale e netlist quando servono, senza richiedere
 tabelle o figure assenti dal prompt. Le soluzioni pubblicate restano riservate
 al verificatore.
@@ -278,12 +356,12 @@ Avvia prima il servizio NLI descritto nella sezione dedicata a NLI, poi:
 
 ```bash
 # Verificatore sulle 90 risposte curate corrette e sulle 10 alterate
-uv run --no-sync python run_baseline.py --mode references --split all
+uv run --no-sync python -m circuit_ai.baseline.runner --mode references --split all
 # Nuove risposte di Gemma per le 90 domande, più 10 controlli negativi fissi
-uv run --no-sync python run_baseline.py --mode tutor --split all \
+uv run --no-sync python -m circuit_ai.baseline.runner --mode tutor --split all \
   --ngspice-bin ../.local-notes/tools/ngspice/root/usr/bin/ngspice
 # Diagnostica mirata; --case è ripetibile
-uv run --no-sync python run_baseline.py --mode references --case worked-power-18
+uv run --no-sync python -m circuit_ai.baseline.runner --mode references --case worked-power-18
 ```
 
 I default sono Gemma `google/gemma-4-e4b` su `http://127.0.0.1:1235/v1` e NLI su
@@ -313,10 +391,10 @@ I riferimenti restano fuori dal prompt del tutor; il modello vede soltanto le
 domande, la cronologia e i dati restituiti dai tool.
 
 ```sh
-uv run python dataset.py --list
-uv run python dataset.py --show power
-uv run python evaluate.py --case power --manifest-only
-uv run python evaluate.py --split validation --include-rag --manifest-only
+uv run python -m circuit_ai.evaluation.dataset --list
+uv run python -m circuit_ai.evaluation.dataset --show power
+uv run python -m circuit_ai.evaluation.runner --case power --manifest-only
+uv run python -m circuit_ai.evaluation.runner --split validation --include-rag --manifest-only
 ```
 
 Il caricamento controlla schemi, ID duplicati, domande duplicate, gruppi di
@@ -402,23 +480,23 @@ Da `ai/`:
 
 ```sh
 # Controlla struttura, formule, provenienza e split; nessuna chiamata LLM
-uv run python dataset.py --directory evals/textbook --list
+uv run python -m circuit_ai.evaluation.dataset --directory evals/textbook --list
 # Audit completo sui PDF locali: hash ed estratti nelle pagine dichiarate
-uv run python dataset.py --directory evals/textbook --verify-publications
+uv run python -m circuit_ai.evaluation.dataset --directory evals/textbook --verify-publications
 # Mostra la fonte e il relativo estratto per una revisione
-uv run python dataset.py --directory evals/textbook --source dc-power
+uv run python -m circuit_ai.evaluation.dataset --directory evals/textbook --source dc-power
 
 # Esegue soltanto un esempio senza accesso alle soluzioni
-uv run python evaluate.py --dataset-directory evals/textbook --case book-dc-power-closed
+uv run python -m circuit_ai.evaluation.runner --dataset-directory evals/textbook --case book-dc-power-closed
 # Riproduce la prova sul server locale alla porta 1235
 LLM_BASE_URL=http://127.0.0.1:1235/v1 \
 LLM_REASONING_EFFORT=none LLM_MAX_OUTPUT_TOKENS=512 \
 AI_REQUEST_TIMEOUT=300 RAG_ENABLED=false \
-uv run python evaluate.py --dataset-directory evals/textbook --case book-dc-power-closed
+uv run python -m circuit_ai.evaluation.runner --dataset-directory evals/textbook --case book-dc-power-closed
 # Prepara il manifesto dell'intero dataset senza chiamare il modello
-uv run python evaluate.py --dataset-directory evals/textbook --split all --manifest-only
+uv run python -m circuit_ai.evaluation.runner --dataset-directory evals/textbook --split all --manifest-only
 # Seleziona soltanto le prove senza tool dello split development
-uv run python evaluate.py --dataset-directory evals/textbook --mode closed_book
+uv run python -m circuit_ai.evaluation.runner --dataset-directory evals/textbook --mode closed_book
 ```
 
 Il normale runner richiede solo gli estratti versionati. L'audit facoltativo
@@ -439,8 +517,8 @@ come requisito affidabile del confronto fra versioni.
 Per creare ulteriori candidati dal corpus con il modello locale:
 
 ```sh
-uv run python generate_dataset.py --prepare-only --count 3
-uv run python generate_dataset.py --count 3
+uv run python -m circuit_ai.evaluation.generate --prepare-only --count 3
+uv run python -m circuit_ai.evaluation.generate --count 3
 ```
 
 Il primo comando prepara l'input senza modello; il secondo effettua la
@@ -454,12 +532,12 @@ richiederanno provenienza reale, pulizia dei dati e revisione prima dell'inserim
 
 La valutazione segue tre livelli, con risultati separati nel report JSON:
 
-1. `evaluators.py` controlla schema, classificazione, uso dei tool, gruppi di tool
+1. `circuit_ai/evaluation/checks.py` controlla schema, classificazione, uso dei tool, gruppi di tool
    alternativi, tentativi vietati, evidenze correnti e convergenti, citazioni di
    fonti effettivamente recuperate, attivazione del riassunto e marcatori sintetici.
-2. `judge.py`, solo se abilitato, valuta pertinenza, completezza, correttezza rispetto
+2. `circuit_ai/evaluation/judge.py`, solo se abilitato, valuta pertinenza, completezza, correttezza rispetto
    alle evidenze e rispetto dei vincoli. Usa un LLM locale con output `JudgeVerdict`.
-3. `calibrate_judge.py` esporta schede per persone e misura l'accordo con il judge;
+3. `circuit_ai/evaluation/calibration.py` esporta schede per persone e misura l'accordo con il judge;
    nessun modello compila o approva le etichette umane.
 
 Normalmente i gruppi richiesti devono contenere una chiamata riuscita. I casi
@@ -500,13 +578,13 @@ una proposta da validare prima di trattarla come metrica tecnica affidabile.
 
 ```sh
 # Solo controlli deterministici; richiede il tutor locale acceso
-uv run python evaluate.py --case power
+uv run python -m circuit_ai.evaluation.runner --case power
 
 # Tutor e judge consultivo: sostituire il nome con un modello disponibile
-uv run python evaluate.py --case power --judge-model "nome-del-modello-judge"
+uv run python -m circuit_ai.evaluation.runner --case power --judge-model "nome-del-modello-judge"
 
 # Eventuale server separato per il judge
-uv run python evaluate.py --split all --include-rag --judge-model "nome-del-modello-judge" --judge-base-url http://127.0.0.1:1235/v1
+uv run python -m circuit_ai.evaluation.runner --split all --include-rag --judge-model "nome-del-modello-judge" --judge-base-url http://127.0.0.1:1235/v1
 ```
 
 Il judge è disabilitato per default. Il suo endpoint deve essere loopback
@@ -549,10 +627,10 @@ ad accettare l'assenza del campo, mantenendone la serializzazione precedente.
 Il confronto NLI rimane esterno al percorso live: usa i testi e i riferimenti
 fattuali del caso, senza cambiare i risultati calcolati dal tutor.
 
-`verify_answers.py` prova insieme due verificatori indipendenti sulle risposte
+`circuit_ai/verification/runner.py` prova insieme due verificatori indipendenti sulle risposte
 curate dei libri, senza browser, RAG o nuova generazione delle risposte del tutor:
 
-- `numeric_verification.py` legge tutte le quantità supportate dal testo originale
+- `circuit_ai/verification/numbers.py` legge tutte le quantità supportate dal testo originale
   e conserva offset e unità SI. Il modello locale restituisce soltanto le
   associazioni Pydantic `ResponseInventory`, senza ricevere i valori attesi.
   Omissioni e duplicati sono rifiutati; i numeri non possono essere riscritti.
@@ -562,7 +640,7 @@ curate dei libri, senza browser, RAG o nuova generazione delle risposte del tuto
   Un'associazione incompatibile per unità o componente esplicito è un difetto
   dell'inventario: viene rifiutata e ritentata, non attribuita alla risposta.
   I tentativi originali e i motivi del rifiuto sono conservati nel report.
-- `nli_context.py` prepara unità con contesto originale e provenienza verificabile.
+- `circuit_ai/nli/context.py` prepara unità con contesto originale e provenienza verificabile.
   Titoli e numerazioni non diventano fatti; “No.” resta insieme alla spiegazione.
   Condizioni, negazioni e distinzione fra modello ideale e comportamento reale
   restano nel testo. Le clausole con soggetti espliciti possono essere separate;
@@ -573,7 +651,7 @@ curate dei libri, senza browser, RAG o nuova generazione delle risposte del tuto
   Il report usa `reason=exact_reference`, senza inventare probabilità NLI.
   Questa verifica misura coerenza col riferimento: la correttezza del riferimento
   resta un prerequisito del dataset. Non è una misura delle capacità neurali.
-- `nli_numeric.py` riconosce dichiarazioni complete come `Corrente R1 = 22.7 mA`.
+- `circuit_ai/nli/numeric.py` riconosce dichiarazioni complete come `Corrente R1 = 22.7 mA`.
   Etichetta completa e unità SI devono individuare un solo riferimento numerico
   indipendente; il confronto usa le tolleranze originali del dataset, anche per
   arrotondamenti e prefissi. Non sceglie il riferimento in base al valore.
@@ -582,7 +660,7 @@ curate dei libri, senza browser, RAG o nuova generazione delle risposte del tuto
   `reason=numeric_reference` conserva valori originali, atteso, tolleranze e
   provenienza senza probabilità simulate. Tutte le dichiarazioni contrastanti
   restano visibili e le altre spiegazioni continuano a essere verificate.
-- Per gli altri testi, `nli_verifier.py` classifica riferimento → affermazione
+- Per gli altri testi, `circuit_ai/nli/classifier.py` classifica riferimento → affermazione
   (`faithfulness`) e risposta → ogni concetto richiesto (`completeness`). I requisiti
   composti vengono verificati per tutte le loro unità, conservando il contesto.
   Le finestre contengono un'unità e i suoi qualificatori; il budget viene contato
@@ -601,7 +679,7 @@ curate dei libri, senza browser, RAG o nuova generazione delle risposte del tuto
   Le frasi naturali e le dichiarazioni numeriche con oggetto esplicito continuano
   a essere confrontate; i valori sono verificati separatamente dal codice.
 
-I campi di preparazione e provenienza sono Pydantic in `verification_schemas.py`:
+I campi di preparazione e provenienza sono Pydantic in `circuit_ai/contracts/verification.py`:
 intervalli originali, target, finestre, token, controlli sugli oggetti e motivi
 espliciti di mancata verifica. Punteggi neurali, prove testuali e prove scalari sono contati
 separatamente. I report storici restano leggibili. `explanation-references.v1.json`
@@ -651,7 +729,7 @@ Da `ai/`, installazione opzionale e download **esplicito una tantum**:
 
 ```bash
 uv sync --extra nli --extra dev
-uv run --no-sync python prepare_nli.py \
+uv run --no-sync python -m circuit_ai.nli.prepare \
   --model mdeberta \
   --output ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
 ```
@@ -668,7 +746,7 @@ Il modello usato nelle valutazioni correnti è
 revisione `8adb042d524ecd5c26d3e3ba0e3fbcf7e2d0864c` (ONNX circa 1.1 GB):
 
 ```bash
-uv run --no-sync python prepare_nli.py --model mdeberta \
+uv run --no-sync python -m circuit_ai.nli.prepare --model mdeberta \
   --output ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
 ```
 
@@ -681,12 +759,12 @@ Per il nuovo dataset il modello specializzato mDeBERTa viene esposto via
 localhost, senza caricare un secondo LLM generativo in LM Studio:
 
 ```bash
-uv run --no-sync python nli_server.py \
+uv run --no-sync python -m circuit_ai.nli.server \
   --model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042 \
   --port 8091
 ```
 
-`nli_server.py` carica i pesi una volta tramite ONNX Runtime con
+`circuit_ai/nli/server.py` carica i pesi una volta tramite ONNX Runtime con
 `CPUExecutionProvider`: usa CPU/RAM e lascia la VRAM a Gemma. `GET /healthz`
 riporta lo stato, `GET /v1/model` l'identità e `POST /v1/nli` accetta
 `{"premise":"fatto di riferimento","hypothesis":"affermazione da verificare"}`.
@@ -695,16 +773,16 @@ modello e l'eventuale errore. `POST /v1/tokens` accetta la stessa coppia e
 restituisce conteggio effettivo, limite e ID del modello. Il client rileva cambi
 al tokenizer/modello durante il run. `/v1/model` espone `protocol_version=2`:
 riavvia un vecchio servizio per rendere disponibile il nuovo endpoint.
-`nli_http.py` accetta soltanto endpoint loopback.
+`circuit_ai/nli/client.py` accetta soltanto endpoint loopback.
 `LocalNLI` può anche essere chiamato direttamente da Python, come fa il runner
-storico `verify_answers.py`: i pesi e la classificazione sono gli stessi.
+storico `circuit_ai/verification/runner.py`: i pesi e la classificazione sono gli stessi.
 Il file `source.json` accanto ai pesi registra repository, revisione e hash;
-il comando `prepare_nli.py --model mdeberta` è il solo download esplicito.
+il comando `circuit_ai/nli/prepare.py --model mdeberta` è il solo download esplicito.
 Le valutazioni successive sono offline e riutilizzano i file locali.
 
 ```bash
 # Estrattore sul server locale 1235; NLI eseguito separatamente sulla CPU
-AI_REQUEST_TIMEOUT=300 uv run --no-sync python verify_answers.py \
+AI_REQUEST_TIMEOUT=300 uv run --no-sync python -m circuit_ai.verification.runner \
   --nli-model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042 \
   --split development
 ```
@@ -718,7 +796,7 @@ degli studenti. Prima di usarlo come cancello servono valutazione e calibrazione
 
 ### Regressione NLI senza rigenerare il tutor
 
-`verify_nli.py` esegue i [19 controlli versionati](evals/nli/controls.v1.json) e,
+`circuit_ai/nli/runner.py` esegue i [19 controlli versionati](evals/nli/controls.v1.json) e,
 facoltativamente, riclassifica risposte già salvate. Non contatta Gemma:
 `llm_calls=0`. Mantiene separati testi di riferimento, risposte del tutor,
 contrasti semantici, formattazione, limiti e regole sulle formule.
@@ -730,16 +808,16 @@ come successi del classificatore neurale.
 Da `ai/`, con servizio locale già avviato:
 
 ```bash
-uv run --no-sync python verify_nli.py --nli-base-url http://127.0.0.1:8091
+uv run --no-sync python -m circuit_ai.nli.runner --nli-base-url http://127.0.0.1:8091
 # In alternativa, stessa preparazione e pesi via Python diretto:
-uv run --no-sync python verify_nli.py \
+uv run --no-sync python -m circuit_ai.nli.runner \
   --nli-model-dir ../.local-notes/models/mdeberta-v3-base-mnli-xnli-8adb042
 ```
 
 Per ripetere il confronto sugli stessi testi, senza nuove generazioni:
 
 ```bash
-uv run --no-sync python verify_nli.py --nli-base-url http://127.0.0.1:8091 \
+uv run --no-sync python -m circuit_ai.nli.runner --nli-base-url http://127.0.0.1:8091 \
   --saved-report /percorso/report-salvato.json \
   --output ../.local-notes/llmops/nli/confronto-1/report.json
 ```
@@ -760,8 +838,8 @@ letterali e confronti proposti non costituiscono calibrazione umana indipendente
 ### Calcolatore del judge
 
 Il judge dispone del tool locale `calculator`, implementato in
-`judge_calculator.py`. I contratti `CalculatorInput`, `CalculatorOutput` e
-`JudgeCalculation` sono definiti in `schemas.py`, con descrizioni di tutti i
+`circuit_ai/tools/calculator.py`. I contratti `CalculatorInput`, `CalculatorOutput` e
+`JudgeCalculation` sono definiti in `circuit_ai/contracts/shared.py`, con descrizioni di tutti i
 campi. Nei casi con `reference.numbers` deve ottenere almeno un calcolo riuscito
 prima del verdetto; nei casi puramente concettuali il tool rimane disponibile.
 Gli errori di schema e di calcolo possono essere corretti entro limiti espliciti:
@@ -802,7 +880,7 @@ residui, conservando anche i tentativi non riusciti.
 
 ### Verificare il judge con risposte controllate
 
-`verify_judge.py` usa `evals/textbook/judge-probes.v1.json`: risposte predefinite
+`circuit_ai/evaluation/probes.py` usa `evals/textbook/judge-probes.v1.json`: risposte predefinite
 costruite sulle soluzioni dei libri, senza chiamare il tutor né abilitare RAG.
 Il dataset delle domande e i suoi riferimenti rimangono invariati. La suite è
 legata all'impronta del dataset: dopo modifiche ai riferimenti occorre revisionare
@@ -845,20 +923,20 @@ Da `ai/`:
 
 ```sh
 # Prepara tutte le 45 prove, senza rete né modello
-uv run python verify_judge.py --split all --prepare-only
+uv run python -m circuit_ai.evaluation.probes --split all --prepare-only
 
 # Raccolta iniziale completa; le prove riusate dopo modifiche sono diagnostiche
 LLM_REASONING_EFFORT=none AI_REQUEST_TIMEOUT=300 \
-uv run python verify_judge.py --split all \
+uv run python -m circuit_ai.evaluation.probes --split all \
   --judge-model google/gemma-4-e4b \
   --judge-base-url http://127.0.0.1:1235/v1 --context-tokens 12000
 
 # Una sola famiglia di risposte per controllare il percorso prima del batch
-uv run python verify_judge.py --case book-dc-power-closed \
+uv run python -m circuit_ai.evaluation.probes --case book-dc-power-closed \
   --judge-base-url http://127.0.0.1:1235/v1
 ```
 
-Gli schemi Pydantic sono in `judge_probe_schemas.py`, con descrizioni dei campi.
+Gli schemi Pydantic sono in `circuit_ai/contracts/probes.py`, con descrizioni dei campi.
 Il runner usa lo stesso `judge_answer`, prompt e output `JudgeVerdict` della
 valutazione del tutor. Il limite di output predefinito è 1024 token, configurabile
 con `--max-output-tokens`; il budget totale con `--context-tokens`. Il timeout
@@ -886,9 +964,9 @@ e `baseline_approved` restano `false`, anche quando tutte le prove passano.
 Dopo aver ottenuto un report reale completato:
 
 ```sh
-uv run python calibrate_judge.py export ../.local-notes/llmops/ID/report.json
+uv run python -m circuit_ai.evaluation.calibration export ../.local-notes/llmops/ID/report.json
 # Compilare manualmente human-labels.json nella stessa directory
-uv run python calibrate_judge.py compare ../.local-notes/llmops/ID/report.json ../.local-notes/llmops/ID/human-labels.json
+uv run python -m circuit_ai.evaluation.calibration compare ../.local-notes/llmops/ID/report.json ../.local-notes/llmops/ID/human-labels.json
 ```
 
 Le schede nascondono voti del judge e identità dei modelli. I quattro voti sono
@@ -929,12 +1007,12 @@ Il RAG resta facoltativo e separato dalla memoria PostgreSQL. Per prepararlo,
 con il servizio AI fermo (Qdrant locale richiede accesso esclusivo):
 
 ```sh
-uv run --extra rag python index_documents.py /percorso/documenti
+uv run --extra rag python -m circuit_ai.rag.index /percorso/documenti
 ```
 
 Il comando legge PDF, MD e TXT e aggiorna i documenti passati senza duplicare i
 chunk o cancellare gli altri documenti. File rimossi dalla directory non vengono
 eliminati automaticamente dall'indice. Il primo avvio può scaricare il modello
-embedding. Imposta `RAG_ENABLED=true` e avvia con `uv run --extra rag python main.py`:
+embedding. Imposta `RAG_ENABLED=true` e avvia con `uv run --extra rag python circuit_ai/api/server.py`:
 `search_info` restituisce estratti con la fonte. L'indice risiede in
 `AI_DATA_DIR/qdrant` e viene aperto solo al primo utilizzo.

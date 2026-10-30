@@ -10,6 +10,7 @@ export function TutorPanel() {
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState('');
   const threadId = useRef(storedId(sessionStorage, 'circuit-tutor-thread'));
   const userId = useRef(storedId(localStorage, 'circuit-tutor-user'));
   const abort = useRef<AbortController | null>(null);
@@ -26,17 +27,28 @@ export function TutorPanel() {
     if (!text || busy) return;
     setInput('');
     setBusy(true);
+    setStatus('Connessione al tutor…');
     append({ kind: 'user', text });
 
+    let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
-      abort.current = new AbortController();
+      const controller = new AbortController();
+      abort.current = controller;
+      // Prima le intestazioni; poi il budget dell'intero turno deciso dal server.
+      deadline = setTimeout(() => controller.abort(new Error('Il servizio tutor non risponde alla connessione')), 10_000);
       const res = await fetch('/api/chat/stream', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ query: text, thread_id: threadId.current,
           user_id: userId.current, session_id: browserSessionId() }),
-        signal: AbortSignal.any([abort.current.signal, AbortSignal.timeout(125_000)]),
+        signal: controller.signal,
       });
+      clearTimeout(deadline);
+      setStatus('Preparazione della conversazione…');
+      const configured = Number(res.headers.get('X-Tutor-Timeout-Ms'));
+      const timeout = Number.isFinite(configured) && configured > 0 && configured <= 2_147_478_647
+        ? configured : 300_000;
+      deadline = setTimeout(() => controller.abort(new Error('Il tutor ha superato il tempo di risposta')), timeout + 5000);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.detail ?? 'Errore del servizio tutor');
@@ -44,6 +56,9 @@ export function TutorPanel() {
       let finished = false;
       await readTutorStream(res, (event) => {
         switch (event.event) {
+          case 'status':
+            setStatus(event.data.message);
+            break;
           case 'tool_start':
             if (event.data.tool !== 'SubmitAnswer') append({ kind: 'tool', text: `🔧 ${event.data.tool} in corso…` });
             break;
@@ -69,7 +84,10 @@ export function TutorPanel() {
     } catch (error) {
       append({ kind: 'error', text: error instanceof Error ? error.message : 'Tutor non raggiungibile. Avvia il servizio Python e il modello locale.' });
     } finally {
+      clearTimeout(deadline);
+      abort.current = null;
       setBusy(false);
+      setStatus('');
     }
   }
 
@@ -95,7 +113,7 @@ export function TutorPanel() {
             {e.text}
           </div>
         ))}
-        {busy && <div className="msg tool">… il tutor sta elaborando la domanda …</div>}
+        {busy && <div className="msg tool" role="status">{status || 'Il tutor sta elaborando la domanda…'}</div>}
       </div>
       <div className="tutor-input">
         <textarea
@@ -113,6 +131,7 @@ export function TutorPanel() {
         <button className="btn primary" disabled={busy || !input.trim()} onClick={() => void send()}>
           Invia
         </button>
+        {busy && <button className="btn" onClick={() => abort.current?.abort(new Error('Richiesta interrotta'))}>Interrompi</button>}
       </div>
     </div>
   );

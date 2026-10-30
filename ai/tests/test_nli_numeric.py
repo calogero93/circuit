@@ -1,10 +1,10 @@
 """Le prove scalari usano etichette, unità e tolleranze indipendenti."""
 import unittest
 
-from baseline_schemas import ExpectedNumber
-from nli_context import contextual_checks, normalize
-from nli_numeric import compare, declaration, valid_proof
-from nli_verifier import semantic_status
+from circuit_ai.contracts.baseline import ExpectedNumber
+from circuit_ai.nli.context import contextual_checks, normalize
+from circuit_ai.nli.numeric import compare, declaration, valid_proof
+from circuit_ai.nli.classifier import semantic_status
 from test_nli_context import Classifier, reference
 
 

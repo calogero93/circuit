@@ -7,15 +7,15 @@ from unittest.mock import patch
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from pydantic import ValidationError
 
-from calibrate_judge import agreement, compare, export_annotations
-from config import Settings
-from dataset import load_dataset
-from evaluate import evaluate
-from evaluation_schemas import AnnotationSet, HumanAnnotation
-from evaluators import deterministic_checks, quantities
-from experiments import create_manifest, digest, new_report, summarize, validate_run_identity
-from judge import CRITERIA, evaluation_protocol, judge_answer, judge_input, local_judge_settings
-from schemas import (DatasetTurnResult, EvaluationReport, EvaluationResult, EvaluationTrial, JudgeEvaluation,
+from circuit_ai.evaluation.calibration import agreement, compare, export_annotations
+from circuit_ai.core.config import Settings
+from circuit_ai.evaluation.dataset import load_dataset
+from circuit_ai.evaluation.runner import evaluate
+from circuit_ai.contracts.evaluation import AnnotationSet, HumanAnnotation
+from circuit_ai.evaluation.checks import deterministic_checks, quantities
+from circuit_ai.evaluation.experiments import create_manifest, digest, new_report, summarize, validate_run_identity
+from circuit_ai.evaluation.judge import CRITERIA, evaluation_protocol, judge_answer, judge_input, local_judge_settings
+from circuit_ai.contracts.shared import (DatasetTurnResult, EvaluationReport, EvaluationResult, EvaluationTrial, JudgeEvaluation,
                      JudgeVerdict, SubmitAnswer, ToolTrace, TurnMetrics)
 from test_tutor import FakeModel, answer, call
 
@@ -96,7 +96,7 @@ class DeterministicTests(unittest.TestCase):
         result.answer = SubmitAnswer(response="R1 dissipa 1 W", kind="circuit", evidence_ids=["old"], uses_measurements=True, learning_notes=[])
         checks = deterministic_checks(self.case("power").reference, result, self.bundle.corpus)
         self.assertEqual(next(c.status for c in checks if c.id == "evidence"), "fail")
-        from schemas import Evidence
+        from circuit_ai.contracts.shared import Evidence
         result.evidence = [Evidence(call_id="old", tool="getCircuitSnapshot", revision=1, measurement_valid=False)]
         checks = deterministic_checks(self.case("power").reference, result, self.bundle.corpus)
         self.assertEqual(next(c.status for c in checks if c.id == "evidence"), "fail")
@@ -287,7 +287,7 @@ class CalibrationTests(unittest.TestCase):
         compared = compare(report, loaded)
         self.assertEqual(compared.distinct_cases, 0)
         self.assertEqual(compared.status, "insufficient_data")
-        with patch("judge.RUBRIC", {"changed": "Una nuova rubric non deve modificare le vecchie schede"}):
+        with patch('circuit_ai.evaluation.judge.RUBRIC', {"changed": "Una nuova rubric non deve modificare le vecchie schede"}):
             self.assertEqual(export_annotations(report).tasks[0].input.rubric, annotations.tasks[0].input.rubric)
 
     def test_known_agreement_kappa_and_degenerate_cases(self):
@@ -352,7 +352,7 @@ class CalibrationTests(unittest.TestCase):
             task.reviewed_by = "Synthetic unit-test fixture"
         self.assertEqual(compare(report, annotations).labeled_without_judge, 1)
         self.assertEqual(compare(report, annotations).distinct_cases, 1)
-        from schemas import ModelObservation
+        from circuit_ai.contracts.shared import ModelObservation
         for trial in report.results:
             trial.result.metrics.model_observations = [ModelObservation(model_name="tutor")]
             trial.result.turns[0].judge.metrics.model_observations = [ModelObservation(model_name="judge")]
@@ -361,9 +361,9 @@ class CalibrationTests(unittest.TestCase):
         self.assertIn("judge", validate_run_identity(report))
 
     def test_all_evaluation_schema_fields_have_descriptions(self):
-        import evaluation_schemas
-        from judge import JudgeInput
-        from schemas import Schema
+        import circuit_ai.contracts.evaluation as evaluation_schemas
+        from circuit_ai.evaluation.judge import JudgeInput
+        from circuit_ai.contracts.shared import Schema
         for cls in [JudgeInput, *[value for value in vars(evaluation_schemas).values() if isinstance(value, type) and issubclass(value, Schema)]]:
             for name, field in cls.model_fields.items():
                 self.assertTrue(field.description, f"{cls.__name__}.{name}")
