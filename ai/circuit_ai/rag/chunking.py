@@ -1,8 +1,6 @@
+"""Estrazione e chunking dei documenti RAG locali Markdown e TXT."""
 import markdown
-import fitz
-import re
 from bs4 import BeautifulSoup
-import os
 from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
@@ -17,17 +15,6 @@ def extract_text_from_markdown(path:str):
     
     return cleaned_text
 
-def extract_text_from_pdf(path:str):
-    with fitz.open(path) as doc:
-        full_text = [page.get_text() for page in doc]
-
-    text = " ".join(full_text)
-
-    text = re.sub(r'-\s*\n\s*', '', text)
-    text = re.sub(r'\s+', ' ', text)
-
-    return text
-
 def extract_text_from_txt(path:str):
     with open(path, "r", encoding="utf-8") as f:
         content_txt = f.read()
@@ -35,7 +22,6 @@ def extract_text_from_txt(path:str):
     return content_txt
 
 mapping_function = {
-    ".pdf": extract_text_from_pdf,
     ".md": extract_text_from_markdown,
     ".txt": extract_text_from_txt
 }
@@ -53,7 +39,7 @@ def mapping_document(data_path:str):
 
 
 """
-Extract text from .pdf, .md and .txt files from a directory
+Extract text from .md and .txt files from a directory
 """
 def prepare_docs(data_path:str):
     file_paths = mapping_document(data_path)
@@ -78,8 +64,3 @@ def chunk_data(list_files: list[dict]):
         full_dataset = full_dataset + chunks_with_metadata
 
     return full_dataset
-
-
-
-        
-        

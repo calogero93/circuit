@@ -11,14 +11,29 @@ in corso), quindi l'esecutore è il **browser**; il relay fa solo da rendez-vous
 ## Avvio
 
 ```sh
-npm run tool-bridge     # relay su ws://localhost:8787 (env TOOL_BRIDGE_PORT per cambiarla)
+npm run tool-bridge     # relay solo su ws://127.0.0.1:8787 (TOOL_BRIDGE_PORT cambia la porta)
 npm run dev             # l'app; il browser si registra come host
 ```
 
 Il browser si connette automaticamente a `/tool-bridge` sullo stesso host;
 Vite inoltra il WebSocket al relay. `VITE_TOOL_BRIDGE_URL` permette un override.
-In produzione configura lo stesso inoltro nel reverse proxy. Il relay espone
-anche `GET /healthz`, con `connected` e il numero di `sessions` connesse.
+Questo flusso è previsto per l'esecuzione locale: un reverse proxy da solo non
+rende sicura l'esposizione pubblica del tutor o del relay. Il relay espone anche
+`GET /healthz`, con `connected` e il numero di `sessions` connesse.
+
+Il relay verifica le origini browser esplicitamente consentite (Vite su
+`http://127.0.0.1:5173`, `http://localhost:5173` e preview sulla porta `4173`).
+`TOOL_BRIDGE_ALLOWED_ORIGINS` può cambiare l'elenco; non usare wildcard.
+Il browser acquisisce una capability temporanea per il ruolo host, mentre il
+tutor invia una capability diversa nell'header `Authorization`. Gli ID di
+sessione identificano la scheda e non sostituiscono l'autorizzazione.
+
+Il relay ruota le capability a ogni avvio. Quella del tutor è conservata fuori
+dal repository: directory private `0700` in `XDG_RUNTIME_DIR`, se idonea, oppure
+nella directory temporanea del sistema, e file `0600`. Node e Python ricavano
+lo stesso percorso dal checkout e dalla porta; avviali dalla stessa copia del
+progetto. Non copiare la capability in URL, variabili frontend o log. I processi
+locali dello stesso utente e gli script dell'origine frontend sono fidati.
 
 Il tutor usa FastAPI/LangGraph (vedi [`ai/README.md`](../ai/README.md));
 il relay inoltra soltanto le operazioni sul circuito. Lo snapshot restituisce
@@ -42,7 +57,7 @@ relay → Client:
 ```
 
 Il browser registra un `session_id` distinto per scheda. Il client indica la
-sessione da interrogare; ometterla è ammesso soltanto con un unico host
+sessione da interrogare: `session_id` è obbligatorio anche con un unico host
 connesso. Le risposte sono accettate soltanto dal browser destinatario.
 Il catalogo degli argomenti è generato da `ai/circuit_ai/contracts/shared.py`; gli output vengono
 validati in Python prima di essere passati al modello.
@@ -68,7 +83,7 @@ Gli schemi completi (con `input_schema`) arrivano da `list_tools`.
 
 ```python
 import asyncio
-from modules.tool_bridge import ToolBridge
+from circuit_ai.integrations.bridge import ToolBridge
 
 async def main():
     async with ToolBridge("ws://127.0.0.1:8787") as bridge:
@@ -77,6 +92,11 @@ async def main():
 
 asyncio.run(main())
 ```
+
+Esegui il client dall'ambiente Python di `ai/` (`uv run python <script.py>`),
+con il relay avviato. L'adapter legge automaticamente la capability privata e
+disabilita la scoperta automatica dei proxy per la connessione locale; non
+modifica i proxy usati dagli altri servizi.
 
 Da qui i tool sono normali coroutine: incapsulale come nodi/strumenti del tuo
 grafo LangGraph. Se nessun browser è connesso, una `call` torna

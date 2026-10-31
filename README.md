@@ -1,9 +1,15 @@
-# ⚡ Circuit Studio
+# ⚡ KirchForge
 
 Piattaforma didattica per imparare **davvero** l'elettronica — analogica, digitale
 e mixed-signal — costruendo e simulando circuiti: modifichi il circuito e vedi la
 conseguenza in tempo reale. Il *perché* di un componente non si spiega a parole —
 emerge dal **confronto A/B**: lo togli, e la traccia sull'oscilloscopio te lo racconta.
+
+Il progetto è sperimentale e didattico, da eseguire localmente. Il tutor AI può
+produrre spiegazioni o conclusioni errate: verifica calcoli e fonti. I modelli
+numerici idealizzati e le simulazioni non sostituiscono misure fisiche o il
+dimensionamento e la verifica dei componenti reali. Il software non è uno
+strumento certificato per progettazione critica per la sicurezza.
 
 Visione, decisioni bloccate e invarianti architetturali: [`docs/CHARTER.md`](docs/CHARTER.md).
 Mappa dei seam: [`docs/SEAMS.md`](docs/SEAMS.md).
@@ -12,7 +18,7 @@ Mappa dei seam: [`docs/SEAMS.md`](docs/SEAMS.md).
 
 ```sh
 npm install
-npm run dev        # app su http://localhost:5173
+npm run dev        # app su http://127.0.0.1:5173
 ```
 
 Per il **tutor AI** (opzionale), avvia il modello locale configurato e il
@@ -38,6 +44,74 @@ Schemi Pydantic per tool e risposte, memoria PostgreSQL e riassunti automatici
 al superamento della soglia configurata. Provider esterni disponibili solo con
 configurazione esplicita server-side.
 Configurazione e avvio: [`ai/README.md`](ai/README.md).
+
+## Esecuzione locale e limiti di sicurezza
+
+KirchForge è pensato per essere clonato ed eseguito sulla propria macchina.
+Vite (sviluppo e preview), servizio AI, relay e porta PostgreSQL sono limitati a
+localhost per default. Il relay ascolta esplicitamente **solo `127.0.0.1`**;
+non ha un'opzione per esporlo alla LAN. Tutor e bridge non sono predisposti per
+accesso pubblico senza restrizioni. Un deployment pubblico richiederebbe ulteriori
+controlli di accesso, protezioni HTTP/WebSocket, TLS e isolamento delle risorse.
+
+Il relay accetta browser solo dalle origini esplicite `http://127.0.0.1:5173`,
+`http://localhost:5173` e dalle equivalenti sulla porta preview `4173`.
+Per una porta diversa configura `TOOL_BRIDGE_ALLOWED_ORIGINS` in entrambi i
+nomi host necessari e riavvia il relay; Vite usa `strictPort` per evitare cambi
+di porta silenziosi. Il browser ottiene dal relay una capability temporanea per
+registrarsi; il tutor usa una capability distinta, salvata **fuori dal repository**.
+Si usa `XDG_RUNTIME_DIR` se appartiene all'utente e ha permessi `0700`, altrimenti
+la directory temporanea del sistema, con sottodirectory private `0700` per utente
+e checkout. Il file `tool-bridge-<porta>.token` ha permessi `0600` e contiene
+metadati del relay; il client rifiuta file non privati e record di processi terminati.
+Le capability cambiano
+a ogni avvio e non vengono inserite negli URL, nei log o nel bundle frontend.
+Avvia browser, relay e tutor dalla **stessa copia del progetto**. I client esterni
+devono autenticarsi e indicare sempre `session_id`: il fallback verso l'unica
+scheda connessa è stato rimosso. L'ID seleziona la scheda, non autorizza l'accesso.
+Le applicazioni locali eseguite dallo stesso utente e gli script dell'origine
+frontend sono considerati fidati; queste protezioni non isolano processi locali
+malevoli o una pagina già compromessa.
+Vite limita anche directory servibili, file privati e origini CORS; queste sono
+difese aggiuntive, non il motivo per cui il file runtime rimane privato. Il client
+Python disabilita la scoperta dei proxy per il bridge locale (`websockets` 15+);
+la versione 14, ancora supportata, non dispone di tale scoperta automatica.
+
+Le importazioni da file e link condivisi vengono validate prima di cambiare lo
+stato. Un rifiuto mantiene il circuito corrente; un link iniziale rifiutato apre
+l'app in pausa. I limiti sono definiti in [`importLimits.ts`](src/model/importLimits.ts):
+
+| Risorsa | Limite |
+| --- | --- |
+| File JSON / scenario decodificato | 2 MiB UTF-8 |
+| Componenti / fili | 256 / 1.024 |
+| Punti per array `route` o `waypoints` / totale | 128 / 8.192 |
+| Testo / ID | 512 / 128 caratteri |
+| Gruppi / sonde | 128 / 32 |
+| Sistema analogico/mixed (nodi + correnti di ramo) | 128 incognite |
+| Scenario Bode: dimensione / sonde | 32 / 8 |
+| Passo dello scenario / finestra oscilloscopio | 1 µs–10 ms / 0,1 ms–60 s |
+
+La struttura JSON consente al massimo 12 livelli, 60.000 valori visitati,
+128 campi per oggetto e 8.192 elementi per array (oltre ai limiti specifici sopra).
+Il controllo include i rami interni aggiunti dalla partizione mixed-signal.
+Il digitale puro mantiene i limiti di componenti/fili ma non quello delle matrici
+dense. Il Bode usa il solver analogico e viene validato secondo il suo carico
+effettivo, comprese modalità e sonde conservate quando si importa solo un circuito.
+Importazioni, modifiche, undo/redo e cambi di configurazione condividono lo stesso
+controllo prima della pubblicazione dello stato. Le operazioni rifiutate mostrano
+un errore nella toolbar e mantengono circuito, history e sessione; anche gli errori
+imprevisti durante la preparazione del controller ripristinano lo stato precedente.
+I limiti del solver vengono ricontrollati prima delle allocazioni dense, senza
+cambiare le equazioni. Le lezioni incluse usano 5–12 componenti e 3–7 incognite;
+i limiti lasciano margine per circuiti didattici più grandi. Non sono una garanzia
+di tempo massimo: circuiti ammessi ma numericamente difficili possono ancora
+essere lenti, soprattutto negli sweep Bode.
+
+Entrambe le esportazioni CSV (tempo e Bode) codificano virgole, virgolette e
+ritorni a capo nelle etichette. Il testo che potrebbe avviare una formula, anche
+dopo spazi o caratteri di controllo, riceve un apostrofo iniziale; i valori numerici
+misurati mantengono segno e precisione. Le sole virgolette CSV non proteggono dalle formule.
 
 ## Architettura
 
@@ -89,8 +163,9 @@ flowchart TB
 ```
 
 Il diagramma mostra i collegamenti logici. In sviluppo **Vite** inoltra `/api`
-a FastAPI e `/tool-bridge` al relay; in produzione questi inoltri spettano al
-reverse proxy. Il relay Node instrada richieste e risposte verso la scheda
+a FastAPI e `/tool-bridge` al relay. L'esposizione pubblica non è configurata:
+un eventuale reverse proxy richiederebbe i controlli aggiuntivi descritti sopra.
+Il relay Node instrada richieste e risposte autorizzate verso la scheda
 browser indicata da `session_id`. I motori nel browser simulano il circuito live;
 i tool Python eseguono calcoli didattici sui parametri espliciti. L'LLM sceglie
 gli strumenti e spiega il metodo; il server formatta i risultati strutturati.
@@ -264,7 +339,12 @@ passaggio del mouse.
 Cablaggio con **gomito invertibile**, **waypoint multipli** (instradamento a più
 segmenti) e **giunzioni a T**; i fili seguono i componenti spostati.
 
-### Motori di simulazione (proprietari, MIT, niente GPL)
+### Motori di simulazione implementati nel progetto (MIT)
+
+Le implementazioni usano metodi numerici standard; la licenza del progetto non
+sostituisce quelle delle dipendenze o delle fonti didattiche. ngspice è un
+riferimento esterno per le verifiche, non il motore incorporato nell'app.
+
 - **Analogico**: MNA per stamping, Newton-Raphson con gmin stepping e limiting
   delle giunzioni, transitoria backward Euler con sottopassi adattivi, stima dell’errore e rollback dei passi rifiutati. Convergenza verificata con residui e tolleranze separate per tensioni e correnti; diagnostica delle isole flottanti. Validato contro
   riferimenti analitici (`npm test`) e, offline, contro ngspice
@@ -343,4 +423,8 @@ pin d'arrivo per chiudere; clic su un filo esistente per creare una giunzione.
 
 ## Licenza
 
-MIT — vedi [`LICENSE`](LICENSE).
+MIT per il codice del progetto — vedi [`LICENSE`](LICENSE).
+Dipendenze, font, modelli e materiali didattici mantengono le proprie licenze:
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Il build genera anche
+`dist/LICENSE` e `dist/THIRD_PARTY_NOTICES.txt`, da conservare quando si distribuisce il frontend
+compilato.

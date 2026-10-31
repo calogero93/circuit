@@ -5,6 +5,8 @@
 import type { Circuit, ComponentInstance, PinRef, Rotation, Wire } from './types.ts';
 import { emptyCircuit } from './types.ts';
 import { getDef, hasDef } from './registry.ts';
+import { IMPORT_LIMITS, assertImportBudget, assertCircuitCollections, importError } from './importLimits.ts';
+import { assertSimulationWorkload } from './workload.ts';
 
 export const CIRCUIT_FORMAT_VERSION = 1;
 
@@ -83,11 +85,13 @@ function sanitizePinRef(raw: unknown, comps: Map<string, ComponentInstance>): Pi
   return { component: r.component, pin: r.pin };
 }
 
-/** Deserializzazione robusta: non lancia mai su input malformato, ripulisce. */
+/** Ripulisce input legacy malformati; le violazioni dei limiti vengono rifiutate. */
 export function circuitFromJSON(raw: unknown): Circuit {
+  assertImportBudget(raw);
   const out = emptyCircuit();
   if (typeof raw !== 'object' || raw === null) return out;
   const r = raw as Record<string, unknown>;
+  assertCircuitCollections(r);
 
   const compMap = new Map<string, ComponentInstance>();
   if (Array.isArray(r.components)) {
@@ -142,4 +146,31 @@ export function circuitFromJSON(raw: unknown): Circuit {
   }
 
   return out;
+}
+
+/** Strict external entry point; legacy sanitization remains available internally. */
+export function importCircuit(raw: unknown): Circuit {
+  assertImportBudget(raw, true);
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) importError('circuito mancante o non valido');
+  const r = raw as Record<string, unknown>;
+  if (!Array.isArray(r.components) || !Array.isArray(r.wires) || r.version !== undefined && r.version !== CIRCUIT_FORMAT_VERSION) importError('formato o versione del circuito non valido');
+  for (const key of ['groups', 'boundaries']) {
+    if (r[key] !== undefined && !Array.isArray(r[key])) importError(`${key} deve essere un array`);
+  }
+  const circuit = circuitFromJSON(raw);
+  if (circuit.components.length !== r.components.length || circuit.wires.length !== r.wires.length) importError('componenti, ID o collegamenti non validi');
+  const ids = [...circuit.components, ...circuit.wires, ...circuit.groups];
+  if (ids.some(c => !c.id.length || c.id.length > IMPORT_LIMITS.idLength)) importError(`ID vuoto o oltre ${IMPORT_LIMITS.idLength} caratteri`);
+  for (const component of r.components) {
+    if (component.params !== undefined && (!component.params || typeof component.params !== 'object' || Array.isArray(component.params))) importError('parametri componente non validi');
+  }
+  if (Array.isArray(r.groups) && (r.groups.length !== circuit.groups.length || r.groups.some((g, i) => g.components.length !== circuit.groups[i].components.length)) ||
+      Array.isArray(r.boundaries) && r.boundaries.length !== circuit.boundaries.length) importError('gruppi o confini non validi');
+  for (const wire of r.wires) {
+    for (const key of ['route', 'waypoints']) {
+      if (wire[key] !== undefined && !parsePoints(wire[key])) importError('punti di percorso non validi');
+    }
+  }
+  assertSimulationWorkload({ circuit });
+  return circuit;
 }

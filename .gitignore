@@ -24,3 +24,13 @@ ai/data/
 
 # Libri e dataset PDF locali
 /docs/dataset/
+*.[pP][dD][fF]
+
+# Pesi dei modelli locali (non distribuire nel repository)
+*.onnx
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+pytorch_model*.bin

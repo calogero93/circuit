@@ -4,6 +4,7 @@ import { App } from './components/App.tsx';
 import { simController } from './viz/controller.ts';
 import { applyScenario, scenarioFromHash } from './scenarios/scenario.ts';
 import { connectToolBridge } from './ai/toolBridge.ts';
+import { useStudio } from './store/studio.ts';
 import './styles.css';
 
 registerLibrary();
@@ -15,8 +16,13 @@ connectToolBridge();
 (window as any).__circuitStudio = { ...(window as any).__circuitStudio, connectToolBridge };
 
 // scenario condiviso via link (#s=...)
-const shared = scenarioFromHash();
-if (shared) applyScenario(shared);
+try {
+  const shared = scenarioFromHash();
+  if (shared && !applyScenario(shared, alert)) useStudio.getState().setRunning(false);
+} catch (error) {
+  useStudio.getState().setRunning(false);
+  alert(error instanceof Error ? error.message : 'Scenario condiviso non valido');
+}
 
 simController.start();
 

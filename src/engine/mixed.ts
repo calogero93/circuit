@@ -100,6 +100,12 @@ function buildAnalog(compiled: CompiledCircuit): AnalogPartition {
   return { reduced, boundaries, analogNets, readNets };
 }
 
+/** Preflight only: includes internal digital-to-analog source branches, no solve. */
+export function analogSystemSize(compiled: CompiledCircuit): { nNodes: number; nBranches: number } {
+  const { reduced } = buildAnalog(compiled);
+  return { nNodes: reduced.nNodes, nBranches: reduced.nBranches };
+}
+
 /** Unisce il risultato analogico e i livelli digitali in un SimResult unico. */
 function combine(
   compiled: CompiledCircuit,

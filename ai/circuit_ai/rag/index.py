@@ -1,4 +1,4 @@
-"""Indicizza documenti locali PDF, Markdown e TXT per search_info (extra rag)."""
+"""Indicizza documenti locali Markdown e TXT per search_info (extra rag)."""
 import argparse
 from pathlib import Path
 
@@ -11,10 +11,10 @@ def main():
     args = parser.parse_args()
     if not args.directory.is_dir(): parser.error("directory documenti non trovata")
     from circuit_ai.rag.chunking import prepare_docs, chunk_data
-    from circuit_ai.rag.vectorstore import VectorStore
     settings = Settings.from_env()
     chunks = chunk_data(prepare_docs(str(args.directory)))
-    if not chunks: raise SystemExit("Nessun contenuto PDF, MD o TXT da indicizzare")
+    if not chunks: raise SystemExit("Nessun contenuto MD o TXT da indicizzare; convertire prima i PDF in testo locale")
+    from circuit_ai.rag.vectorstore import VectorStore
     path = settings.data_dir / "qdrant"
     path.mkdir(parents=True, exist_ok=True)
     store = VectorStore(str(path))

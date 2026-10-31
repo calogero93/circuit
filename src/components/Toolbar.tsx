@@ -2,7 +2,9 @@
 // salva/carica circuito e scenari, modalità presentazione.
 
 import { useRef } from 'react';
-import { circuitFromJSON, circuitToJSON } from '../model/serialize.ts';
+import { importCircuit, circuitToJSON } from '../model/serialize.ts';
+import { readImportFile } from '../model/importLimits.ts';
+import { timeCSV, bodeCSV } from '../scenarios/csv.ts';
 import { formatSI } from '../model/units.ts';
 import { replaceCircuit } from '../store/commands.ts';
 import { useStudio } from '../store/studio.ts';
@@ -23,6 +25,7 @@ export function Toolbar() {
   const canUndo = useStudio((s) => s.undoStack.length > 0);
   const canRedo = useStudio((s) => s.redoStack.length > 0);
   const running = useStudio((s) => s.running);
+  const operationError = useStudio((s) => s.operationError);
   const setRunning = useStudio((s) => s.setRunning);
   const presentation = useStudio((s) => s.presentation);
   const setPresentation = useStudio((s) => s.setPresentation);
@@ -39,12 +42,8 @@ export function Toolbar() {
 
   const openFile = (input: HTMLInputElement | null, apply: (json: unknown) => void) => {
     if (!input?.files?.[0]) return;
-    input.files[0].text().then((text) => {
-      try {
-        apply(JSON.parse(text));
-      } catch {
-        alert('File non valido');
-      }
+    readImportFile(input.files[0]).then(apply).catch((error: unknown) => {
+      alert(error instanceof Error ? error.message : 'File non valido: correggi il JSON e riprova.');
     });
     input.value = '';
   };
@@ -72,22 +71,7 @@ export function Toolbar() {
         return;
       }
 
-      let header = 'Frequenza (Hz)';
-      probes.forEach((p) => {
-        header += `,${p.label} Guadagno (dB),${p.label} Fase (deg)`;
-      });
-
-      let rows = '';
-      for (const pt of points) {
-        let row = `${pt.f.toFixed(2)}`;
-        pt.gainDb.forEach((g, idx) => {
-          const ph = pt.phaseDeg[idx] ?? 0;
-          row += `,${g.toFixed(2)},${ph.toFixed(1)}`;
-        });
-        rows += '\n' + row;
-      }
-
-      const content = header + rows;
+      const content = bodeCSV(probes, points);
       const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -101,21 +85,7 @@ export function Toolbar() {
         return;
       }
 
-      let header = 'Tempo (s)';
-      probes.forEach((p) => {
-        header += `,${p.label} (V)`;
-      });
-
-      let rows = '';
-      for (const smp of samples) {
-        let row = `${smp.t.toFixed(6)}`;
-        smp.v.forEach((val) => {
-          row += `,${val.toFixed(4)}`;
-        });
-        rows += '\n' + row;
-      }
-
-      const content = header + rows;
+      const content = timeCSV(probes, samples);
       const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -127,7 +97,8 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
-      <span className="brand">⚡ Circuit Studio</span>
+      <span className="brand">⚡ KirchForge</span>
+      {operationError && <span className="sim-status error" role="alert">{operationError}</span>}
 
       <div className="tool-group">
         <button className={`btn${tool.kind === 'select' ? ' on' : ''}`} title="Seleziona/sposta (Esc)" onClick={() => setTool({ kind: 'select' })}>
@@ -205,7 +176,7 @@ export function Toolbar() {
           hidden
           onChange={() =>
             openFile(circuitFile.current, (json) => {
-              const next = circuitFromJSON(json);
+              const next = importCircuit(json);
               execute(replaceCircuit('carica circuito', useStudio.getState().circuit, next));
             })
           }
@@ -240,7 +211,7 @@ export function Toolbar() {
           type="file"
           accept=".json"
           hidden
-          onChange={() => openFile(scenarioFile.current, (json) => applyScenario(json))}
+          onChange={() => openFile(scenarioFile.current, (json) => applyScenario(json, alert))}
         />
       </div>
 

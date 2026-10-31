@@ -51,7 +51,7 @@ export function ScenarioPanel() {
                 <span className="muted">{new Date(s.scenario.savedAt).toLocaleString()}</span>
               </div>
               <div className="scenario-actions">
-                <button className="btn" onClick={() => applyScenario(s.scenario)}>
+                <button className="btn" onClick={() => applyScenario(s.scenario, alert)}>
                   Apri
                 </button>
                 <button className="btn" onClick={() => share(s)}>

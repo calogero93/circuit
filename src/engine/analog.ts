@@ -1,6 +1,7 @@
 // MNA + Newton-Raphson con residui fisici e backward Euler adattivo.
 // Ogni step pubblico mantiene l'intervallo richiesto: i sottopassi sono interni.
 import { solveInPlace } from './matrix.ts';
+import { assertSolverDimension } from '../model/importLimits.ts';
 import type { CompiledCircuit } from '../model/netlist.ts';
 import type { DeviceState, SolutionReader, StampContext } from '../model/device.ts';
 import type { SimDiagnostics, SimResult, SimulationContext, Simulator, SolverTolerances, TransientOptions, TransientSession } from './simulator.ts';
@@ -180,6 +181,7 @@ class AnalogTransient implements TransientSession {
   private dt: number;
   private ambientTemperature: number;
   constructor(circuit: CompiledCircuit, dt: number, opts: TransientOptions) {
+    assertSolverDimension(circuit.nNodes, circuit.nBranches);
     this.circuit = circuit;
     this.dt = dt;
     this.ambientTemperature = opts.ambientTemperature ?? 25;
@@ -281,6 +283,7 @@ class AnalogTransient implements TransientSession {
 export class AnalogSimulator implements Simulator {
   readonly domain = 'analog' as const;
   dcOperatingPoint(circuit: CompiledCircuit, context: SimulationContext = {}): SimResult {
+    assertSolverDimension(circuit.nNodes, circuit.nBranches);
     const states = initialStates(circuit);
     const solve = robustSolve(circuit, states, null, 0, null);
     return result(circuit, states, solve, null, 0, { ...diagnostics(circuit, null), iterations: solve.iterations, residual: solve.residual }, context.ambientTemperature ?? 25);

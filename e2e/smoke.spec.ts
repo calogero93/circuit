@@ -23,7 +23,7 @@ async function scopeInkPixels(page: import('@playwright/test').Page): Promise<nu
 
 test('carica, apre la lezione raddrizzatore, simula e piazza componenti', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('.brand')).toContainText('Circuit Studio');
+  await expect(page.locator('.brand')).toContainText('KirchForge');
 
   // palette presente
   expect(await page.locator('.palette-item').count()).toBeGreaterThanOrEqual(11);

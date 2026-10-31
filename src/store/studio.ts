@@ -6,6 +6,9 @@ import type { Circuit, ParamValue, PinRef, Rotation } from '../model/types.ts';
 import { emptyCircuit } from '../model/types.ts';
 import type { CircuitCommand } from './commands.ts';
 import { isPlaybackSpeed, type PlaybackSpeed } from '../viz/playback.ts';
+import { assertSimulationWorkload, validProbe } from '../model/workload.ts';
+import type { ABConfig } from '../model/ab.ts';
+export type { ABConfig } from '../model/ab.ts';
 
 export type Tool =
   | { kind: 'select' }
@@ -24,11 +27,6 @@ export interface Probe {
 // separazione CVD, contrasto ≥3:1 sulla superficie dello scope).
 export const PROBE_COLORS = ['#2f93d0', '#bf8500', '#009e73', '#999000', '#b25e8f', '#d55e00'];
 
-export interface ABConfig {
-  componentId: string;
-  mode: 'remove' | 'bypass';
-}
-
 export type RightTab = 'props' | 'math' | 'lesson' | 'ai' | 'scenari' | 'logica' | '3d';
 
 export interface HoverHighlight {
@@ -45,6 +43,7 @@ const COALESCE_WINDOW_MS = 800;
 
 export interface StudioState {
   circuit: Circuit;
+  operationError: string | null;
   simulationEpoch: number;
   undoStack: UndoEntry[];
   redoStack: CircuitCommand[];
@@ -77,7 +76,7 @@ export interface StudioState {
     humidity: number;     // 0-100% (Sensore Umidità)
   };
 
-  execute(cmd: CircuitCommand): void;
+  execute(cmd: CircuitCommand): boolean;
   undo(): void;
   redo(): void;
   setSelection(ids: string[]): void;
@@ -101,13 +100,36 @@ export interface StudioState {
   setHover(h: HoverHighlight | null): void;
   setHoveredComponent(id: string | null): void;
   /** Ripristino integrale da scenario (non passa dalla history). */
-  hydrate(partial: Partial<StudioState>): void;
+  hydrate(partial: Partial<StudioState>): boolean;
 }
 
 let probeCounter = 0;
 
-export const useStudio = create<StudioState>((set, get) => ({
+export const useStudio = create<StudioState>((set, get) => {
+  // Validate the complete effective workload before publishing any new state.
+  const commit = (partial: Partial<StudioState>): boolean => {
+    const before = get();
+    const candidate = { ...before, ...partial, operationError: null };
+    try {
+      if (partial.probes && partial.probes.some(p => !validProbe(candidate.circuit, p.pin))) throw new Error('Sonda non valida');
+      assertSimulationWorkload(candidate);
+    } catch (error) {
+      set({ operationError: error instanceof Error ? error.message : 'Operazione rifiutata' });
+      return false;
+    }
+    try {
+      set(candidate);
+      return true;
+    } catch (error) {
+      // The controller restores its own snapshot before propagating a failure.
+      set(before, true);
+      set({ operationError: error instanceof Error ? error.message : 'Operazione rifiutata' });
+      return false;
+    }
+  };
+  return ({
   circuit: emptyCircuit(),
+  operationError: null,
   simulationEpoch: 0,
   undoStack: [],
   redoStack: [],
@@ -155,7 +177,7 @@ export const useStudio = create<StudioState>((set, get) => ({
         stack = undoStack.slice(0, -1);
       }
     }
-    set({
+    return commit({
       circuit: cmd.apply(circuit),
       simulationEpoch: get().simulationEpoch + (cmd.resetSimulation ? 1 : 0),
       undoStack: [...stack, entry],
@@ -169,7 +191,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (!top) return;
     const next = top.cmd.revert(circuit);
     const alive = new Set([...next.components.map((c) => c.id), ...next.wires.map((w) => w.id)]);
-    set({
+    commit({
       circuit: next,
       undoStack: undoStack.slice(0, -1),
       simulationEpoch: get().simulationEpoch + (top.cmd.resetSimulation ? 1 : 0),
@@ -184,7 +206,7 @@ export const useStudio = create<StudioState>((set, get) => ({
     if (!cmd) return;
     const next = cmd.apply(circuit);
     const alive = new Set([...next.components.map((c) => c.id), ...next.wires.map((w) => w.id)]);
-    set({
+    commit({
       circuit: next,
       undoStack: [...undoStack, { cmd, at: 0 }], // at:0 → mai coalescato con comandi futuri
       simulationEpoch: get().simulationEpoch + (cmd.resetSimulation ? 1 : 0),
@@ -200,32 +222,33 @@ export const useStudio = create<StudioState>((set, get) => ({
     const { probes } = get();
     probeCounter += 1;
     const color = PROBE_COLORS[probes.length % PROBE_COLORS.length];
-    set({ probes: [...probes, { id: `probe${probeCounter}`, pin, color, label: `S${probes.length + 1}` }] });
+    commit({ probes: [...probes, { id: `probe${probeCounter}`, pin, color, label: `S${probes.length + 1}` }] });
   },
   removeProbe: (id) => set({ probes: get().probes.filter((p) => p.id !== id) }),
-  setProbes: (probes) => set({ probes }),
+  setProbes: (probes) => { commit({ probes }); },
 
-  setScopeTimespan: (s) => set({ scopeTimespan: s }),
-  setScopeMode: (scopeMode) => set({ scopeMode }),
+  setScopeTimespan: (s) => { commit({ scopeTimespan: s }); },
+  setScopeMode: (scopeMode) => { commit({ scopeMode }); },
   setRunning: (running) => set({ running }),
   setPlaybackSpeed: (playbackSpeed) => {
     if (isPlaybackSpeed(playbackSpeed)) set({ playbackSpeed });
   },
-  setTimestep: (dt) => set({ timestep: dt }),
-  setAB: (ab) => set({ ab, abGhost: ab ? get().abGhost : false }),
-  setABGhost: (on) => set({ abGhost: on }),
+  setTimestep: (dt) => { commit({ timestep: dt }); },
+  setAB: (ab) => { commit({ ab, abGhost: ab ? get().abGhost : false }); },
+  setABGhost: (on) => { commit({ abGhost: on }); },
   setLesson: (id, step = 0) => set({ lessonId: id, lessonStep: step }),
   setLessonStep: (step) => set({ lessonStep: step }),
   setPresentation: (on) => set({ presentation: on }),
   setRightTab: (tab) => set({ rightTab: tab }),
-  setEnvironment: (env) => set({ environment: { ...get().environment, ...env } }),
+  setEnvironment: (env) => { commit({ environment: { ...get().environment, ...env } }); },
   markEvent: (componentId, simTime) =>
     set({ eventTimes: { ...get().eventTimes, [componentId]: simTime } }),
   setHover: (h) => set({ hover: h }),
   setHoveredComponent: (id) => set({ hoveredComponent: id }),
 
-  hydrate: (partial) => set(partial),
-}));
+  hydrate: (partial) => commit(partial),
+  });
+});
 
 /** Comodità: circuito con un componente aggiornato al volo (per selettori). */
 export function findComponent(circuit: Circuit, id: string) {

@@ -190,8 +190,10 @@ i dati nell'app locale; non costituiscono autenticazione di un servizio pubblico
 {"query":"Quanto dissipa R1?","thread_id":"conversazione","user_id":"utente","session_id":"scheda"}
 ```
 
-`user_id` ha default `local`. Senza `session_id` i tool funzionano solo se il relay
-ha un unico browser. La risposta `ChatResponse` contiene testo, `answer`
+`user_id` ha default `local`. I tool live richiedono sempre `session_id` e la
+capability del relay locale: avvia `npm run tool-bridge` dalla stessa copia del
+progetto. Il fallback senza sessione è stato rimosso.
+La risposta `ChatResponse` contiene testo, `answer`
 strutturato, traccia, evidenze, prima revisione osservata, coerenza e metriche.
 
 `POST /api/chat/stream` usa lo stesso grafo e restituisce NDJSON: `status`,
@@ -1010,9 +1012,16 @@ con il servizio AI fermo (Qdrant locale richiede accesso esclusivo):
 uv run --extra rag python -m circuit_ai.rag.index /percorso/documenti
 ```
 
-Il comando legge PDF, MD e TXT e aggiorna i documenti passati senza duplicare i
+Il comando legge MD e TXT e aggiorna i documenti passati senza duplicare i
 chunk o cancellare gli altri documenti. File rimossi dalla directory non vengono
 eliminati automaticamente dall'indice. Il primo avvio può scaricare il modello
 embedding. Imposta `RAG_ENABLED=true` e avvia con `uv run --extra rag python circuit_ai/api/server.py`:
 `search_info` restituisce estratti con la fonte. L'indice risiede in
 `AI_DATA_DIR/qdrant` e viene aperto solo al primo utilizzo.
+
+
+I PDF originali e `docs/dataset/` restano locali e sono esclusi da Git, così come
+`ai/dataset/`, gli indici in `ai/data/` e gli appunti. I dataset di valutazione
+curati e gli estratti attribuiti in `ai/evals/` restano versionati: gli estratti
+dei libri conservano le proprie condizioni CC BY 4.0 e attribuzioni; la licenza
+MIT del progetto non sostituisce quelle delle fonti o delle dipendenze.

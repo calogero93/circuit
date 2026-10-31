@@ -2,20 +2,37 @@
 import asyncio
 import itertools
 import json
+import inspect
+from urllib.parse import urlsplit
+from circuit_ai.integrations.bridge_runtime import read_tutor_capability
 
 import websockets
 
 
 class ToolBridge:
-    def __init__(self, url="ws://127.0.0.1:8787", timeout=20.0):
+    def __init__(self, url="ws://127.0.0.1:8787", timeout=20.0, *, token=None):
         self.url = url
         self.timeout = timeout
+        self.token = token
         self.ws = None
         self._ids = itertools.count(1)
         self._lock = asyncio.Lock()
 
     async def connect(self):
-        self.ws = await websockets.connect(self.url, open_timeout=5, max_size=8_000_000)
+        endpoint = urlsplit(self.url)
+        if endpoint.scheme != "ws" or endpoint.hostname not in {"127.0.0.1", "localhost"}:
+            raise ValueError("Il tool bridge deve usare un endpoint ws localhost")
+        token = self.token
+        if token is None:
+            token = read_tutor_capability(endpoint.port or 80)
+        if not token:
+            raise RuntimeError("Capability del bridge vuota")
+        options = {"open_timeout": 5, "max_size": 8_000_000,
+                   "additional_headers": {"Authorization": f"Bearer {token}"}}
+        # websockets 14 has no proxy discovery/argument; 15+ enables it by default.
+        if "proxy" in inspect.signature(websockets.connect).parameters:
+            options["proxy"] = None
+        self.ws = await websockets.connect(self.url, **options)
         return self
 
     async def close(self):

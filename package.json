@@ -1,5 +1,5 @@
 {
-  "name": "circuit-studio",
+  "name": "kirchforge",
   "private": true,
   "version": "0.1.0",
   "description": "Piattaforma didattica per imparare l'elettronica costruendo e simulando circuiti",
@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --test \"tests/engine/*.test.ts\"",
+    "test": "node --test \"tests/engine/*.test.ts\" \"tests/server/*.test.mjs\"",
     "test:e2e": "playwright test",
     "tool-bridge": "node --env-file-if-exists=.env server/tool-bridge.mjs",
     "ai": "cd ai && uv run python -m circuit_ai",

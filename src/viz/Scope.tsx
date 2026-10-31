@@ -120,7 +120,7 @@ export function Scope({ markers = [] }: { markers?: ScopeMarker[] }) {
           ctx.stroke();
           ctx.textAlign = 'center';
           ctx.fillStyle = AXIS_INK;
-          ctx.fillText(formatSI(val, 'Hz', 0), x, H - 8);
+          ctx.fillText(formatSI(val, 'Hz'), x, H - 8);
         }
         // Minor ticks
         ctx.lineWidth = 0.5;

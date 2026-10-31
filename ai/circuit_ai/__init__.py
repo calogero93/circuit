@@ -1,1 +1,1 @@
-"""Circuit Studio: tutor locale, strumenti e valutazioni offline."""
+"""KirchForge: tutor locale, strumenti e valutazioni offline."""

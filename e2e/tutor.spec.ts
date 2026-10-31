@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test';
 import WebSocket from 'ws';
+import { existsSync } from 'node:fs';
+import { readTutorCapability } from '../server/bridge-runtime.mjs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 
 const bridgeUrl = `127.0.0.1:${process.env.CIRCUIT_E2E_BRIDGE_PORT ?? 8799}`;
+const bridgeToken = () => readTutorCapability(Number(process.env.CIRCUIT_E2E_BRIDGE_PORT ?? 8799));
+const tutorSocket = async () => new WebSocket(`ws://${bridgeUrl}`, { headers: { Authorization: `Bearer ${await bridgeToken()}` } });
 
 test('tutor: usa un solo endpoint LangGraph e mostra tool e revisione obsoleta', async ({ page }) => {
   const requests: Record<string, unknown>[] = [];
@@ -34,7 +40,11 @@ test('relay WebSocket: snapshot coerente e calcoli eseguiti dal browser live', a
   await page.getByRole('button', { name: 'Lezioni' }).click();
   await page.locator('.lesson-card', { hasText: 'Partitore' }).getByRole('button', { name: 'Inizia' }).click();
   await expect.poll(async () => (await (await request.get(`http://${bridgeUrl}/healthz`)).json()).connected).toBe(true);
-  const ws = new WebSocket(`ws://${bridgeUrl}`);
+  const sessionId = await page.evaluate(async () => {
+    const path = '/src/ai/contracts.ts';
+    return (await import(path)).browserSessionId() as string;
+  });
+  const ws = await tutorSocket();
   await new Promise<void>((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   let id = 0;
   const call = (tool: string, input: Record<string, unknown> = {}) => new Promise<any>((resolve, reject) => {
@@ -44,7 +54,7 @@ test('relay WebSocket: snapshot coerente e calcoli eseguiti dal browser live', a
       const msg = JSON.parse(raw.toString());
       if (msg.error) reject(new Error(msg.error)); else resolve(msg.result);
     });
-    ws.send(JSON.stringify({ type: 'call', id: ++id, tool, input }));
+    ws.send(JSON.stringify({ type: 'call', id: ++id, tool, input, session_id: sessionId }));
   });
   try {
     const snapshot = await call('getCircuitSnapshot');
@@ -68,6 +78,23 @@ test('relay WebSocket: snapshot coerente e calcoli eseguiti dal browser live', a
   } finally { ws.close(); }
 });
 
+test('Python tutor adapter authenticates and executes a live browser tool', async ({ page, request }) => {
+  test.skip(!existsSync('ai/.venv/bin/python'), 'requires the optional AI environment');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Lezioni' }).click();
+  await page.locator('.lesson-card', { hasText: 'Partitore' }).getByRole('button', { name: 'Inizia' }).click();
+  await expect.poll(async () => (await (await request.get(`http://${bridgeUrl}/healthz`)).json()).connected).toBe(true);
+  const sessionId = await page.evaluate(async () => {
+    const path = '/src/ai/contracts.ts';
+    return (await import(path)).browserSessionId() as string;
+  });
+  const { stdout } = await promisify(execFile)('ai/.venv/bin/python', ['-c',
+    'import asyncio,json,sys; from circuit_ai.integrations.bridge import ToolBridge\n' +
+    'async def main():\n async with ToolBridge(sys.argv[1]) as bridge:\n  print(json.dumps(await bridge.call("runDC", session_id=sys.argv[2])))\nasyncio.run(main())',
+    `ws://${bridgeUrl}`, sessionId], { env: { ...process.env, PYTHONPATH: 'ai' }, timeout: 15_000 });
+  expect(JSON.parse(stdout).converged).toBe(true);
+});
+
 test('relay: due schede indirizzate per sessione e client ambiguo rifiutato', async ({ page, context, request }) => {
   const other = await context.newPage();
   await page.goto('/');
@@ -83,7 +110,7 @@ test('relay: due schede indirizzate per sessione e client ambiguo rifiutato', as
   });
   const a = await session(page), b = await session(other);
   expect(a).not.toBe(b);
-  const ws = new WebSocket(`ws://${bridgeUrl}`);
+  const ws = await tutorSocket();
   await new Promise<void>((resolve, reject) => { ws.once('open', resolve); ws.once('error', reject); });
   let id = 0;
   const rpc = (session_id?: string) => new Promise<any>((resolve, reject) => {

@@ -6,7 +6,7 @@ const bridgePort = Number(process.env.CIRCUIT_E2E_BRIDGE_PORT ?? 8799);
 export default defineConfig({
   testDir: 'e2e',
   timeout: 60_000,
-  // Il relay corrente mantiene un solo browser host.
+  // Le prove condividono relay e libreria locale degli scenari.
   workers: 1,
   use: {
     baseURL: `http://127.0.0.1:${port}`,
@@ -21,7 +21,7 @@ export default defineConfig({
   }, {
     command: 'npm run tool-bridge',
     url: `http://127.0.0.1:${bridgePort}/healthz`,
-    env: { TOOL_BRIDGE_PORT: String(bridgePort) },
+    env: { TOOL_BRIDGE_PORT: String(bridgePort), TOOL_BRIDGE_ALLOWED_ORIGINS: `http://127.0.0.1:${port}` },
     reuseExistingServer: false,
     timeout: 30_000,
   }],

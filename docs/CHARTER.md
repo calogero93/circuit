@@ -1,6 +1,6 @@
-# Circuit Studio — Project Charter
+# KirchForge — Project Charter
 
-> Titolo di lavoro: **Circuit Studio** (modificabile).
+> Nome del progetto: **KirchForge**.
 > Questo documento è la fonte di verità della visione, delle decisioni bloccate e
 > degli invarianti architetturali. Ogni prompt di milestone lo referenzia.
 > Va committato nel repo (es. `docs/CHARTER.md`) e tenuto aggiornato: cambiare una
@@ -41,8 +41,8 @@ Non rinegoziabili senza aggiornare questo Charter.
 
 | Tema | Decisione |
 | --- | --- |
-| Licenza | **MIT** |
-| Motore di simulazione | **Proprietario**, scritto da noi. Nessun motore GPL (no Falstad). Validazione offline contro **ngspice (BSD)** come oracolo di riferimento, **mai spedito** nell'app. |
+| Licenza | **MIT** per il codice del progetto; dipendenze e fonti conservano le proprie licenze (vedi `THIRD_PARTY_NOTICES.md`). |
+| Motore di simulazione | **Implementato nel progetto**, usando metodi numerici standard. Validazione offline contro **ngspice** come riferimento esterno con proprie licenze, **mai spedito** nell'app. |
 | Esecuzione simulazione | **Real-time client-side** (TypeScript; WASM in seguito solo se serve performance). |
 | Backend Python | Servizio FastAPI per il tutor unificato LangGraph; opzionale rispetto a editor e simulazione live. |
 | AI | Un solo percorso: **tutor → FastAPI → LangGraph → LLM locale per default**. L'agente decide se rispondere o usare i tool live tramite WebSocket. Provider esterni configurabili esplicitamente, credenziali solo server-side; nessun fallback automatico al cloud. |

@@ -1,4 +1,4 @@
-# Circuit Studio — Prompt eseguibile M1
+# KirchForge — Prompt eseguibile M1
 
 > Questo è il prompt da consegnare a un agente di sviluppo per costruire **M1**.
 > Presuppone e referenzia `CHARTER.md`. Obiettivo: fondamenta analogiche
@@ -9,11 +9,12 @@
 
 ## Ruolo e contesto
 
-Stai costruendo la **M1** di *Circuit Studio*, una piattaforma didattica per
+Stai costruendo la **M1** di *KirchForge*, una piattaforma didattica per
 imparare l'elettronica costruendo e simulando circuiti. Leggi `CHARTER.md`: le
 decisioni bloccate (§3) e gli invarianti architetturali (§4) sono **vincolanti**.
-In particolare: licenza **MIT**, **motore di simulazione proprietario** (niente
-codice GPL), simulazione **client-side in tempo reale**, e devi realizzare gli otto
+In particolare: licenza **MIT** per il codice del progetto, **motore di simulazione
+implementato nel progetto**, simulazione **client-side in tempo reale**. Dipendenze
+e fonti mantengono le proprie licenze. Devi realizzare gli otto
 **seam** del §4 anche dove la feature che li userà arriva solo in M2–M4.
 
 ## Deliverable
@@ -63,7 +64,7 @@ stamp elettrico). Componenti di M1:
 - **Almeno un transistor**: **BJT NPN con modello Ebers-Moll** (default). In
   alternativa NMOS square-law; scegline uno e implementalo completo.
 
-### 4. Motore di simulazione (proprietario) — seam §4.2
+### 4. Motore di simulazione implementato nel progetto — seam §4.2
 - **Modified Nodal Analysis**: assembla la matrice per stamping dei componenti.
 - **Punto di lavoro DC**: solve diretto per circuiti lineari; **Newton-Raphson**
   per i non lineari, con aiuti di convergenza minimi ma reali (**gmin stepping**

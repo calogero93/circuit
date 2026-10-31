@@ -60,7 +60,7 @@ try {
     const operation = item.tau
       ? `tran ${item.tau / 1000} ${item.tau} uic\nmeas tran reference FIND v(out) AT=${item.tau}`
       : 'op\nlet reference = v(out)\nprint reference';
-    writeFileSync(path, `Circuit Studio reference\n.temp 26.85\n.options tnom=26.85 reltol=1e-8 abstol=1e-12 vntol=1e-10 method=gear maxord=2\n${item.netlist}\n.control\nset numdgt=15\n${operation}\n.endc\n.end\n`);
+    writeFileSync(path, `KirchForge reference\n.temp 26.85\n.options tnom=26.85 reltol=1e-8 abstol=1e-12 vntol=1e-10 method=gear maxord=2\n${item.netlist}\n.control\nset numdgt=15\n${operation}\n.endc\n.end\n`);
     const reference = spawnSync(binary, ['-b', path], { encoding: 'utf8', timeout: 30000 });
     const output = reference.stdout + reference.stderr;
     const match = output.match(/reference\s*=\s*([-+\d.eE]+)/i);

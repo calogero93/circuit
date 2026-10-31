@@ -223,12 +223,13 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
     async def test_bridge_rpc_and_close(self):
         seen = []
         async def handler(ws):
+            self.assertEqual(ws.request.headers.get("Authorization"), "Bearer test-capability")
             async for raw in ws:
                 msg = json.loads(raw)
                 seen.append(msg)
                 await ws.send(json.dumps({"id": msg["id"], "result": {"voltage": 4.2}}))
         async with websockets.serve(handler, "127.0.0.1", 0) as server:
-            bridge = ToolBridge(f"ws://127.0.0.1:{server.sockets[0].getsockname()[1]}")
+            bridge = ToolBridge(f"ws://127.0.0.1:{server.sockets[0].getsockname()[1]}", token="test-capability")
             async with bridge:
                 results = await asyncio.gather(bridge.call("measureNode", nodeId="n1", session_id="tab"), bridge.call("runDC"))
                 self.assertEqual(results, [{"voltage": 4.2}] * 2)
@@ -241,8 +242,17 @@ class GraphTests(unittest.IsolatedAsyncioTestCase):
             await ws.recv()
             await ws.wait_closed()
         async with websockets.serve(handler, "127.0.0.1", 0) as server:
-            async with ToolBridge(f"ws://127.0.0.1:{server.sockets[0].getsockname()[1]}", timeout=.01) as bridge:
+            async with ToolBridge(f"ws://127.0.0.1:{server.sockets[0].getsockname()[1]}", timeout=.01, token="test-capability") as bridge:
                 with self.assertRaises(TimeoutError): await bridge.call("runDC")
+
+    async def test_bridge_fails_closed_without_local_capability(self):
+        with self.assertRaisesRegex(ValueError, "localhost"):
+            await ToolBridge("ws://192.0.2.1:8787", token="test").connect()
+        with patch("circuit_ai.integrations.bridge.read_tutor_capability", side_effect=RuntimeError("avvia npm run tool-bridge")):
+            with self.assertRaisesRegex(RuntimeError, "avvia npm run tool-bridge"):
+                await ToolBridge().connect()
+        with self.assertRaisesRegex(RuntimeError, "vuota"):
+            await ToolBridge(token="").connect()
 
 
 class ApiTests(unittest.TestCase):

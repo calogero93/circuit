@@ -18,7 +18,7 @@ from circuit_ai.agent.rendering import render_answer
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """Sei il tutor di elettronica di Circuit Studio. Rispondi nella lingua
+SYSTEM_PROMPT = """Sei il tutor di elettronica di KirchForge. Rispondi nella lingua
 usata dallo studente, con spiegazioni chiare e proporzionate alla domanda.
 Ricevi domande e contesto JSON validati. Scegli i tool tramite i loro schemi e
 concludi SEMPRE chiamando SubmitAnswer, da solo, con tutti i campi richiesti.

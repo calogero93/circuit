@@ -7,20 +7,29 @@ import { browserSessionId } from './contracts.ts';
 
 let socket: WebSocket | null = null;
 let retryTimer: number | undefined;
+let connecting = false;
 
 /** Connette (e riconnette) al relay; no-op se non c'è un URL. */
-export function connectToolBridge(url = import.meta.env.VITE_TOOL_BRIDGE_URL as string | undefined ??
-  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/tool-bridge`): void {
+export async function connectToolBridge(url = import.meta.env.VITE_TOOL_BRIDGE_URL as string | undefined ??
+  `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/tool-bridge`): Promise<void> {
   if (!url) return;
   clearTimeout(retryTimer);
-  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
+  if (connecting || socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 
   let ws: WebSocket;
+  connecting = true;
   try {
-    ws = new WebSocket(url);
+    const endpoint = new URL('/tool-bridge/capability', url);
+    endpoint.protocol = endpoint.protocol === 'wss:' ? 'https:' : 'http:';
+    const response = await fetch(endpoint, { headers: { 'X-Circuit-Bridge': 'browser' }, cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (!response.ok) throw new Error('Bridge non disponibile');
+    const { token } = await response.json() as { token: string };
+    ws = new WebSocket(url, ['circuit-browser', token]);
   } catch {
     retryTimer = window.setTimeout(() => connectToolBridge(url), 3000);
     return;
+  } finally {
+    connecting = false;
   }
   socket = ws;
 

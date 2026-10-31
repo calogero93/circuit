@@ -1,7 +1,7 @@
 [project]
 name = "ai"
 version = "0.1.0"
-description = "Tutor LangGraph di Circuit Studio, con LLM locale e tool live"
+description = "Tutor LangGraph di KirchForge, con LLM locale e tool live"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -23,7 +23,6 @@ rag = [
     "beautifulsoup4>=4.12",
     "langchain-text-splitters>=0.3,<2",
     "markdown>=3.7",
-    "pymupdf>=1.25",
     "qdrant-client>=1.12,<2",
     "sentence-transformers>=3,<6",
 ]

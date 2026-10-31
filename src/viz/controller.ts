@@ -6,7 +6,6 @@
 
 import { create } from 'zustand';
 import { compile, type CompiledCircuit } from '../model/netlist.ts';
-import { getDef } from '../model/registry.ts';
 import type { Circuit } from '../model/types.ts';
 import { AnalogSimulator } from '../engine/analog.ts';
 import { DigitalSimulator, isPurelyDigital } from '../engine/digital.ts';
@@ -16,6 +15,7 @@ import { useStudio, type ABConfig, type Probe } from '../store/studio.ts';
 import { pinKey } from '../model/types.ts';
 import { vsinDef } from '../library/sources.ts';
 import { PlaybackClock, type PlaybackSpeed } from './playback.ts';
+import { assertBodeWorkload, assertSimulationWorkload, bodeSource } from '../model/workload.ts';
 
 export interface BodePoint {
   f: number;
@@ -44,45 +44,8 @@ export const useSimTick = create<{ tick: number; time: number; converged: boolea
   playbackLag: 0,
 }));
 
-/** Applica la modifica A/B al circuito (per la sessione fantasma). */
-export function applyAB(circuit: Circuit, ab: ABConfig): Circuit {
-  if (ab.mode === 'remove') {
-    // Il componente sparisce (circuito aperto), ma le net restano intatte:
-    // i pin altrui che erano collegati TRAMITE un suo pin vengono ricuciti.
-    const isTarget = (ref: { component: string }) => ref.component === ab.componentId;
-    const kept = circuit.wires.filter((w) => !isTarget(w.from) && !isTarget(w.to));
-    const stitched: Circuit['wires'] = [];
-    const def = circuit.components.find((c) => c.id === ab.componentId);
-    const pinCount = def ? getDef(def.type).pins.length : 0;
-    for (let pin = 0; pin < pinCount; pin++) {
-      const others = circuit.wires
-        .filter((w) => (isTarget(w.from) && w.from.pin === pin) || (isTarget(w.to) && w.to.pin === pin))
-        .map((w) => (isTarget(w.from) ? w.to : w.from));
-      for (let i = 1; i < others.length; i++) {
-        stitched.push({ id: `__ab_stitch_${pin}_${i}`, from: others[0], to: others[i] });
-      }
-    }
-    return {
-      ...circuit,
-      components: circuit.components.filter((c) => c.id !== ab.componentId),
-      wires: [...kept, ...stitched],
-    };
-  }
-  // bypass: cortocircuito tra i primi due pin
-  const inst = circuit.components.find((c) => c.id === ab.componentId);
-  if (!inst || getDef(inst.type).pins.length < 2) return circuit;
-  return {
-    ...circuit,
-    wires: [
-      ...circuit.wires,
-      {
-        id: `__ab_bypass__`,
-        from: { component: ab.componentId, pin: 0 },
-        to: { component: ab.componentId, pin: 1 },
-      },
-    ],
-  };
-}
+import { applyAB } from '../model/ab.ts';
+export { applyAB } from '../model/ab.ts';
 
 const MAX_SAMPLES = 3000;
 const FRAME_BUDGET_MS = 8;
@@ -158,7 +121,16 @@ export class SimController {
   }
 
   private sync(): void {
+    const previous = { ...this };
+    this.clock = Object.assign(new PlaybackClock(), this.clock);
+    try { this.syncNext(); }
+    catch (error) { Object.assign(this, previous); throw error; }
+  }
+
+  private syncNext(): void {
     const s = useStudio.getState();
+    if (s.circuit !== this.circuit || s.probes !== this.probes || s.scopeMode !== this.scopeMode ||
+        s.ab !== this.ab || (s.abGhost && s.ab !== null) !== this.ghostOn) assertSimulationWorkload(s);
     const circuitChanged = s.circuit !== this.circuit;
     const reset = s.simulationEpoch !== this.epoch;
     const temperatureChanged = s.environment.temperature !== this.ambientTemperature;
@@ -240,11 +212,10 @@ export class SimController {
 
   runBodeFor(compiled: CompiledCircuit | null): BodePoint[] {
     if (!compiled || this.probes.length === 0) return [];
+    assertBodeWorkload(compiled, this.probes.length);
 
     // Trova la prima sorgente compatibile con AC o generica sorgente di tensione
-    const srcItem = compiled.items.find((item) =>
-      ['vsin', 'vsinPhase', 'pulse', 'vdc'].includes(item.inst.type)
-    );
+    const srcItem = bodeSource(compiled);
     if (!srcItem) return [];
 
     const srcCompId = srcItem.inst.id;
